@@ -56,7 +56,7 @@ public class CoinFlipController : MonoBehaviour
             animator.SetTrigger("StopFlip");
 
             // Chờ Animator hoàn tất vòng quay cuối (Exit Time)
-            yield return new WaitForSeconds(0.6f);
+            yield return new WaitForSeconds(0.1f);
 
             // Tắt Animator để quyền điều khiển transform quay về script
             animator.enabled = false;

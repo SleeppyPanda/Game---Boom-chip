@@ -18,18 +18,12 @@ public class BoomChipManager : MonoBehaviour
     public GameObject panelWin;
     public GameObject panelTransition;
 
-    [Header("Transition Elements (RectTransforms)")]
+    [Header("Transition Elements")]
     public RectTransform leftStrip;
     public RectTransform rightStrip;
     public RectTransform leftObj;
     public RectTransform rightObj;
     public CanvasGroup centerLogo;
-
-    [Header("Scrolling Gradient Settings")]
-    public float scrollSpeed = 0.5f;
-    private RawImage leftRawImg;
-    private RawImage rightRawImg;
-    private bool isTransitioning = false;
 
     [Header("Phase Next Buttons")]
     public GameObject nextButtonPhase1;
@@ -42,8 +36,8 @@ public class BoomChipManager : MonoBehaviour
     public Sprite heartEmptySprite;
 
     [Header("Gameplay Phase 3 (Canvas Groups)")]
-    public CanvasGroup p1BoardArea; // Bảng Player 1 nhìn thấy để bấm (chứa bom P2)
-    public CanvasGroup p2BoardArea; // Bảng Player 2 nhìn thấy để bấm (chứa bom P1)
+    public CanvasGroup p1BoardArea;
+    public CanvasGroup p2BoardArea;
     public bool isP1Turn;
 
     [Header("Win Panel Custom UI")]
@@ -51,6 +45,9 @@ public class BoomChipManager : MonoBehaviour
     public GameObject p2Crown;
     public TextMeshProUGUI p1HitCounterText;
     public TextMeshProUGUI p2HitCounterText;
+    // Cập nhật: Thêm Image để hiển thị đúng loại bom người chơi đã chọn
+    public Image p1WinBombImage;
+    public Image p2WinBombImage;
 
     [Header("Settings & Sprites")]
     public Sprite hitSprite;
@@ -66,8 +63,27 @@ public class BoomChipManager : MonoBehaviour
     {
         selectionLogic = GetComponent<PlayerSelection>();
 
-        if (leftStrip) leftRawImg = leftStrip.GetComponent<RawImage>();
-        if (rightStrip) rightRawImg = rightStrip.GetComponent<RawImage>();
+        // --- CẬP NHẬT: Nhận dữ liệu truyền từ Selection Scene ---
+        if (BoomChipSettings.customHitSprite != null)
+        {
+            hitSprite = BoomChipSettings.customHitSprite;
+
+            // Đồng bộ sprite quả bom vào logic lựa chọn (PlayerSelection)
+            if (selectionLogic != null)
+            {
+                selectionLogic.selectedSprite = hitSprite;
+            }
+
+            // Gán sprite vào các icon trên màn hình Win và giữ tỉ lệ
+            if (p1WinBombImage != null) SetupWinImage(p1WinBombImage, hitSprite);
+            if (p2WinBombImage != null) SetupWinImage(p2WinBombImage, hitSprite);
+        }
+
+        if (BoomChipSettings.customMissSprite != null)
+            missSprite = BoomChipSettings.customMissSprite;
+
+        winByHittingThree = BoomChipSettings.winByHittingThree;
+        // -------------------------------------------------------
 
         panelPhase1.SetActive(true);
         panelPhase2.SetActive(false);
@@ -85,25 +101,11 @@ public class BoomChipManager : MonoBehaviour
         RotatePlayer2TileVisuals();
     }
 
-    void Update()
+    // Hàm bổ trợ để thiết lập Image giữ đúng tỷ lệ
+    private void SetupWinImage(Image img, Sprite sp)
     {
-        if (isTransitioning) ApplyGradientScroll();
-    }
-
-    private void ApplyGradientScroll()
-    {
-        if (leftRawImg != null)
-        {
-            Rect r = leftRawImg.uvRect;
-            r.y += Time.deltaTime * scrollSpeed;
-            leftRawImg.uvRect = r;
-        }
-        if (rightRawImg != null)
-        {
-            Rect r = rightRawImg.uvRect;
-            r.y -= Time.deltaTime * scrollSpeed;
-            rightRawImg.uvRect = r;
-        }
+        img.sprite = sp;
+        img.preserveAspect = true; // Giữ đúng tỷ lệ định dạng cho mọi chỗ được gán
     }
 
     public void NextPhase()
@@ -130,23 +132,17 @@ public class BoomChipManager : MonoBehaviour
             yield break;
         }
 
-        isTransitioning = true;
         panelTransition.SetActive(true);
 
-        Vector2 centerLeftStrip = leftStrip.anchoredPosition;
-        Vector2 centerRightStrip = rightStrip.anchoredPosition;
-        Vector2 centerLeftObj = leftObj.anchoredPosition;
-        Vector2 centerRightObj = rightObj.anchoredPosition;
+        Vector2 targetLeftStrip = leftStrip.anchoredPosition;
+        Vector2 targetRightStrip = rightStrip.anchoredPosition;
+        Vector2 targetLeftObj = leftObj.anchoredPosition;
+        Vector2 targetRightObj = rightObj.anchoredPosition;
 
-        Vector2 startLeftStrip = new Vector2(centerLeftStrip.x, 5000f);
-        Vector2 startRightStrip = new Vector2(centerRightStrip.x, -5000f);
-        Vector2 startLeftObj = new Vector2(-2000f, centerLeftObj.y);
-        Vector2 startRightObj = new Vector2(2000f, centerRightObj.y);
-
-        Vector2 endLeftStrip = new Vector2(centerLeftStrip.x, -5000f);
-        Vector2 endRightStrip = new Vector2(centerRightStrip.x, 5000f);
-        Vector2 endLeftObj = new Vector2(-2000f, centerLeftObj.y);
-        Vector2 endRightObj = new Vector2(2000f, centerRightObj.y);
+        Vector2 startLeftStrip = new Vector2(-2000f, targetLeftStrip.y);
+        Vector2 startRightStrip = new Vector2(2000f, targetRightStrip.y);
+        Vector2 startLeftObj = new Vector2(-2000f, targetLeftObj.y);
+        Vector2 startRightObj = new Vector2(2000f, targetRightObj.y);
 
         leftStrip.anchoredPosition = startLeftStrip;
         rightStrip.anchoredPosition = startRightStrip;
@@ -156,16 +152,24 @@ public class BoomChipManager : MonoBehaviour
         centerLogo.transform.localScale = Vector3.zero;
 
         float elapsed = 0;
-        float inDuration = 0.7f;
-
-        while (elapsed < inDuration)
+        float stripInDuration = 0.4f;
+        while (elapsed < stripInDuration)
         {
             elapsed += Time.deltaTime;
-            float t = Mathf.SmoothStep(0, 1, elapsed / inDuration);
-            leftStrip.anchoredPosition = Vector2.Lerp(startLeftStrip, centerLeftStrip, t);
-            rightStrip.anchoredPosition = Vector2.Lerp(startRightStrip, centerRightStrip, t);
-            leftObj.anchoredPosition = Vector2.Lerp(startLeftObj, centerLeftObj, t);
-            rightObj.anchoredPosition = Vector2.Lerp(startRightObj, centerRightObj, t);
+            float t = Mathf.SmoothStep(0, 1, elapsed / stripInDuration);
+            leftStrip.anchoredPosition = Vector2.Lerp(startLeftStrip, targetLeftStrip, t);
+            rightStrip.anchoredPosition = Vector2.Lerp(startRightStrip, targetRightStrip, t);
+            yield return null;
+        }
+
+        elapsed = 0;
+        float objInDuration = 0.5f;
+        while (elapsed < objInDuration)
+        {
+            elapsed += Time.deltaTime;
+            float t = Mathf.SmoothStep(0, 1, elapsed / objInDuration);
+            leftObj.anchoredPosition = Vector2.Lerp(startLeftObj, targetLeftObj, t);
+            rightObj.anchoredPosition = Vector2.Lerp(startRightObj, targetRightObj, t);
             centerLogo.alpha = t;
             centerLogo.transform.localScale = Vector3.one * t;
             yield return null;
@@ -175,32 +179,40 @@ public class BoomChipManager : MonoBehaviour
         panelPhase3.SetActive(true);
         panelAnimation.SetActive(true);
 
-        yield return new WaitForSeconds(1.0f);
+        yield return new WaitForSeconds(0.8f);
 
         elapsed = 0;
-        float outDuration = 2.5f;
-
-        while (elapsed < outDuration)
+        float objOutDuration = 0.5f;
+        while (elapsed < objOutDuration)
         {
             elapsed += Time.deltaTime;
-            float t = Mathf.SmoothStep(0, 1, elapsed / outDuration);
-            leftStrip.anchoredPosition = Vector2.Lerp(centerLeftStrip, endLeftStrip, t);
-            rightStrip.anchoredPosition = Vector2.Lerp(centerRightStrip, endRightStrip, t);
-            leftObj.anchoredPosition = Vector2.Lerp(centerLeftObj, endLeftObj, t);
-            rightObj.anchoredPosition = Vector2.Lerp(centerRightObj, endRightObj, t);
+            float t = Mathf.SmoothStep(0, 1, elapsed / objOutDuration);
+            leftObj.anchoredPosition = Vector2.Lerp(targetLeftObj, startLeftObj, t);
+            rightObj.anchoredPosition = Vector2.Lerp(targetRightObj, startRightObj, t);
             centerLogo.alpha = 1 - t;
-            centerLogo.transform.localScale = Vector3.Lerp(Vector3.one, Vector3.zero, t);
+            centerLogo.transform.localScale = Vector3.one * (1 - t);
             yield return null;
         }
 
-        isTransitioning = false;
-        panelTransition.SetActive(false);
+        yield return new WaitForSeconds(0.8f);
 
+        elapsed = 0;
+        float stripOutDuration = 1.0f;
+        while (elapsed < stripOutDuration)
+        {
+            elapsed += Time.deltaTime;
+            float t = Mathf.SmoothStep(0, 1, elapsed / stripOutDuration);
+            leftStrip.anchoredPosition = Vector2.Lerp(targetLeftStrip, startLeftStrip, t);
+            rightStrip.anchoredPosition = Vector2.Lerp(targetRightStrip, startRightStrip, t);
+            yield return null;
+        }
+
+        panelTransition.SetActive(false);
         currentPhase = GamePhase.Animation;
+
         CoinFlipController flip = FindFirstObjectByType<CoinFlipController>();
         if (flip != null)
         {
-            // Reset rotation đồng xu về 0 trước khi bắt đầu tung để tránh lỗi góc quay
             flip.transform.localRotation = Quaternion.identity;
             flip.StartCoinFlip();
         }
@@ -211,59 +223,39 @@ public class BoomChipManager : MonoBehaviour
         panelAnimation.SetActive(false);
         currentPhase = GamePhase.Phase3;
         isP1Turn = (winnerID == 0);
-
         p1TargetBombs = new List<int>(selectionLogic.p2SelectedTiles);
         p2TargetBombs = new List<int>(selectionLogic.p1SelectedTiles);
-
         StartCoroutine(ShowTurnAndStartGame(winnerID));
     }
 
     private IEnumerator ShowTurnAndStartGame(int winnerID)
     {
         panelAnimation.SetActive(true);
-
-        // Reset rotation của Text hoặc Image kết quả nếu cần để hiển thị rõ nhất
         panelAnimation.transform.localRotation = Quaternion.identity;
-
         string winnerName = (winnerID == 0) ? "PLAYER 1" : "PLAYER 2";
         TextMeshProUGUI animText = panelAnimation.GetComponentInChildren<TextMeshProUGUI>();
         if (animText != null) animText.text = "<color=yellow>" + winnerName + "</color> GO FIRST!";
-
         yield return new WaitForSeconds(1.5f);
-
         panelAnimation.SetActive(false);
-        panelPhase3.SetActive(true);
         UpdateBoardVisuals();
     }
 
     public void ExecuteTurn(int tileIndex, TileButton tile, int boardOwnerID)
     {
         if (currentPhase != GamePhase.Phase3) return;
-
         if (isP1Turn && boardOwnerID != 1) return;
         if (!isP1Turn && boardOwnerID != 2) return;
-
         List<int> targetList = (isP1Turn) ? p1TargetBombs : p2TargetBombs;
-
         if (targetList.Contains(tileIndex))
         {
             tile.SetVisual(hitSprite);
             if (isP1Turn) p1HitCount++; else p2HitCount++;
             UpdateHeartsUI(isP1Turn ? 1 : 2);
         }
-        else
-        {
-            tile.SetVisual(missSprite);
-        }
-
+        else tile.SetVisual(missSprite);
         tile.SetInteractable(false);
         CheckWinCondition();
-
-        if (!panelWin.activeSelf)
-        {
-            isP1Turn = !isP1Turn;
-            UpdateBoardVisuals();
-        }
+        if (!panelWin.activeSelf) { isP1Turn = !isP1Turn; UpdateBoardVisuals(); }
     }
 
     private void UpdateHeartsUI(int playerID)
@@ -328,10 +320,7 @@ public class BoomChipManager : MonoBehaviour
         if (p2BoardArea != null)
         {
             TileButton[] tilesInP2 = p2BoardArea.GetComponentsInChildren<TileButton>(true);
-            foreach (TileButton tile in tilesInP2)
-            {
-                tile.transform.localScale = new Vector3(-1, -1, 1);
-            }
+            foreach (TileButton tile in tilesInP2) tile.transform.localScale = new Vector3(-1, -1, 1);
         }
     }
 
