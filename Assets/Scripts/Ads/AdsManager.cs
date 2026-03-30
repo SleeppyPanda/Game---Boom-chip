@@ -20,12 +20,27 @@ public class AdsManager : MonoBehaviour
     public string appsFlyerDevKey = "YOUR_DEV_KEY_HERE";
     public string appId = "com.your.package.name";
 
-    [Header("Ad Unit IDs (Test IDs)")]
+    [Header("Ad Unit IDs (gán Real IDs trong Inspector cho release build)")]
     public string adUnitIdBanner = "ca-app-pub-3940256099942544/6300978111";
     public string adUnitIdInter = "ca-app-pub-3940256099942544/1033173712";
     public string adUnitIdRewarded = "ca-app-pub-3940256099942544/5224354917";
     public string adUnitIdAOA = "ca-app-pub-3940256099942544/3419835294";
     public string adUnitIdMREC = "ca-app-pub-3940256099942544/6300978111";
+
+    // Google AdMob test ad unit IDs — dùng để override trong debug builds
+    private const string TEST_BANNER = "ca-app-pub-3940256099942544/6300978111";
+    private const string TEST_INTER = "ca-app-pub-3940256099942544/1033173712";
+    private const string TEST_REWARDED = "ca-app-pub-3940256099942544/5224354917";
+    private const string TEST_AOA = "ca-app-pub-3940256099942544/3419835294";
+    private const string TEST_MREC = "ca-app-pub-3940256099942544/6300978111";
+
+    [Header("Network Error Popup (gán trong Editor)")]
+    public GameObject networkErrorPanel;
+    public UnityEngine.UI.Button networkRetryButton;
+    public UnityEngine.UI.Button networkCloseButton;
+
+    private const int ADMOB_ERROR_NETWORK = 2;
+    private Action _networkRetryAction;
 
     private BannerView _bannerView;
     private BannerView _mrecView;
@@ -38,6 +53,7 @@ public class AdsManager : MonoBehaviour
     private float _lastTimeShowInterstitial = -100f;
     private DateTime _aoaExpireTime;
     private Coroutine _bannerReloadCoroutine;
+    private int _bannerHeightDP = 60; // Chiều cao banner adaptive (dp), cập nhật khi load
 
     void Awake()
     {
@@ -50,6 +66,17 @@ public class AdsManager : MonoBehaviour
         else { Destroy(gameObject); }
 
         _isFirstTimeTruly = PlayerPrefs.GetInt("Truly_First_Open_Completed", 0) == 0;
+
+        // Debug build → force test IDs để không bao giờ dùng nhầm real IDs
+        if (Debug.isDebugBuild || Application.isEditor)
+        {
+            adUnitIdBanner = TEST_BANNER;
+            adUnitIdInter = TEST_INTER;
+            adUnitIdRewarded = TEST_REWARDED;
+            adUnitIdAOA = TEST_AOA;
+            adUnitIdMREC = TEST_MREC;
+            Debug.Log("<color=yellow>[AdsManager] Debug build detected → using TEST ad unit IDs</color>");
+        }
     }
 
     private void OnDestroy()
@@ -66,6 +93,17 @@ public class AdsManager : MonoBehaviour
 
     void Start()
     {
+        // 0. Setup Network Error Popup
+        if (networkErrorPanel != null) networkErrorPanel.SetActive(false);
+        if (networkRetryButton != null)
+            networkRetryButton.onClick.AddListener(() => {
+                Action retry = _networkRetryAction;
+                HideNetworkError();
+                retry?.Invoke();
+            });
+        if (networkCloseButton != null)
+            networkCloseButton.onClick.AddListener(HideNetworkError);
+
         // 1. Khởi tạo AppsFlyer
         AppsFlyer.initSDK(appsFlyerDevKey, appId);
         AppsFlyer.startSDK();
@@ -86,6 +124,25 @@ public class AdsManager : MonoBehaviour
         LoadRewardedAd();
         LoadAppOpenAd();
     }
+
+    #region NETWORK ERROR POPUP
+    private void ShowNetworkError(Action retryAction)
+    {
+        _networkRetryAction = retryAction;
+        if (networkErrorPanel != null) networkErrorPanel.SetActive(true);
+    }
+
+    private void HideNetworkError()
+    {
+        if (networkErrorPanel != null) networkErrorPanel.SetActive(false);
+        _networkRetryAction = null;
+    }
+
+    private bool IsNetworkError(LoadAdError error)
+    {
+        return error != null && error.GetCode() == ADMOB_ERROR_NETWORK;
+    }
+    #endregion
 
     private AdRequest CreateAdRequest()
     {
@@ -180,7 +237,11 @@ public class AdsManager : MonoBehaviour
         if (_interstitialAd != null) { _interstitialAd.Destroy(); _interstitialAd = null; }
 
         InterstitialAd.Load(adUnitIdInter, CreateAdRequest(), (ad, error) => {
-            if (error != null || ad == null) return;
+            if (error != null || ad == null)
+            {
+                if (IsNetworkError(error)) ShowNetworkError(() => LoadInterstitialAd());
+                return;
+            }
             _interstitialAd = ad;
             _interstitialAd.OnAdPaid += (adValue) => SendRevenueToAll("INTER", adValue);
         });
@@ -252,7 +313,11 @@ public class AdsManager : MonoBehaviour
         if (_rewardedAd != null) { _rewardedAd.Destroy(); _rewardedAd = null; }
 
         RewardedAd.Load(adUnitIdRewarded, CreateAdRequest(), (ad, error) => {
-            if (error != null || ad == null) return;
+            if (error != null || ad == null)
+            {
+                if (IsNetworkError(error)) ShowNetworkError(() => LoadRewardedAd());
+                return;
+            }
             _rewardedAd = ad;
             _rewardedAd.OnAdPaid += (adValue) => SendRevenueToAll("REWARDED", adValue);
         });
@@ -260,7 +325,12 @@ public class AdsManager : MonoBehaviour
 
     public void ShowRewardedAd(string logicKey, Action onRewardEarned, Action onAdFailed = null)
     {
-        if (!AdEventTracker.GetBool(logicKey)) { onRewardEarned?.Invoke(); return; }
+        // is_show_rw_profile là string (danh sách avatar ID), không phải bool
+        bool shouldShowAd = (logicKey == AdEventTracker.KEY_RW_PROFILE)
+            ? !string.IsNullOrEmpty(AdEventTracker.GetString(logicKey))
+            : AdEventTracker.GetBool(logicKey);
+
+        if (!shouldShowAd) { onRewardEarned?.Invoke(); return; }
 
         if (_rewardedAd != null && _rewardedAd.CanShowAd())
         {
@@ -284,7 +354,11 @@ public class AdsManager : MonoBehaviour
     {
         if (_appOpenAd != null) { _appOpenAd.Destroy(); _appOpenAd = null; }
         AppOpenAd.Load(adUnitIdAOA, CreateAdRequest(), (ad, error) => {
-            if (error != null || ad == null) return;
+            if (error != null || ad == null)
+            {
+                if (IsNetworkError(error)) ShowNetworkError(() => LoadAppOpenAd());
+                return;
+            }
             _appOpenAd = ad;
             _aoaExpireTime = DateTime.Now.AddHours(4);
             _appOpenAd.OnAdPaid += (adValue) => SendRevenueToAll("AOA", adValue);
@@ -293,13 +367,23 @@ public class AdsManager : MonoBehaviour
 
     public void ShowAppOpenAd(bool isResume)
     {
-        if (!AdEventTracker.GetBool(AdEventTracker.KEY_SHOW_OPEN_ADS) || _isAdShowing) return;
+        if (_isAdShowing) return;
 
-        if (!isResume && _isFirstTimeTruly && !AdEventTracker.GetBool(AdEventTracker.KEY_SHOW_OPEN_ADS_FIRST))
+        // Resume AOA và Launch AOA dùng config độc lập theo spec
+        if (isResume)
         {
-            PlayerPrefs.SetInt("Truly_First_Open_Completed", 1);
-            _isFirstTimeTruly = false;
-            return;
+            if (!AdEventTracker.GetBool(AdEventTracker.KEY_SHOW_RESUME_ADS)) return;
+        }
+        else
+        {
+            if (!AdEventTracker.GetBool(AdEventTracker.KEY_SHOW_OPEN_ADS)) return;
+
+            if (_isFirstTimeTruly && !AdEventTracker.GetBool(AdEventTracker.KEY_SHOW_OPEN_ADS_FIRST))
+            {
+                PlayerPrefs.SetInt("Truly_First_Open_Completed", 1);
+                _isFirstTimeTruly = false;
+                return;
+            }
         }
 
         if (_appOpenAd != null && _appOpenAd.CanShowAd() && DateTime.Now < _aoaExpireTime)
@@ -313,7 +397,7 @@ public class AdsManager : MonoBehaviour
 
     private void OnApplicationFocus(bool focus)
     {
-        if (focus && AdEventTracker.GetBool(AdEventTracker.KEY_SHOW_RESUME_ADS)) ShowAppOpenAd(true);
+        if (focus) ShowAppOpenAd(true);
     }
     #endregion
 
@@ -324,6 +408,7 @@ public class AdsManager : MonoBehaviour
         if (_bannerView != null) _bannerView.Destroy();
 
         AdSize adaptiveSize = AdSize.GetCurrentOrientationAnchoredAdaptiveBannerAdSizeWithWidth(AdSize.FullWidth);
+        _bannerHeightDP = adaptiveSize.Height > 0 ? adaptiveSize.Height : 60;
         _bannerView = new BannerView(adUnitIdBanner, adaptiveSize, AdPosition.Bottom);
 
         AdRequest request = CreateAdRequest();
@@ -357,8 +442,9 @@ public class AdsManager : MonoBehaviour
     {
         if (!AdEventTracker.GetBool(configKey)) { HideMREC(); return; }
 
-        // Ẩn banner thường để nhường chỗ và tài nguyên cho MREC
-        HideBanner();
+        // Hiện Banner cùng lúc — spec yêu cầu MREC nằm phía trên Banner
+        ShowBanner();
+
         if (_mrecView != null) _mrecView.Destroy();
 
         float density = Screen.dpi / 160f;
@@ -367,9 +453,11 @@ public class AdsManager : MonoBehaviour
         float screenWidthDP = Screen.width / density;
         float screenHeightDP = Screen.height / density;
 
+        // Căn giữa MREC (300x250) theo chiều ngang
         int xPos = (int)((screenWidthDP - 300) / 2);
-        int distanceFillFromBottom = 350;
-        int yPos = (int)(screenHeightDP - -80 - distanceFillFromBottom);
+        // Đặt MREC ngay trên Banner adaptive: bottom offset = MREC height + banner height
+        int mrecHeight = 250;
+        int yPos = (int)(screenHeightDP - mrecHeight - _bannerHeightDP);
 
         _mrecView = new BannerView(adUnitIdMREC, AdSize.MediumRectangle, xPos, yPos);
 

@@ -228,24 +228,14 @@ public class DiceModeManager : MonoBehaviour
 
         yield return new WaitForSeconds(1.0f);
 
-        string adKey = (winnerID == 0) ? "is_show_inter_p1_choose" : "is_show_inter_p2_choose";
-        if (AdsManager.Instance != null)
-        {
-            AdsManager.Instance.ShowInterstitialWithDelay(adKey, () => {
-                FinishTransitionToGameplay(winnerID);
-            }, 0.5f);
-        }
-        else
-        {
-            FinishTransitionToGameplay(winnerID);
-        }
+        FinishTransitionToGameplay(winnerID);
     }
 
     private void FinishTransitionToGameplay(int winnerID)
     {
         if (panelAnimation) panelAnimation.SetActive(false);
         isP1Turn = (winnerID == 0);
-        if (AdsManager.Instance != null) AdsManager.Instance.HideMREC();
+        if (AdsManager.Instance != null) AdsManager.Instance.ShowMREC("is_show_mrec_gameplay");
 
         PrepareNewTurn();
     }
@@ -413,10 +403,12 @@ public class DiceModeManager : MonoBehaviour
         if (panelSetting != null)
         {
             panelSetting.SetActive(false);
-            if (isGameOver && panelWin.activeSelf && AdsManager.Instance != null)
-            {
+            if (AdsManager.Instance == null) return;
+
+            if (isGameOver && panelWin.activeSelf)
                 AdsManager.Instance.ShowMREC("is_show_mrec_complete_game");
-            }
+            else if (!isGameOver)
+                AdsManager.Instance.ShowMREC("is_show_mrec_gameplay");
         }
     }
     #endregion

@@ -178,17 +178,7 @@ public class Mode3Manager : MonoBehaviour
         // Đợi 1.2s sau khi vật rơi/thua để người chơi nhìn kết quả
         yield return new WaitForSeconds(1.2f);
 
-        if (AdsManager.Instance != null)
-        {
-            // Hiển thị Inter với delay nhỏ để tránh giật lag UI
-            AdsManager.Instance.ShowInterstitialWithDelay("is_show_inter_p1_choose", () => {
-                ShowResultUI();
-            }, 0.2f);
-        }
-        else
-        {
-            ShowResultUI();
-        }
+        ShowResultUI();
     }
 
     private void ShowResultUI()

@@ -222,20 +222,10 @@ public class Mode2Manager : MonoBehaviour
         if (fireworkEffect != null) fireworkEffect.Play();
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX("SFX_Win");
 
-        // Đợi 1.2s trước khi bắt đầu quy trình hiện UI và Interstitial
+        // Đợi 1.2s trước khi hiện Win Panel
         yield return new WaitForSeconds(delayBeforeWinPanel);
 
-        if (AdsManager.Instance != null)
-        {
-            // Sử dụng hàm delay an toàn để đảm bảo UI không bị giật khi quảng cáo load
-            AdsManager.Instance.ShowInterstitialWithDelay("is_show_inter_p1_choose", () => {
-                ShowWinPanel();
-            }, 0.2f);
-        }
-        else
-        {
-            ShowWinPanel();
-        }
+        ShowWinPanel();
     }
 
     private void ShowWinPanel()

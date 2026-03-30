@@ -53,8 +53,17 @@ public class UnlockButton : MonoBehaviour
         }
         else if (type == UnlockType.Avatar)
         {
-            logicConfigKey = "is_show_rw_profile";
             finalItemID = "Avatar_" + indexValue;
+
+            // Check avatar ID cụ thể có nằm trong danh sách yêu cầu xem ads không
+            if (!AdEventTracker.IsAvatarInRwList(indexValue))
+            {
+                // Avatar không cần xem ads → unlock trực tiếp
+                UpdateUI();
+                ExecuteAction();
+                return;
+            }
+            logicConfigKey = "is_show_rw_profile";
         }
 
         // 2. Sử dụng HandleUnlockFlow để xử lý toàn bộ quy trình

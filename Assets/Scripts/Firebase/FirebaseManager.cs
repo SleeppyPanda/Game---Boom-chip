@@ -61,16 +61,8 @@ public class FirebaseManager : MonoBehaviour
 
     private void InitializeRemoteConfig()
     {
-        var defaultValues = new Dictionary<string, object>
-        {
-            { AdEventTracker.KEY_ADS_INTERVAL, 30 },
-            { AdEventTracker.KEY_SHOW_BANNER, true },
-            { AdEventTracker.KEY_RW_CHALLENGE, true }
-        };
-
-        FirebaseRemoteConfig.DefaultInstance.SetDefaultsAsync(defaultValues).ContinueWithOnMainThread(task => {
-            FetchRemoteConfig();
-        });
+        // Defaults được set tập trung trong AdsManager.FetchRemoteConfig() theo đúng spec
+        FetchRemoteConfig();
     }
 
     // Hàm quan trọng để fix lỗi: Tự động cập nhật khi người chơi mở lại app từ background

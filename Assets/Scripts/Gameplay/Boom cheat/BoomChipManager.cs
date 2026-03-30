@@ -196,7 +196,7 @@ public class BoomChipManager : MonoBehaviour
                 AdsManager.Instance.ShowMREC("is_show_mrec_p2_choose");
                 break;
             case GamePhase.Phase3:
-                AdsManager.Instance.HideMREC();
+                AdsManager.Instance.ShowMREC("is_show_mrec_gameplay");
                 break;
             default:
                 AdsManager.Instance.HideMREC();
@@ -515,11 +515,13 @@ public class BoomChipManager : MonoBehaviour
         if (panelSetting != null)
         {
             panelSetting.SetActive(false);
-            if (currentPhase == GamePhase.Phase1 || currentPhase == GamePhase.Phase2 || panelWin.activeSelf)
+            if (panelWin.activeSelf && AdsManager.Instance != null)
+            {
+                AdsManager.Instance.ShowMREC("is_show_mrec_complete_game");
+            }
+            else if (currentPhase == GamePhase.Phase1 || currentPhase == GamePhase.Phase2 || currentPhase == GamePhase.Phase3)
             {
                 ShowMRECByPhase();
-                if (panelWin.activeSelf && AdsManager.Instance != null)
-                    AdsManager.Instance.ShowMREC("is_show_mrec_complete_game");
             }
         }
     }
