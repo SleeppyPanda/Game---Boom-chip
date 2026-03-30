@@ -29,50 +29,35 @@ public class UnlockButton : MonoBehaviour
         UpdateUI();
     }
 
+    /// <summary>
+    /// Hàm gắn vào OnClick của Button
+    /// </summary>
     public void OnClick()
     {
-        // 1. Kiểm tra trạng thái mở khóa
+        // 1. Kiểm tra xem đã mở khóa cái này chưa
         bool isUnlocked = false;
-        if (type == UnlockType.Avatar && AccountManager.Instance != null)
-            isUnlocked = AccountManager.Instance.IsAvatarUnlocked(indexValue);
-        else if (UnlockSystemManager.Instance != null)
+        if (UnlockSystemManager.Instance != null)
             isUnlocked = UnlockSystemManager.Instance.IsItemUnlocked(unlockKey);
         else
             isUnlocked = PlayerPrefs.GetInt("Unlock_" + unlockKey, 0) == 1;
 
         if (isUnlocked)
         {
+            // Đã mở rồi thì chỉ việc thực hiện hành động
             ExecuteAction();
         }
         else
         {
-            // 2. Xác định hình ảnh sẽ hiển thị trên Popup
-            Sprite spriteToDisplay = null;
-
-            // Nếu nút có thành phần Image displayAvatar, lấy sprite từ đó
-            if (displayAvatar != null)
-            {
-                spriteToDisplay = displayAvatar.sprite;
-            }
+            // 2. Chưa mở -> Gọi Popup quảng cáo cho RIÊNG cái này
+            Sprite spriteToDisplay = displayAvatar != null ? displayAvatar.sprite : null;
 
             if (UnlockSystemManager.Instance != null)
             {
-                // Mở Popup với hình ảnh đã được cập nhật theo nút vừa bấm
+                // Mở popup với đúng ID và đúng Hình ảnh của nút này
                 UnlockSystemManager.Instance.OpenUnlockPopup(unlockKey, spriteToDisplay, () => {
-
-                    // Lưu trạng thái mở khóa vào PlayerPrefs
-                    if (type == UnlockType.Avatar)
-                    {
-                        PlayerPrefs.SetInt("Unlock_Avatar_" + indexValue, 1);
-                    }
-                    else
-                    {
-                        PlayerPrefs.SetInt("Unlock_" + unlockKey, 1);
-                    }
-                    PlayerPrefs.Save();
-
-                    UpdateUI();
-                    ExecuteAction();
+                    // Khi xem xong quảng cáo thành công:
+                    UpdateUI();       // Ẩn ổ khóa của chính nút này
+                    ExecuteAction();  // Thực hiện chọn luôn
                 });
             }
         }
