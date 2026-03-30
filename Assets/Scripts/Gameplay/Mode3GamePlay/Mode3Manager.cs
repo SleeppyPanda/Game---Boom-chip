@@ -183,7 +183,7 @@ public class Mode3Manager : MonoBehaviour
 
     public void Btn_BackToHome()
     {
-        SceneManager.LoadScene("Gameplay scene");
+        SceneManager.LoadScene("SelectScene");
     }
 
     IEnumerator ScreenShake(float duration, float magnitude)
