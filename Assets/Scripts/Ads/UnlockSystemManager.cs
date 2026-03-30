@@ -143,7 +143,6 @@ public class UnlockSystemManager : MonoBehaviour
             PlayerPrefs.Save();
         }
 
-        AdEventTracker.TrackRewardDisplayed();
         ClosePopup();
         _onSuccessCallback?.Invoke();
     }

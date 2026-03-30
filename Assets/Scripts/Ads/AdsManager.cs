@@ -213,7 +213,6 @@ public class AdsManager : MonoBehaviour
 
     public void ShowRewardedAd(string logicKey, Action onRewardEarned, Action onAdFailed = null)
     {
-        AdEventTracker.TrackRewardEligible();
         if (!AdEventTracker.GetBool(logicKey)) { onRewardEarned?.Invoke(); return; }
 
         if (_rewardedAd != null && _rewardedAd.CanShowAd())
