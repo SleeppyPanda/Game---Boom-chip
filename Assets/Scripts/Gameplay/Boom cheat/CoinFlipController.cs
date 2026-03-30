@@ -79,8 +79,19 @@ public class CoinFlipController : MonoBehaviour
 
         // 4. Giữ mặt tĩnh lại một chút để người chơi nhận diện
         yield return new WaitForSeconds(0.5f);
-
-        if (manager == null) manager = FindFirstObjectByType<BoomChipManager>();
-        if (manager != null) manager.OnCoinFlipFinished(winnerID);
+        var boomManager = Object.FindFirstObjectByType<BoomChipManager>();
+        if (boomManager != null)
+        {
+            boomManager.OnCoinFlipFinished(winnerID);
+        }
+        else
+        {
+            // Nếu không có, thử tìm DiceModeManager (Scene mới)
+            var diceManager = Object.FindFirstObjectByType<DiceModeManager>();
+            if (diceManager != null)
+            {
+                diceManager.OnCoinFlipFinished(winnerID);
+            }
+        }
     }
 }
