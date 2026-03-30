@@ -35,13 +35,31 @@ public class AppsflyerManager : MonoBehaviour, IAppsFlyerConversionData
         AppsFlyer.setIsDebug(true);
 #endif
 
-        // 3. (Tùy chọn) Uninstall Tracking cho Android (nếu bạn dùng Firebase Messaging)
-        // AppsFlyer.updateServerUninstallToken("YOUR_GCM_TOKEN");
-
-        // 4. Bắt đầu tracking
+        // 3. Bắt đầu tracking
         AppsFlyer.startSDK();
 
         Debug.Log("<color=cyan>[AppsFlyer]</color> SDK Started.");
+    }
+
+    // Tối ưu: Đảm bảo tracking session chính xác khi người chơi quay lại app
+    void OnApplicationPause(bool pauseStatus)
+    {
+        if (!pauseStatus)
+        {
+            // App quay lại từ background (Resume)
+            AppsFlyer.startSDK();
+            Debug.Log("<color=cyan>[AppsFlyer]</color> SDK Resumed.");
+        }
+    }
+
+    /// <summary>
+    /// Hàm helper để FirebaseManager hoặc các script khác gọi gửi event sang AppsFlyer
+    /// </summary>
+    public void SendCustomEvent(string eventName, Dictionary<string, string> eventValues = null)
+    {
+        // AppsFlyer yêu cầu Dictionary<string, string> cho event values
+        AppsFlyer.sendEvent(eventName, eventValues);
+        Debug.Log($"<color=cyan>[AppsFlyer Event]</color>: {eventName}");
     }
 
     // --- CÁC HÀM CALLBACK BẮT BUỘC ---

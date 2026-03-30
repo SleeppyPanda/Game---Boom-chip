@@ -204,8 +204,8 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 531836345}
   m_HandleRect: {fileID: 531836344}
   m_Direction: 2
-  m_Value: 0.99999994
-  m_Size: 0.43274853
+  m_Value: 1.0000001
+  m_Size: 0.4327486
   m_NumberOfSteps: 0
   m_OnValueChanged:
     m_PersistentCalls:
@@ -1232,10 +1232,10 @@ MonoBehaviour:
   p1Selection: {fileID: 21300000, guid: a029c0c387c3af44199d2ddc52a25b10, type: 3}
   p1HitSFX: Baby
   p2Selection: {fileID: 21300000, guid: c995d5f0a623df24e8bc7b0ee93d3fdb, type: 3}
-  p2HitSFX: nope
+  p2HitSFX: Nope
   hitSprite: {fileID: 21300000, guid: a029c0c387c3af44199d2ddc52a25b10, type: 3}
   missSprite: {fileID: 21300000, guid: 52d8af954f30d474eaba1afd8ec2b6b4, type: 3}
-  missSFX: chip
+  missSFX: Chip
 --- !u!114 &212465032
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1523,7 +1523,7 @@ MonoBehaviour:
       m_Calls: []
   m_Sprite: {fileID: 21300000, guid: 1793e638662ed4e48a5b89d04fcc8f8f, type: 3}
   m_Type: 0
-  m_PreserveAspect: 0
+  m_PreserveAspect: 1
   m_FillCenter: 1
   m_FillMethod: 4
   m_FillAmount: 1
@@ -1603,7 +1603,7 @@ MonoBehaviour:
   p2HitSFX: Pizza
   hitSprite: {fileID: 21300000, guid: ecbe6507f7826f941a46683b3261be6d, type: 3}
   missSprite: {fileID: 21300000, guid: 52d8af954f30d474eaba1afd8ec2b6b4, type: 3}
-  missSFX: chip
+  missSFX: Chip
 --- !u!114 &227494579
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2488,10 +2488,10 @@ MonoBehaviour:
   p1Selection: {fileID: 21300000, guid: 32fcb2b8bd5b11c4897dc6212bc1e1fd, type: 3}
   p1HitSFX: Ring
   p2Selection: {fileID: 21300000, guid: 5b15f7e5d2efee34cac05f3abc05c445, type: 3}
-  p2HitSFX: nope
+  p2HitSFX: Nope
   hitSprite: {fileID: 21300000, guid: f1de10b4733cf7f4b9c4c725441316b4, type: 3}
   missSprite: {fileID: 21300000, guid: 52d8af954f30d474eaba1afd8ec2b6b4, type: 3}
-  missSFX: chip
+  missSFX: Chip
 --- !u!114 &326951554
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -4341,7 +4341,7 @@ MonoBehaviour:
   p2HitSFX: Shopping
   hitSprite: {fileID: 21300000, guid: f61497d361a4b894c93d52b848137870, type: 3}
   missSprite: {fileID: 21300000, guid: 52d8af954f30d474eaba1afd8ec2b6b4, type: 3}
-  missSFX: chip
+  missSFX: Chip
 --- !u!114 &537315814
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -5758,7 +5758,7 @@ MonoBehaviour:
   p2HitSFX: Shopping
   hitSprite: {fileID: 21300000, guid: 0d0280c63695e9f479173d3f1b6301ab, type: 3}
   missSprite: {fileID: 21300000, guid: 52d8af954f30d474eaba1afd8ec2b6b4, type: 3}
-  missSFX: chip
+  missSFX: Chip
 --- !u!114 &751072714
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -6452,7 +6452,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 147.85284, y: -40.858276}
+  m_AnchoredPosition: {x: 297.99573, y: -40.549194}
   m_SizeDelta: {x: 283, y: 74}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &796920705
@@ -7560,7 +7560,7 @@ MonoBehaviour:
   p2HitSFX: Kiss
   hitSprite: {fileID: 21300000, guid: d33571830140de24badfa4c442ab5b6f, type: 3}
   missSprite: {fileID: 21300000, guid: 52d8af954f30d474eaba1afd8ec2b6b4, type: 3}
-  missSFX: chip
+  missSFX: Chip
 --- !u!114 &944000557
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -7766,7 +7766,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 430.85284, y: -40.858276}
+  m_AnchoredPosition: {x: 580.9957, y: -40.549194}
   m_SizeDelta: {x: 283, y: 74}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &956517575
@@ -7999,7 +7999,7 @@ MonoBehaviour:
   p2HitSFX: Chip
   hitSprite: {fileID: 21300000, guid: 327cfdc1e2554b843a21fda77ff6df2d, type: 3}
   missSprite: {fileID: 21300000, guid: 52d8af954f30d474eaba1afd8ec2b6b4, type: 3}
-  missSFX: chip
+  missSFX: Chip
 --- !u!114 &967728730
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -8153,12 +8153,12 @@ MonoBehaviour:
   isBombMode: 0
   setWinByHittingThree: 1
   p1Selection: {fileID: 21300000, guid: d3b855005c4ec5d4fbffd9cd017a49bc, type: 3}
-  p1HitSFX: Console
+  p1HitSFX: Let's go
   p2Selection: {fileID: 21300000, guid: 838fc17c41b296847b1c1b544673b459, type: 3}
-  p2HitSFX: Shopping
+  p2HitSFX: Stay
   hitSprite: {fileID: 21300000, guid: d3b855005c4ec5d4fbffd9cd017a49bc, type: 3}
   missSprite: {fileID: 21300000, guid: 52d8af954f30d474eaba1afd8ec2b6b4, type: 3}
-  missSFX: chip
+  missSFX: Chip
 --- !u!114 &977707852
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -11279,7 +11279,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_Material: {fileID: 0}
-  m_Color: {r: 0.6698113, g: 0.6698113, b: 0.6698113, a: 1}
+  m_Color: {r: 0.6698113, g: 0.6698113, b: 0.6698113, a: 0}
   m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
@@ -11368,7 +11368,7 @@ MonoBehaviour:
   p2HitSFX: Chip
   hitSprite: {fileID: 21300000, guid: 26024e0eb22231749b6e517ca49bd528, type: 3}
   missSprite: {fileID: 21300000, guid: 52d8af954f30d474eaba1afd8ec2b6b4, type: 3}
-  missSFX: chip
+  missSFX: Chip
 --- !u!114 &1323907106
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -13797,9 +13797,9 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: -1625409852, guid: 0387fd9c0d103754fae6fadb344e6078, type: 3}
+  m_Sprite: {fileID: 21300000, guid: e12f54d3594c66e4695610e129d2281e, type: 3}
   m_Type: 0
-  m_PreserveAspect: 0
+  m_PreserveAspect: 1
   m_FillCenter: 1
   m_FillMethod: 4
   m_FillAmount: 1
@@ -15726,7 +15726,7 @@ RectTransform:
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
   m_AnchoredPosition: {x: 0, y: 506.5}
-  m_SizeDelta: {x: -400, y: -2037}
+  m_SizeDelta: {x: -100, y: -2037}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &2048201099
 MonoBehaviour:
@@ -15843,7 +15843,7 @@ MonoBehaviour:
   p2HitSFX: Explosion
   hitSprite: {fileID: 21300000, guid: 327cfdc1e2554b843a21fda77ff6df2d, type: 3}
   missSprite: {fileID: 21300000, guid: 52d8af954f30d474eaba1afd8ec2b6b4, type: 3}
-  missSFX: chip
+  missSFX: Chip
 --- !u!114 &2051937556
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -16418,6 +16418,10 @@ PrefabInstance:
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 6032909115035226978, guid: c12a666c0ebdfcd49a270faab1c442f7, type: 3}
+      propertyPath: sfxClips.Array.size
+      value: 16
+      objectReference: {fileID: 0}
+    - target: {fileID: 6032909115035226978, guid: c12a666c0ebdfcd49a270faab1c442f7, type: 3}
       propertyPath: musicClips.Array.size
       value: 7
       objectReference: {fileID: 0}
@@ -16477,6 +16481,14 @@ PrefabInstance:
       propertyPath: sfxClips.Array.data[13]
       value: 
       objectReference: {fileID: 8300000, guid: f15b77beb210b0a4fa295dc14d1afc56, type: 3}
+    - target: {fileID: 6032909115035226978, guid: c12a666c0ebdfcd49a270faab1c442f7, type: 3}
+      propertyPath: sfxClips.Array.data[14]
+      value: 
+      objectReference: {fileID: 8300000, guid: 4314ff9478872ba4ba326bb3d3abfd7a, type: 3}
+    - target: {fileID: 6032909115035226978, guid: c12a666c0ebdfcd49a270faab1c442f7, type: 3}
+      propertyPath: sfxClips.Array.data[15]
+      value: 
+      objectReference: {fileID: 8300000, guid: 12e763cdc1bbe1743ab36f4147ffdc5e, type: 3}
     - target: {fileID: 6032909115035226978, guid: c12a666c0ebdfcd49a270faab1c442f7, type: 3}
       propertyPath: musicClips.Array.data[3]
       value: 

@@ -45,7 +45,6 @@ public class AdsManager : MonoBehaviour
         {
             Instance = this;
             DontDestroyOnLoad(gameObject);
-            // Đăng ký sự kiện tự động ẩn MREC khi đổi Scene
             SceneManager.sceneLoaded += OnSceneLoaded;
         }
         else { Destroy(gameObject); }
@@ -55,15 +54,14 @@ public class AdsManager : MonoBehaviour
 
     private void OnDestroy()
     {
-        // Hủy đăng ký để tránh lỗi bộ nhớ
         SceneManager.sceneLoaded -= OnSceneLoaded;
     }
 
     private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
-        // Mỗi khi sang Scene mới, mặc định ẩn MREC. 
-        // Scene nào cần hiện (như BoomChip) sẽ chủ động gọi ShowMREC trong Start() của nó.
         HideMREC();
+        // Ngắt reload banner cũ khi chuyển scene để tránh lỗi logic
+        if (_bannerReloadCoroutine != null) StopCoroutine(_bannerReloadCoroutine);
     }
 
     void Start()
@@ -94,6 +92,7 @@ public class AdsManager : MonoBehaviour
         return new AdRequest();
     }
 
+    #region FIREBASE REMOTE CONFIG
     private void InitializeFirebase()
     {
         Firebase.FirebaseApp.CheckAndFixDependenciesAsync().ContinueWithOnMainThread(task => {
@@ -141,6 +140,7 @@ public class AdsManager : MonoBehaviour
             });
         });
     }
+    #endregion
 
     #region REVENUE LOGGING
     private void SendRevenueToAll(string format, AdValue adValue)
@@ -174,7 +174,7 @@ public class AdsManager : MonoBehaviour
     }
     #endregion
 
-    #region INTERSTITIAL
+    #region INTERSTITIAL (FIXED CRASH & DELAY)
     public void LoadInterstitialAd()
     {
         if (_interstitialAd != null) { _interstitialAd.Destroy(); _interstitialAd = null; }
@@ -184,6 +184,18 @@ public class AdsManager : MonoBehaviour
             _interstitialAd = ad;
             _interstitialAd.OnAdPaid += (adValue) => SendRevenueToAll("INTER", adValue);
         });
+    }
+
+    // Hàm gọi quảng cáo có delay cho màn BoomChip
+    public void ShowInterstitialWithDelay(string placementConfigKey, Action onAdClosed, float delay = 1.0f)
+    {
+        StartCoroutine(ExecuteDelayShow(placementConfigKey, onAdClosed, delay));
+    }
+
+    private IEnumerator ExecuteDelayShow(string key, Action onClosed, float delay)
+    {
+        yield return new WaitForSeconds(delay);
+        ShowInterstitial(key, onClosed);
     }
 
     public void ShowInterstitial(string placementConfigKey, Action onAdClosed)
@@ -197,22 +209,40 @@ public class AdsManager : MonoBehaviour
         {
             if (_interstitialAd != null && _interstitialAd.CanShowAd())
             {
+                // Tắt Banner/MREC để tránh crash RAM khi đang hiện Inter
+                HideBanner();
+                HideMREC();
+
                 AdEventTracker.TrackInterApiCalled();
                 _interstitialAd.OnAdFullScreenContentOpened += () => {
                     _isAdShowing = true;
                     _lastTimeShowInterstitial = Time.time;
                     AdEventTracker.TrackInterDisplayed();
                 };
+
                 _interstitialAd.OnAdFullScreenContentClosed += () => {
-                    _isAdShowing = false;
-                    LoadInterstitialAd();
-                    onAdClosed?.Invoke();
+                    // Dùng Coroutine đẩy về Main Thread để tránh crash khi load tiếp game
+                    StartCoroutine(HandleAdClosedMainThread(onAdClosed));
                 };
+
                 _interstitialAd.Show();
             }
             else { onAdClosed?.Invoke(); LoadInterstitialAd(); }
         }
         else onAdClosed?.Invoke();
+    }
+
+    private IEnumerator HandleAdClosedMainThread(Action onAdClosed)
+    {
+        _isAdShowing = false;
+        LoadInterstitialAd();
+
+        yield return null; // Chờ 1 frame ổn định hệ thống
+
+        onAdClosed?.Invoke();
+
+        // Hiện lại banner sau khi đóng Inter nếu config đang bật
+        ShowBanner();
     }
     #endregion
 
@@ -249,7 +279,7 @@ public class AdsManager : MonoBehaviour
     }
     #endregion
 
-    #region APP OPEN ADS
+    #region APP OPEN ADS (AOA)
     public void LoadAppOpenAd()
     {
         if (_appOpenAd != null) { _appOpenAd.Destroy(); _appOpenAd = null; }
@@ -264,6 +294,7 @@ public class AdsManager : MonoBehaviour
     public void ShowAppOpenAd(bool isResume)
     {
         if (!AdEventTracker.GetBool(AdEventTracker.KEY_SHOW_OPEN_ADS) || _isAdShowing) return;
+
         if (!isResume && _isFirstTimeTruly && !AdEventTracker.GetBool(AdEventTracker.KEY_SHOW_OPEN_ADS_FIRST))
         {
             PlayerPrefs.SetInt("Truly_First_Open_Completed", 1);
@@ -312,76 +343,34 @@ public class AdsManager : MonoBehaviour
     public void HideBanner()
     {
         if (_bannerReloadCoroutine != null) StopCoroutine(_bannerReloadCoroutine);
-        if (_bannerView != null) _bannerView.Destroy();
+        if (_bannerView != null) { _bannerView.Destroy(); _bannerView = null; }
     }
 
     private IEnumerator ReloadBannerAfterTime(float seconds)
     {
         yield return new WaitForSeconds(seconds);
-        if (AdEventTracker.GetBool(AdEventTracker.KEY_SHOW_BANNER)) ShowBanner();
+        // Không reload banner nếu đang có quảng cáo toàn màn hình
+        if (AdEventTracker.GetBool(AdEventTracker.KEY_SHOW_BANNER) && !_isAdShowing) ShowBanner();
     }
-
-    //public void ShowMREC(string configKey)
-    //{
-    //    if (!AdEventTracker.GetBool(configKey)) { HideMREC(); return; }
-    //    if (_mrecView != null) _mrecView.Destroy();
-
-    //    // Chuyển MREC lên vị trí TOP để không bị Banner (Bottom) đè lên
-    //    _mrecView = new BannerView(adUnitIdMREC, AdSize.MediumRectangle, AdPosition.Top);
-    //    _mrecView.OnAdPaid += (adValue) => SendRevenueToAll("MREC", adValue);
-    //    _mrecView.LoadAd(CreateAdRequest());
-    //}
-
-    //public void ShowMREC(string configKey)
-    //{
-    //    if (!AdEventTracker.GetBool(configKey)) { HideMREC(); return; }
-    //    if (_mrecView != null) _mrecView.Destroy();
-
-    //    int xOffset = 0;
-    //    int yOffset = 60;
-
-
-    //    _mrecView = new BannerView(adUnitIdMREC, AdSize.MediumRectangle, AdPosition.Bottom);
-
-    //    _mrecView.OnAdPaid += (adValue) => SendRevenueToAll("MREC", adValue);
-    //    _mrecView.LoadAd(CreateAdRequest());
-    //}
 
     public void ShowMREC(string configKey)
     {
         if (!AdEventTracker.GetBool(configKey)) { HideMREC(); return; }
+
+        // Ẩn banner thường để nhường chỗ và tài nguyên cho MREC
+        HideBanner();
         if (_mrecView != null) _mrecView.Destroy();
 
-        // 1. Lấy tỷ lệ scale màn hình ( density)
         float density = Screen.dpi / 160f;
-        if (density == 0) density = 1;
+        if (density <= 0) density = 1;
 
-        // Chiều rộng và chiều cao màn hình tính theo đơn vị DP (AdMob dùng đơn vị này)
         float screenWidthDP = Screen.width / density;
         float screenHeightDP = Screen.height / density;
 
-        // 2. Kích thước chuẩn của MREC (300x250)
-        int mrecWidth = 300;
-        int mrecHeight = 250;
-
-        // ---------------------------------------------------------
-        // 3. TÙY CHỈNH TỌA ĐỘ Ở ĐÂY (ANCHOR: BOTTOM-CENTER)
-        // ---------------------------------------------------------
-
-        // xPos: (Chiều rộng màn hình / 2) - (Chiều rộng MREC / 2) => Luôn nằm giữa ngang
-        int xPos = (int)((screenWidthDP - mrecWidth) / 2);
-
-        // yPos: (Chiều cao màn hình) - (Chiều cao MREC) - (Khoảng cách đẩy lên từ đáy)
-        // Bạn chỉ cần thay đổi số 70 dưới đây để đẩy lên/xuống tùy ý
+        int xPos = (int)((screenWidthDP - 300) / 2);
         int distanceFillFromBottom = 350;
-        int yPos = (int)(screenHeightDP - mrecHeight - distanceFillFromBottom);
+        int yPos = (int)(screenHeightDP - 250 - distanceFillFromBottom);
 
-        // Lưu ý: Nếu muốn chỉnh x, y thủ công hoàn toàn, bạn có thể ghi đè trực tiếp:
-        // xPos = 100; 
-        // yPos = 500;
-        // ---------------------------------------------------------
-
-        // 4. Khởi tạo MREC với tọa độ x, y đã tính
         _mrecView = new BannerView(adUnitIdMREC, AdSize.MediumRectangle, xPos, yPos);
 
         _mrecView.OnAdPaid += (adValue) => SendRevenueToAll("MREC", adValue);
@@ -390,11 +379,7 @@ public class AdsManager : MonoBehaviour
 
     public void HideMREC()
     {
-        if (_mrecView != null)
-        {
-            _mrecView.Destroy();
-            _mrecView = null; // Gán null để đảm bảo không gọi nhầm object đã hủy
-        }
+        if (_mrecView != null) { _mrecView.Destroy(); _mrecView = null; }
     }
     #endregion
 

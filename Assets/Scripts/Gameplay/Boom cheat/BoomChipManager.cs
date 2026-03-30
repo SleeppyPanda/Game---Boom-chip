@@ -142,7 +142,6 @@ public class BoomChipManager : MonoBehaviour
         if (FirebaseManager.Instance != null) FirebaseManager.Instance.LogModeEnter(9);
         if (AudioManager.Instance != null) AudioManager.Instance.PlayMusic(gameplayMusicName);
 
-        // Khởi đầu hiện MREC cho Phase 1
         ShowMRECByPhase();
     }
 
@@ -163,14 +162,14 @@ public class BoomChipManager : MonoBehaviour
         if (currentPhase == GamePhase.Phase1)
         {
             if (AdsManager.Instance != null)
-                AdsManager.Instance.ShowInterstitial("is_show_inter_p1_choose", () => ExecutePhase2Transition());
+                AdsManager.Instance.ShowInterstitialWithDelay("is_show_inter_p1_choose", () => ExecutePhase2Transition(), 0.5f);
             else
                 ExecutePhase2Transition();
         }
         else if (currentPhase == GamePhase.Phase2)
         {
             if (AdsManager.Instance != null)
-                AdsManager.Instance.ShowInterstitial("is_show_inter_p2_choose", () => StartCoroutine(TransitionSequence()));
+                AdsManager.Instance.ShowInterstitialWithDelay("is_show_inter_p2_choose", () => StartCoroutine(TransitionSequence()), 0.5f);
             else
                 StartCoroutine(TransitionSequence());
         }
@@ -181,14 +180,13 @@ public class BoomChipManager : MonoBehaviour
         currentPhase = GamePhase.Phase2;
         panelPhase1.SetActive(false);
         panelPhase2.SetActive(true);
-        ShowMRECByPhase(); // Cập nhật MREC cho Phase 2
+        ShowMRECByPhase();
     }
 
     private void ShowMRECByPhase()
     {
         if (AdsManager.Instance == null) return;
 
-        // Theo yêu cầu: Chỉ Phase 1, Phase 2 và WinPanel mới có MREC
         switch (currentPhase)
         {
             case GamePhase.Phase1:
@@ -198,7 +196,6 @@ public class BoomChipManager : MonoBehaviour
                 AdsManager.Instance.ShowMREC("is_show_mrec_p2_choose");
                 break;
             case GamePhase.Phase3:
-                // Phase 3 là gameplay, ẩn MREC đi
                 AdsManager.Instance.HideMREC();
                 break;
             default:
@@ -211,7 +208,6 @@ public class BoomChipManager : MonoBehaviour
     #region TRANSITION LOGIC
     private IEnumerator TransitionSequence()
     {
-        // Khi bắt đầu transition, ẩn ngay MREC để nhìn hiệu ứng đẹp hơn
         if (AdsManager.Instance != null) AdsManager.Instance.HideMREC();
 
         if (panelTransition == null)
@@ -252,7 +248,7 @@ public class BoomChipManager : MonoBehaviour
         panelAnimation.SetActive(true);
 
         currentPhase = GamePhase.Phase3;
-        ShowMRECByPhase(); // Sẽ gọi HideMREC() vì là Phase 3
+        ShowMRECByPhase();
     }
 
     private void SetStripsPos(float t)
@@ -357,7 +353,7 @@ public class BoomChipManager : MonoBehaviour
         tile.SetInteractable(false);
         CheckWinCondition();
 
-        if (!panelWin.activeSelf)
+        if (!panelWin.activeSelf && currentPhase == GamePhase.Phase3) // Thêm check currentPhase để tránh đổi lượt khi đã thắng
         {
             isP1Turn = !isP1Turn;
             UpdateBoardVisuals();
@@ -394,16 +390,29 @@ public class BoomChipManager : MonoBehaviour
 
     void CheckWinCondition()
     {
+        int winner = 0;
         if (winByHittingThree)
         {
-            if (p1HitCount >= 3) ShowWinScreen(1);
-            else if (p2HitCount >= 3) ShowWinScreen(2);
+            if (p1HitCount >= 3) winner = 1;
+            else if (p2HitCount >= 3) winner = 2;
         }
         else
         {
-            if (p1HitCount >= 3) ShowWinScreen(2);
-            else if (p2HitCount >= 3) ShowWinScreen(1);
+            if (p1HitCount >= 3) winner = 2;
+            else if (p2HitCount >= 3) winner = 1;
         }
+
+        if (winner != 0)
+        {
+            currentPhase = GamePhase.Animation; // Chặn người chơi click tiếp trong lúc chờ delay
+            StartCoroutine(DelayShowWinScreen(winner));
+        }
+    }
+
+    private IEnumerator DelayShowWinScreen(int winnerID)
+    {
+        yield return new WaitForSeconds(1.2f); // Delay 1.2s như yêu cầu
+        ShowWinScreen(winnerID);
     }
 
     void ShowWinScreen(int winnerID)
@@ -412,7 +421,6 @@ public class BoomChipManager : MonoBehaviour
         if (FirebaseManager.Instance != null) FirebaseManager.Instance.LogModeComplete(9);
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX("SFX_Win");
 
-        // HIỆN MREC khi kết thúc game (Win Panel)
         if (AdsManager.Instance != null) AdsManager.Instance.ShowMREC("is_show_mrec_complete_game");
 
         if (p1Crown != null) p1Crown.SetActive(winnerID == 1);
@@ -474,9 +482,9 @@ public class BoomChipManager : MonoBehaviour
         if (AdsManager.Instance != null)
         {
             AdsManager.Instance.HideMREC();
-            AdsManager.Instance.ShowInterstitial("is_show_inter_retry", () => {
+            AdsManager.Instance.ShowInterstitialWithDelay("is_show_inter_retry", () => {
                 SceneManager.LoadScene(SceneManager.GetActiveScene().name);
-            });
+            }, 0.3f);
         }
         else SceneManager.LoadScene(SceneManager.GetActiveScene().name);
     }
@@ -486,9 +494,9 @@ public class BoomChipManager : MonoBehaviour
         if (AdsManager.Instance != null)
         {
             AdsManager.Instance.HideMREC();
-            AdsManager.Instance.ShowInterstitial("is_show_inter_back_home", () => {
+            AdsManager.Instance.ShowInterstitialWithDelay("is_show_inter_back_home", () => {
                 SceneManager.LoadScene("SelectScene");
-            });
+            }, 0.3f);
         }
         else SceneManager.LoadScene("SelectScene");
     }
@@ -498,7 +506,7 @@ public class BoomChipManager : MonoBehaviour
         if (panelSetting != null)
         {
             panelSetting.SetActive(true);
-            if (AdsManager.Instance != null) AdsManager.Instance.HideMREC(); // Tạm ẩn khi mở Setting
+            if (AdsManager.Instance != null) AdsManager.Instance.HideMREC();
         }
     }
 
@@ -507,7 +515,6 @@ public class BoomChipManager : MonoBehaviour
         if (panelSetting != null)
         {
             panelSetting.SetActive(false);
-            // Hiện lại nếu đang ở Phase 1 hoặc Phase 2, hoặc WinPanel
             if (currentPhase == GamePhase.Phase1 || currentPhase == GamePhase.Phase2 || panelWin.activeSelf)
             {
                 ShowMRECByPhase();

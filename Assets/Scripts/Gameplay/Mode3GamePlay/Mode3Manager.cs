@@ -10,8 +10,8 @@ public class Mode3Manager : MonoBehaviour
     public static Mode3Manager Instance;
 
     [Header("UI & Data")]
-    public TextMeshProUGUI txtQuestion;
     public GameObject resultPanel;
+    public TextMeshProUGUI txtQuestion;
     public TextMeshProUGUI txtScore;
     public TextMeshProUGUI txtFinalScore;
     public TextMeshProUGUI txtComment;
@@ -35,6 +35,7 @@ public class Mode3Manager : MonoBehaviour
     private GameObject currentItem;
     private bool isDragging = false;
     private bool canPlay = true;
+    private bool isGameOver = false;
 
     [System.Serializable]
     public class Mode3Data
@@ -55,16 +56,15 @@ public class Mode3Manager : MonoBehaviour
 
     void Start()
     {
-        // ẨN MREC KHI BẮT ĐẦU VÀO MODE 3
         if (AdsManager.Instance != null) AdsManager.Instance.HideMREC();
         SetupNewTurn();
     }
 
     public void SetupNewTurn()
     {
+        isGameOver = false;
         resultPanel.SetActive(false);
 
-        // ẨN MREC KHI CHƠI LẠI TURN MỚI
         if (AdsManager.Instance != null) AdsManager.Instance.HideMREC();
 
         bounceCount = 0;
@@ -93,10 +93,11 @@ public class Mode3Manager : MonoBehaviour
 
     void Update()
     {
+        // Luôn xoay vòng tròn kể cả khi game over (hiệu ứng nền)
         if (leftHalf != null) leftHalf.Rotate(0, 0, rotateSpeed * Time.deltaTime);
         if (rightHalf != null) rightHalf.Rotate(0, 0, rotateSpeed * Time.deltaTime);
 
-        if (!canPlay || currentItem == null) return;
+        if (!canPlay || currentItem == null || isGameOver) return;
 
         HandleDragInput();
     }
@@ -154,6 +155,7 @@ public class Mode3Manager : MonoBehaviour
 
     public void AddBounce()
     {
+        if (isGameOver) return;
         bounceCount++;
         if (txtScore != null)
         {
@@ -163,12 +165,38 @@ public class Mode3Manager : MonoBehaviour
         StartCoroutine(ScreenShake(0.05f, 0.03f));
     }
 
+    // Đã chuyển thành Coroutine để hỗ trợ Delay
     public void FinishGame()
+    {
+        if (isGameOver) return;
+        isGameOver = true;
+        StartCoroutine(HandleFinishSequence());
+    }
+
+    private IEnumerator HandleFinishSequence()
+    {
+        // Đợi 1.2s sau khi vật rơi/thua để người chơi nhìn kết quả
+        yield return new WaitForSeconds(1.2f);
+
+        if (AdsManager.Instance != null)
+        {
+            // Hiển thị Inter với delay nhỏ để tránh giật lag UI
+            AdsManager.Instance.ShowInterstitialWithDelay("is_show_inter_p1_choose", () => {
+                ShowResultUI();
+            }, 0.2f);
+        }
+        else
+        {
+            ShowResultUI();
+        }
+    }
+
+    private void ShowResultUI()
     {
         resultPanel.SetActive(true);
 
-        // CHỈ HIỆN MREC TẠI ĐÂY (KHI HIỆN BẢNG KẾT QUẢ)
-        if (AdsManager.Instance != null) AdsManager.Instance.ShowMREC("is_show_mrec_complete_game");
+        if (AdsManager.Instance != null)
+            AdsManager.Instance.ShowMREC("is_show_mrec_complete_game");
 
         string scoreFinalText = (bounceCount * 10).ToString() + " " + currentData.unit;
 
@@ -184,13 +212,34 @@ public class Mode3Manager : MonoBehaviour
         }
     }
 
-    public void Btn_PlayAgain() => SetupNewTurn();
+    public void Btn_PlayAgain()
+    {
+        if (AdsManager.Instance != null)
+        {
+            AdsManager.Instance.HideMREC();
+            AdsManager.Instance.ShowInterstitialWithDelay("is_show_inter_retry", () => {
+                SetupNewTurn();
+            }, 0.3f);
+        }
+        else
+        {
+            SetupNewTurn();
+        }
+    }
 
     public void Btn_BackToHome()
     {
-        // ẨN MREC TRƯỚC KHI VỀ HOME
-        if (AdsManager.Instance != null) AdsManager.Instance.HideMREC();
-        SceneManager.LoadScene("SelectScene");
+        if (AdsManager.Instance != null)
+        {
+            AdsManager.Instance.HideMREC();
+            AdsManager.Instance.ShowInterstitialWithDelay("is_show_inter_back_home", () => {
+                SceneManager.LoadScene("SelectScene");
+            }, 0.3f);
+        }
+        else
+        {
+            SceneManager.LoadScene("SelectScene");
+        }
     }
 
     IEnumerator ScreenShake(float duration, float magnitude)

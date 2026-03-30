@@ -94,7 +94,6 @@ public class DiceModeManager : MonoBehaviour
         GenerateBoard();
         SetBoardInteractable(false);
 
-        // TẮT MREC khi bắt đầu vào game (theo yêu cầu chỉ hiện ở Win Panel)
         if (AdsManager.Instance != null) AdsManager.Instance.HideMREC();
 
         if (panelTransition != null) StartCoroutine(RunStartTransition());
@@ -158,7 +157,7 @@ public class DiceModeManager : MonoBehaviour
 
     private IEnumerator HandleBombExplosionSequence(DiceTile tile)
     {
-        isGameOver = true;
+        isGameOver = true; // Chặn mọi thao tác click ngay lập tức
         SetBoardInteractable(false);
         tile.SetVisual(bombSprite, true);
 
@@ -168,6 +167,7 @@ public class DiceModeManager : MonoBehaviour
             AudioManager.Instance.PlaySFX(BoomChipSettings.hitSFXName);
         }
 
+        // Hiệu ứng rung bàn cờ
         Vector3 originalBoardPos = boardContainer.localPosition;
         float elapsed = 0f; float duration = 0.8f;
         while (elapsed < duration)
@@ -179,7 +179,7 @@ public class DiceModeManager : MonoBehaviour
         }
         boardContainer.localPosition = originalBoardPos;
 
-        yield return new WaitForSeconds(1.3f);
+        yield return new WaitForSeconds(1.2f); // Delay 1.2s trước khi hiện Win
         EndGame(isP1Turn ? 2 : 1);
     }
 
@@ -231,9 +231,9 @@ public class DiceModeManager : MonoBehaviour
         string adKey = (winnerID == 0) ? "is_show_inter_p1_choose" : "is_show_inter_p2_choose";
         if (AdsManager.Instance != null)
         {
-            AdsManager.Instance.ShowInterstitial(adKey, () => {
+            AdsManager.Instance.ShowInterstitialWithDelay(adKey, () => {
                 FinishTransitionToGameplay(winnerID);
-            });
+            }, 0.5f);
         }
         else
         {
@@ -245,8 +245,6 @@ public class DiceModeManager : MonoBehaviour
     {
         if (panelAnimation) panelAnimation.SetActive(false);
         isP1Turn = (winnerID == 0);
-
-        // Đảm bảo MREC vẫn ẩn khi bắt đầu Gameplay
         if (AdsManager.Instance != null) AdsManager.Instance.HideMREC();
 
         PrepareNewTurn();
@@ -338,9 +336,20 @@ public class DiceModeManager : MonoBehaviour
     #region END GAME
     void DetermineWinnerByScore()
     {
-        if (p1ClaimedCells > p2ClaimedCells) EndGame(1);
-        else if (p2ClaimedCells > p1ClaimedCells) EndGame(2);
-        else EndGame(0);
+        int winner = 0;
+        if (p1ClaimedCells > p2ClaimedCells) winner = 1;
+        else if (p2ClaimedCells > p1ClaimedCells) winner = 2;
+        else winner = 0;
+
+        isGameOver = true; // Chặn click tiếp ngay lập tức
+        SetBoardInteractable(false);
+        StartCoroutine(DelayEndGame(winner));
+    }
+
+    private IEnumerator DelayEndGame(int winnerID)
+    {
+        yield return new WaitForSeconds(1.2f); // Delay 1.2s trước khi hiện bảng Win
+        EndGame(winnerID);
     }
 
     void EndGame(int winnerID)
@@ -355,7 +364,6 @@ public class DiceModeManager : MonoBehaviour
         if (panelWin) panelWin.SetActive(true);
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX("SFX_Win");
 
-        // CHỈ HIỆN MREC Ở ĐÂY (WIN PANEL)
         if (AdsManager.Instance != null) AdsManager.Instance.ShowMREC("is_show_mrec_complete_game");
 
         if (p1ResultScore) p1ResultScore.text = "x " + p1ClaimedCells;
@@ -372,9 +380,9 @@ public class DiceModeManager : MonoBehaviour
         if (AdsManager.Instance != null)
         {
             AdsManager.Instance.HideMREC();
-            AdsManager.Instance.ShowInterstitial("is_show_inter_retry", () => {
+            AdsManager.Instance.ShowInterstitialWithDelay("is_show_inter_retry", () => {
                 SceneManager.LoadScene(SceneManager.GetActiveScene().name);
-            });
+            }, 0.3f);
         }
         else SceneManager.LoadScene(SceneManager.GetActiveScene().name);
     }
@@ -384,9 +392,9 @@ public class DiceModeManager : MonoBehaviour
         if (AdsManager.Instance != null)
         {
             AdsManager.Instance.HideMREC();
-            AdsManager.Instance.ShowInterstitial("is_show_inter_back_home", () => {
+            AdsManager.Instance.ShowInterstitialWithDelay("is_show_inter_back_home", () => {
                 SceneManager.LoadScene("SelectScene");
-            });
+            }, 0.3f);
         }
         else SceneManager.LoadScene("SelectScene");
     }
@@ -396,7 +404,6 @@ public class DiceModeManager : MonoBehaviour
         if (panelSetting != null)
         {
             panelSetting.SetActive(true);
-            // Ẩn MREC khi mở setting để không bị đè UI
             if (AdsManager.Instance != null) AdsManager.Instance.HideMREC();
         }
     }
@@ -406,7 +413,6 @@ public class DiceModeManager : MonoBehaviour
         if (panelSetting != null)
         {
             panelSetting.SetActive(false);
-            // Hiện lại MREC sau khi đóng Setting NẾU game đã kết thúc (đang ở Win Panel)
             if (isGameOver && panelWin.activeSelf && AdsManager.Instance != null)
             {
                 AdsManager.Instance.ShowMREC("is_show_mrec_complete_game");

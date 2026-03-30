@@ -35,6 +35,14 @@ public class FirebaseManager : MonoBehaviour
                 // Khởi tạo Analytics
                 FirebaseAnalytics.SetAnalyticsCollectionEnabled(true);
 
+                // Cấu hình Fetch Setting để fix lỗi cache trên điện thoại
+                ConfigSettings settings = new ConfigSettings
+                {
+                    // Đặt là 0 để luôn ưu tiên lấy data mới nhất khi Fetch
+                    MinimumFetchIntervalInMilliseconds = 0
+                };
+                FirebaseRemoteConfig.DefaultInstance.SetConfigSettingsAsync(settings);
+
                 // Khởi tạo Remote Config
                 InitializeRemoteConfig();
 
@@ -65,14 +73,34 @@ public class FirebaseManager : MonoBehaviour
         });
     }
 
+    // Hàm quan trọng để fix lỗi: Tự động cập nhật khi người chơi mở lại app từ background
+    void OnApplicationPause(bool pauseStatus)
+    {
+        // pauseStatus = false có nghĩa là ứng dụng được quay lại (Resume)
+        if (!pauseStatus && isFirebaseInitialized)
+        {
+            Debug.Log("<color=orange>[Firebase] App Resumed - Refreshing Remote Config...</color>");
+            FetchRemoteConfig();
+        }
+    }
+
     public void FetchRemoteConfig()
     {
+        // FIX LỖI: Bỏ TimeSpan.Zero nếu bản SDK của bạn không hỗ trợ overload này.
+        // Vì đã set MinimumFetchIntervalInMilliseconds = 0 ở trên nên nó sẽ lấy data mới nhất.
         FirebaseRemoteConfig.DefaultInstance.FetchAndActivateAsync().ContinueWithOnMainThread(task => {
-            if (task.IsCompleted) Debug.Log("<color=green>[Firebase] Remote Config Activated</color>");
+            if (task.IsCompleted)
+            {
+                Debug.Log("<color=green>[Firebase] Remote Config Activated & Updated</color>");
+            }
+            else
+            {
+                Debug.LogWarning("[Firebase] Remote Config Fetch Failed or Throttled");
+            }
         });
     }
 
-    #region CORE EVENTS (Giữ nguyên để fix lỗi cho BoomChipManager)
+    #region CORE EVENTS (Giữ nguyên cho BoomChipManager)
 
     // --- 1. first_loading_complete ---
     public void LogFirstLoadingComplete()
@@ -131,8 +159,11 @@ public class FirebaseManager : MonoBehaviour
         if (!isFirebaseInitialized) return;
         FirebaseAnalytics.LogEvent(eventName);
 
-        // Bắn sang cả AppsFlyer nếu muốn đồng bộ mọi event đơn lẻ
-        AppsFlyerSDK.AppsFlyer.sendEvent(eventName, null);
+        // FIX LỖI: Gọi đúng AppsflyerManager.Instance thay vì AppsFlyer.Instance
+        if (AppsflyerManager.Instance != null)
+        {
+            AppsflyerManager.Instance.SendCustomEvent(eventName, null);
+        }
 
         Debug.Log($"<color=cyan>Firebase Event:</color> {eventName}");
     }
