@@ -2,7 +2,8 @@
 using TMPro;
 using System.Collections;
 using System.Collections.Generic;
-using UnityEngine.SceneManagement; // Quan trọng để chuyển Scene
+using UnityEngine.SceneManagement;
+using UnityEngine.EventSystems; // Bắt buộc phải có
 
 public class Mode3Manager : MonoBehaviour
 {
@@ -11,8 +12,8 @@ public class Mode3Manager : MonoBehaviour
     [Header("UI & Data")]
     public TextMeshProUGUI txtQuestion;
     public GameObject resultPanel;
-    public TextMeshProUGUI txtScore;       // Text hiển thị điểm lúc đang chơi (màu vàng)
-    public TextMeshProUGUI txtFinalScore;  // Text hiển thị tổng điểm ở Result Panel
+    public TextMeshProUGUI txtScore;
+    public TextMeshProUGUI txtFinalScore;
     public TextMeshProUGUI txtComment;
     public List<Mode3Data> database;
 
@@ -23,8 +24,11 @@ public class Mode3Manager : MonoBehaviour
     [Header("Gameplay Objects")]
     public Transform leftHalf;
     public Transform rightHalf;
-    public Transform spawnPoint; // Điểm xuất hiện phía trên khe hở
+    public Transform spawnPoint;
     public GameObject itemPrefab;
+
+    [Header("Animation Settings")]
+    public float rotateSpeed = 90f;
 
     private int bounceCount;
     private Mode3Data currentData;
@@ -40,7 +44,7 @@ public class Mode3Manager : MonoBehaviour
         public string unit;
         public Sprite itemSprite;
         public Sprite circleSprite;
-        [Range(0.5f, 15f)] public float gapSize; // Khe hở rộng tối đa 15
+        [Range(0.5f, 15f)] public float gapSize;
         public List<string> comments;
     }
 
@@ -51,7 +55,6 @@ public class Mode3Manager : MonoBehaviour
 
     void Start() => SetupNewTurn();
 
-    // Hàm thiết lập màn chơi mới
     public void SetupNewTurn()
     {
         resultPanel.SetActive(false);
@@ -59,71 +62,88 @@ public class Mode3Manager : MonoBehaviour
         canPlay = true;
         isDragging = false;
 
-        // Cài đặt UI Score ban đầu là màu vàng
         if (txtScore != null)
         {
             txtScore.text = "Score: 0";
             txtScore.color = Color.yellow;
         }
 
-        // Kiểm tra database
         if (database == null || database.Count == 0) return;
         currentData = database[UnityEngine.Random.Range(0, database.Count)];
 
-        // Cập nhật câu hỏi và hình ảnh vòng tròn
         txtQuestion.text = currentData.question;
         leftCircleRenderer.sprite = currentData.circleSprite;
         rightCircleRenderer.sprite = currentData.circleSprite;
 
-        // Chỉnh khe hở (Gap) dựa trên gapSize
         leftHalf.localPosition = new Vector3(-currentData.gapSize, leftHalf.localPosition.y, 0);
         rightHalf.localPosition = new Vector3(currentData.gapSize, rightHalf.localPosition.y, 0);
 
-        // HIỆN SẴN ITEM KHI VÀO GAME
         if (currentItem != null) Destroy(currentItem);
         SpawnPreviewItem();
     }
 
     void Update()
     {
-        // Nếu đã thả rơi hoặc game kết thúc thì không cho kéo
+        if (leftHalf != null) leftHalf.Rotate(0, 0, rotateSpeed * Time.deltaTime);
+        if (rightHalf != null) rightHalf.Rotate(0, 0, rotateSpeed * Time.deltaTime);
+
         if (!canPlay || currentItem == null) return;
 
         HandleDragInput();
     }
 
-    // Xử lý kéo thả Item
     void HandleDragInput()
     {
-        // Nhấn xuống bắt đầu kéo
+        // 1. Nhấn chuột/ngón tay xuống
         if (Input.GetMouseButtonDown(0))
         {
-            isDragging = true;
+            // CHỈ BẮT ĐẦU KÉO NẾU KHÔNG CHẠM VÀO UI
+            if (!IsPointerOverUI())
+            {
+                isDragging = true;
+            }
         }
 
-        // Cập nhật vị trí X của Item theo chuột/tay
+        // 2. Di chuyển Item (chỉ khi isDragging = true)
         if (isDragging && currentItem != null)
         {
             Vector3 mousePos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
-            // Item trượt ngang theo X, giữ nguyên độ cao Y của spawnPoint
             currentItem.transform.position = new Vector3(mousePos.x, spawnPoint.position.y, 0);
         }
 
-        // Thả tay ra để Item rơi
-        if (Input.GetMouseButtonUp(0) && isDragging)
+        // 3. Thả chuột/ngón tay
+        if (Input.GetMouseButtonUp(0))
         {
-            isDragging = false;
-            canPlay = false; // Khóa điều khiển
-
-            Mode3Item itemScript = currentItem.GetComponent<Mode3Item>();
-            if (itemScript != null)
+            // Nếu trước đó có kéo thì mới cho rơi
+            if (isDragging)
             {
-                itemScript.StartFalling();
+                isDragging = false;
+                canPlay = false;
+
+                Mode3Item itemScript = currentItem.GetComponent<Mode3Item>();
+                if (itemScript != null)
+                {
+                    itemScript.StartFalling();
+                }
             }
         }
     }
 
-    // Sinh ra Item ở trạng thái chờ (Awake của Mode3Item phải tắt rb.simulated)
+    // HÀM KIỂM TRA CHẠM UI CHÍNH XÁC NHẤT
+    private bool IsPointerOverUI()
+    {
+        // Kiểm tra cho Chuột (Editor)
+        if (EventSystem.current.IsPointerOverGameObject()) return true;
+
+        // Kiểm tra cho Cảm ứng (Mobile)
+        if (Input.touchCount > 0 && Input.touches[0].phase == TouchPhase.Began)
+        {
+            if (EventSystem.current.IsPointerOverGameObject(Input.touches[0].fingerId)) return true;
+        }
+
+        return false;
+    }
+
     void SpawnPreviewItem()
     {
         currentItem = Instantiate(itemPrefab, spawnPoint.position, Quaternion.identity);
@@ -131,7 +151,6 @@ public class Mode3Manager : MonoBehaviour
         if (sr != null) sr.sprite = currentData.itemSprite;
     }
 
-    // Hàm gọi khi va chạm với vòng (Tag: Wall)
     public void AddBounce()
     {
         bounceCount++;
@@ -143,45 +162,30 @@ public class Mode3Manager : MonoBehaviour
         StartCoroutine(ScreenShake(0.05f, 0.03f));
     }
 
-    // Hàm kết thúc game khi rơi xuống DeadZone
     public void FinishGame()
     {
         resultPanel.SetActive(true);
-
-        // Chuỗi tổng hợp điểm và đơn vị
         string scoreFinalText = (bounceCount * 10).ToString() + " " + currentData.unit;
 
-        // Hiển thị điểm cuối cùng vào bảng kết quả
         if (txtFinalScore != null)
         {
             txtFinalScore.text = scoreFinalText;
+            txtFinalScore.color = Color.yellow;
         }
 
-        // Hiển thị lời bình hài hước
         if (currentData.comments.Count > 0)
         {
             txtComment.text = currentData.comments[UnityEngine.Random.Range(0, currentData.comments.Count)];
         }
     }
 
-    // --- CÁC HÀM CHO NÚT BẤM (BUTTON EVENTS) ---
+    public void Btn_PlayAgain() => SetupNewTurn();
 
-    // Gán hàm này vào nút "Chơi lại" (Play Again)
-    public void Btn_PlayAgain()
-    {
-        SetupNewTurn();
-    }
-
-    // Gán hàm này vào nút "Về trang chủ" (Home)
     public void Btn_BackToHome()
     {
-        // Hãy đảm bảo tên Scene chính xác là "Home" hoặc đổi lại tên bạn muốn
         SceneManager.LoadScene("Gameplay scene");
     }
 
-    // --------------------------------------------
-
-    // Hiệu ứng rung màn hình
     IEnumerator ScreenShake(float duration, float magnitude)
     {
         Vector3 originalPos = Camera.main.transform.localPosition;

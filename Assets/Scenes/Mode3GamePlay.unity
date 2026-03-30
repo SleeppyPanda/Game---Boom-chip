@@ -599,12 +599,12 @@ RectTransform:
   m_LocalScale: {x: 0, y: 0, z: 0}
   m_ConstrainProportionsScale: 0
   m_Children:
-  - {fileID: 774665641}
   - {fileID: 589815547}
   - {fileID: 822874021}
   - {fileID: 1843183019}
   - {fileID: 977801154}
   - {fileID: 684059718}
+  - {fileID: 774665641}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
@@ -756,6 +756,7 @@ GameObject:
   m_Component:
   - component: {fileID: 355485670}
   - component: {fileID: 355485671}
+  - component: {fileID: 355485672}
   m_Layer: 0
   m_Name: GameManager
   m_TagString: Untagged
@@ -818,6 +819,32 @@ MonoBehaviour:
   rightHalf: {fileID: 8942575}
   spawnPoint: {fileID: 1486217141}
   itemPrefab: {fileID: 5530691580962634825, guid: f5aa0866edc21e14eb446bcc548db3ec, type: 3}
+  rotateSpeed: 90
+--- !u!114 &355485672
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 355485667}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bfc0ce7faa8dea24d982b4aad2f3f37e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  panelMode1: {fileID: 0}
+  panelMode2: {fileID: 0}
+  panelMode3: {fileID: 0}
+  panelAccount: {fileID: 0}
+  panelSetting: {fileID: 1830620851}
+  menuButtons: []
+  btnAccount: {fileID: 0}
+  btnSetting: {fileID: 0}
+  frameSelected: {fileID: 0}
+  frameUnselected: {fileID: 0}
+  fadeDuration: 0.3
+  sceneNameMode2: GameplayMode2
+  sceneNameMode3: GameplayMode3
 --- !u!1 &519420028
 GameObject:
   m_ObjectHideFlags: 0
@@ -1037,9 +1064,9 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 0}
-        m_TargetAssemblyTypeName: Mode2Manager, Assembly-CSharp
-        m_MethodName: OnSettingClick
+      - m_Target: {fileID: 355485672}
+        m_TargetAssemblyTypeName: MenuManager, Assembly-CSharp
+        m_MethodName: ShowSetting
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
@@ -1793,19 +1820,19 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 710918592666967337, guid: fd794783f5e533842812f0e71e71a5cc, type: 3}
       propertyPath: m_AnchorMax.y
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 4458866891414435301, guid: fd794783f5e533842812f0e71e71a5cc, type: 3}
       propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_Target
       value: 
-      objectReference: {fileID: 0}
+      objectReference: {fileID: 355485672}
     - target: {fileID: 4458866891414435301, guid: fd794783f5e533842812f0e71e71a5cc, type: 3}
       propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_MethodName
-      value: OnCloseSettingClick
+      value: CloseExtraPanel
       objectReference: {fileID: 0}
     - target: {fileID: 4458866891414435301, guid: fd794783f5e533842812f0e71e71a5cc, type: 3}
       propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_TargetAssemblyTypeName
-      value: Mode2Manager, Assembly-CSharp
+      value: MenuManager, Assembly-CSharp
       objectReference: {fileID: 0}
     - target: {fileID: 4963096069737151274, guid: fd794783f5e533842812f0e71e71a5cc, type: 3}
       propertyPath: m_Name
@@ -1817,7 +1844,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5374381167679802389, guid: fd794783f5e533842812f0e71e71a5cc, type: 3}
       propertyPath: m_AnchorMax.y
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -1979,9 +2006,9 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 355485667}
-        m_TargetAssemblyTypeName: Mode2Manager, Assembly-CSharp
-        m_MethodName: 
+      - m_Target: {fileID: 355485671}
+        m_TargetAssemblyTypeName: Mode3Manager, Assembly-CSharp
+        m_MethodName: Btn_BackToHome
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
@@ -3154,6 +3181,11 @@ CanvasRenderer:
 GameObject:
   m_CorrespondingSourceObject: {fileID: 5766482030724548493, guid: 7db468ac4fffb094b9a404626775d043, type: 3}
   m_PrefabInstance: {fileID: 684059717}
+  m_PrefabAsset: {fileID: 0}
+--- !u!225 &1830620851 stripped
+CanvasGroup:
+  m_CorrespondingSourceObject: {fileID: 3741075493227809741, guid: fd794783f5e533842812f0e71e71a5cc, type: 3}
+  m_PrefabInstance: {fileID: 774665640}
   m_PrefabAsset: {fileID: 0}
 --- !u!1 &1843183018
 GameObject:
