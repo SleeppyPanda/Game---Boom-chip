@@ -11,12 +11,21 @@ public partial class TileButton : MonoBehaviour
     private Image buttonImage;
     private BoomChipManager manager;
 
+    // QUAN TRỌNG: Lưu lại hình ảnh gốc (hình quả bom) để quay lại khi bỏ chọn
+    private Sprite originalSprite;
+
     void Awake()
     {
         button = GetComponent<Button>();
         buttonImage = GetComponent<Image>();
 
-        // Sử dụng FindFirstObjectByType để tìm Manager trong Scene
+        // Lưu lại hình ảnh quả bom bạn đã gán trong Editor/Prefab ngay khi game chạy
+        if (buttonImage != null)
+        {
+            originalSprite = buttonImage.sprite;
+        }
+
+        // Tìm Manager trong Scene
         manager = FindFirstObjectByType<BoomChipManager>();
 
         if (button != null)
@@ -25,36 +34,69 @@ public partial class TileButton : MonoBehaviour
         }
     }
 
+    void Start()
+    {
+        // Giai đoạn ban đầu (Phase 1, 2) có thể không cần ApplyInitialSkin 
+        // vì mặc định tất cả phải là hình quả bom che khuất.
+        // Tuy nhiên, hàm này vẫn giữ để đảm bảo tính linh hoạt.
+        ApplyInitialSkin();
+    }
+
+    private void ApplyInitialSkin()
+    {
+        // Nếu bạn muốn lúc bắt đầu game các ô hiện luôn skin (tùy logic game)
+        // Hiện tại logic của chúng ta là hiện hình quả bom (originalSprite)
+        if (buttonImage == null) return;
+    }
+
     void OnClicked()
     {
         if (manager == null) return;
 
-        // Giữ logic tách biệt theo yêu cầu của bạn
+        // Logic xử lý click dựa trên Phase hiện tại
         if (manager.currentPhase == GamePhase.Phase1 || manager.currentPhase == GamePhase.Phase2)
         {
-            // Xử lý chọn vị trí bom (Giai đoạn chuẩn bị)
-            manager.HandleTileClick(tileIndex, this);
+            // Chỉ cho phép click vào bảng của mình trong phase tương ứng để đặt bom
+            int currentPlayer = (manager.currentPhase == GamePhase.Phase1) ? 1 : 2;
+            if (ownerID == currentPlayer)
+            {
+                manager.HandleTileClick(tileIndex, this);
+            }
         }
         else if (manager.currentPhase == GamePhase.Phase3)
         {
-            // Xử lý bắn bom (Giai đoạn chiến đấu) - Cần truyền thêm ownerID
+            // Giai đoạn chiến đấu: manager sẽ tự check lượt của ai được bắn bảng nào
             manager.ExecuteTurn(tileIndex, this, ownerID);
         }
     }
 
+    /// <summary>
+    /// Thay đổi hình ảnh hiển thị. 
+    /// Nếu truyền vào null, ô sẽ tự quay về hình quả bom gốc.
+    /// </summary>
     public void SetVisual(Sprite newSprite)
     {
-        if (newSprite != null && buttonImage != null)
+        if (buttonImage == null) return;
+
+        if (newSprite == null)
         {
-            buttonImage.sprite = newSprite;
+            buttonImage.sprite = originalSprite; // Quay về hình quả bom mặc định
+        }
+        else
+        {
+            buttonImage.sprite = newSprite; // Hiển thị skin hoặc hình gạch chéo (miss)
         }
     }
 
-    public void ResetTile(Sprite defaultSprite)
+    /// <summary>
+    /// Reset ô về trạng thái ban đầu
+    /// </summary>
+    public void ResetTile(Sprite defaultSprite = null)
     {
-        if (buttonImage != null) buttonImage.sprite = defaultSprite;
-        if (button != null) button.interactable = true;
+        SetVisual(defaultSprite); // Sẽ dùng originalSprite nếu defaultSprite là null
+        SetInteractable(true);
     }
+
     public void SetInteractable(bool state)
     {
         if (button != null) button.interactable = state;

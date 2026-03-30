@@ -4,6 +4,7 @@ using System.Collections;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine.SceneManagement;
+using System;
 
 public class BoomChipManager : MonoBehaviour
 {
@@ -23,16 +24,11 @@ public class BoomChipManager : MonoBehaviour
     [Header("Transition Elements (Strips)")]
     public RectTransform leftStrip;
     public RectTransform rightStrip;
-
-    [Header("Transition Elements (Objects & Logo)")]
     public RectTransform leftObj;
     public RectTransform rightObj;
     public CanvasGroup centerLogo;
 
-    private Vector2 _leftStripOrig;
-    private Vector2 _rightStripOrig;
-    private Vector2 _leftObjOrig;
-    private Vector2 _rightObjOrig;
+    private Vector2 _leftStripOrig, _rightStripOrig, _leftObjOrig, _rightObjOrig;
 
     [Header("Phase Next Buttons")]
     public GameObject nextButtonPhase1;
@@ -63,14 +59,16 @@ public class BoomChipManager : MonoBehaviour
 
     [Header("Settings & Sprites")]
     public GameObject panelSetting;
-    public Sprite hitSprite;
+    public Sprite p1SkinSprite;
+    public Sprite p2SkinSprite;
     public Sprite missSprite;
     public bool winByHittingThree = true;
 
     [Header("Audio Configuration")]
     public string gameplayMusicName = "backround_02";
-    private string currentHitSound;
-    private string currentMissSound;
+    public string p1HitSFX;
+    public string p2HitSFX;
+    public string globalMissSFX;
 
     private List<int> p1TargetBombs = new List<int>();
     private List<int> p2TargetBombs = new List<int>();
@@ -87,20 +85,10 @@ public class BoomChipManager : MonoBehaviour
         if (leftObj != null) _leftObjOrig = leftObj.anchoredPosition;
         if (rightObj != null) _rightObjOrig = rightObj.anchoredPosition;
 
-        if (BoomChipSettings.customHitSprite != null)
-        {
-            hitSprite = BoomChipSettings.customHitSprite;
-            if (p1WinBombImage != null) SetupWinImage(p1WinBombImage, hitSprite);
-            if (p2WinBombImage != null) SetupWinImage(p2WinBombImage, hitSprite);
-        }
+        SyncDataFromSettings();
 
-        if (BoomChipSettings.customMissSprite != null)
-            missSprite = BoomChipSettings.customMissSprite;
-
-        winByHittingThree = BoomChipSettings.winByHittingThree;
-
-        currentHitSound = !string.IsNullOrEmpty(BoomChipSettings.hitSFXName) ? BoomChipSettings.hitSFXName : "SFX_Bomb_Hit";
-        currentMissSound = !string.IsNullOrEmpty(BoomChipSettings.missSFXName) ? BoomChipSettings.missSFXName : "SFX_Bomb_Miss";
+        if (p1WinBombImage != null) SetupWinImage(p1WinBombImage, p1SkinSprite);
+        if (p2WinBombImage != null) SetupWinImage(p2WinBombImage, p2SkinSprite);
 
         panelPhase1.SetActive(true);
         panelPhase2.SetActive(false);
@@ -110,42 +98,38 @@ public class BoomChipManager : MonoBehaviour
         if (panelSetting != null) panelSetting.SetActive(false);
         if (panelTransition != null) panelTransition.SetActive(false);
 
-        if (nextButtonPhase1 != null) nextButtonPhase1.SetActive(false);
-        if (nextButtonPhase2 != null) nextButtonPhase2.SetActive(false);
-        if (p1Crown != null) p1Crown.SetActive(false);
-        if (p2Crown != null) p2Crown.SetActive(false);
-
         InitializeHearts();
         RotatePlayer2TileVisuals();
-        InitBoardSprites();
+    }
+
+    private void SyncDataFromSettings()
+    {
+        p1SkinSprite = BoomChipSettings.player1Sprite;
+        p2SkinSprite = BoomChipSettings.player2Sprite;
+        missSprite = BoomChipSettings.customMissSprite;
+        winByHittingThree = BoomChipSettings.winByHittingThree;
+
+        p1HitSFX = !string.IsNullOrEmpty(BoomChipSettings.player1HitSFX) ? BoomChipSettings.player1HitSFX : "SFX_Bomb_Hit";
+        p2HitSFX = !string.IsNullOrEmpty(BoomChipSettings.player2HitSFX) ? BoomChipSettings.player2HitSFX : "SFX_Bomb_Hit";
+        globalMissSFX = !string.IsNullOrEmpty(BoomChipSettings.missSFXName) ? BoomChipSettings.missSFXName : "SFX_Bomb_Miss";
     }
 
     void Start()
     {
         if (FirebaseManager.Instance != null) FirebaseManager.Instance.LogModeEnter(9);
         if (AudioManager.Instance != null) AudioManager.Instance.PlayMusic(gameplayMusicName);
-        ShowMRECByPhase();
-    }
 
-    private void InitBoardSprites()
-    {
-        if (selectionLogic == null) return;
-        if (panelPhase1 != null && selectionLogic.defaultSpritePhase1 != null)
-        {
-            TileButton[] tilesP1 = panelPhase1.GetComponentsInChildren<TileButton>(true);
-            foreach (var t in tilesP1) t.SetVisual(selectionLogic.defaultSpritePhase1);
-        }
-        if (panelPhase2 != null && selectionLogic.defaultSpritePhase2 != null)
-        {
-            TileButton[] tilesP2 = panelPhase2.GetComponentsInChildren<TileButton>(true);
-            foreach (var t in tilesP2) t.SetVisual(selectionLogic.defaultSpritePhase2);
-        }
+        // Hiện MREC cho màn hình Player 1 chọn đầu tiên
+        ShowMRECByPhase();
     }
 
     private void SetupWinImage(Image img, Sprite sp)
     {
-        img.sprite = sp;
-        img.preserveAspect = true;
+        if (sp != null)
+        {
+            img.sprite = sp;
+            img.preserveAspect = true;
+        }
     }
 
     #region PHASE NAVIGATION & ADS
@@ -155,15 +139,19 @@ public class BoomChipManager : MonoBehaviour
 
         if (currentPhase == GamePhase.Phase1)
         {
+            // Interstitial khi P1 chọn xong
             if (AdsManager.Instance != null)
                 AdsManager.Instance.ShowInterstitial("is_show_inter_p1_choose", () => ExecutePhase2Transition());
-            else ExecutePhase2Transition();
+            else
+                ExecutePhase2Transition();
         }
         else if (currentPhase == GamePhase.Phase2)
         {
+            // Interstitial khi P2 chọn xong trước khi vào Gameplay
             if (AdsManager.Instance != null)
                 AdsManager.Instance.ShowInterstitial("is_show_inter_p2_choose", () => StartCoroutine(TransitionSequence()));
-            else StartCoroutine(TransitionSequence());
+            else
+                StartCoroutine(TransitionSequence());
         }
     }
 
@@ -187,7 +175,7 @@ public class BoomChipManager : MonoBehaviour
     }
     #endregion
 
-    #region TRANSITION LOGIC (NEW TIMELINE)
+    #region TRANSITION LOGIC
     private IEnumerator TransitionSequence()
     {
         if (panelTransition == null)
@@ -197,41 +185,23 @@ public class BoomChipManager : MonoBehaviour
         }
 
         panelTransition.SetActive(true);
-
-        // Reset trạng thái ban đầu
         if (centerLogo != null) { centerLogo.transform.localScale = Vector3.zero; centerLogo.alpha = 0; }
-        SetStripsPos(0);
-        SetObjectsPos(0);
 
-        // --- GIAI ĐOẠN 1: BAY VÀO ---
-        // 1. 2 Strip bay vào (0.5s)
+        SetStripsPos(0); SetObjectsPos(0);
         yield return StartCoroutine(AnimateStrips(0, 1, 0.5f));
-
-        // 2. 0.5s sau, 2 Obj bay vào (0.5s)
         yield return StartCoroutine(AnimateSideElements(0, 1, 0.5f));
 
-        // 3. Hiện logo (Ngay sau khi Obj vào xong)
         if (centerLogo != null) { centerLogo.transform.localScale = Vector3.one; centerLogo.alpha = 1; }
 
-        // Chuyển UI ngầm bên dưới transition
         SwitchToPhase3State();
-
-        // --- GIAI ĐOẠN 2: NGHỈ ---
-        // Nghỉ 1s
         yield return new WaitForSeconds(1.0f);
 
-        // --- GIAI ĐOẠN 3: BAY RA (PHỐI HỢP THỜI GIAN) ---
-        // 1. 2 Obj bắt đầu bay ra (0.5s)
         StartCoroutine(AnimateSideElements(1, 0, 0.5f));
-
-        // 2. Logo biến mất ngay khi Obj bắt đầu bay ra (như yêu cầu: logo mất cùng lúc panel/obj bay ra)
         if (centerLogo != null) { centerLogo.transform.localScale = Vector3.zero; centerLogo.alpha = 0; }
 
-        // 3. Đợi 0.2s rồi 2 Strip (panel) bay ra (0.5s)
         yield return new WaitForSeconds(0.2f);
         yield return StartCoroutine(AnimateStrips(1, 0, 0.5f));
 
-        // Kết thúc
         panelTransition.SetActive(false);
         currentPhase = GamePhase.Animation;
 
@@ -295,8 +265,8 @@ public class BoomChipManager : MonoBehaviour
         currentPhase = GamePhase.Phase3;
         isP1Turn = (winnerID == 0);
 
-        p1TargetBombs = new List<int>(selectionLogic.p2SelectedTiles);
-        p2TargetBombs = new List<int>(selectionLogic.p1SelectedTiles);
+        p1TargetBombs = new List<int>(selectionLogic.p1SelectedTiles);
+        p2TargetBombs = new List<int>(selectionLogic.p2SelectedTiles);
 
         StartCoroutine(ShowTurnAndStartGame(winnerID));
     }
@@ -325,16 +295,20 @@ public class BoomChipManager : MonoBehaviour
 
         if (targetList.Contains(tileIndex))
         {
-            tile.SetVisual(hitSprite);
+            Sprite mySkin = (boardOwnerID == 1) ? p1SkinSprite : p2SkinSprite;
+            tile.SetVisual(mySkin);
+
             if (isP1Turn) p1HitCount++; else p2HitCount++;
             UpdateHeartsUI(isP1Turn ? 1 : 2);
-            if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(currentHitSound);
-            Handheld.Vibrate();
+
+            string sound = (boardOwnerID == 1) ? p1HitSFX : p2HitSFX;
+            if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(sound);
+            GlobalSettings.PlayVibrate();
         }
         else
         {
             tile.SetVisual(missSprite);
-            if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(currentMissSound);
+            if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(globalMissSFX);
         }
 
         tile.SetInteractable(false);
@@ -363,8 +337,16 @@ public class BoomChipManager : MonoBehaviour
         if (p1Cover != null) p1Cover.SetActive(!isP1Turn);
         if (p2Cover != null) p2Cover.SetActive(isP1Turn);
 
-        if (p1BoardArea != null) p1BoardArea.interactable = isP1Turn;
-        if (p2BoardArea != null) p2BoardArea.interactable = !isP1Turn;
+        if (p1BoardArea != null)
+        {
+            p1BoardArea.interactable = isP1Turn;
+            p1BoardArea.blocksRaycasts = isP1Turn;
+        }
+        if (p2BoardArea != null)
+        {
+            p2BoardArea.interactable = !isP1Turn;
+            p2BoardArea.blocksRaycasts = !isP1Turn;
+        }
     }
 
     void CheckWinCondition()
@@ -386,6 +368,8 @@ public class BoomChipManager : MonoBehaviour
         panelWin.SetActive(true);
         if (FirebaseManager.Instance != null) FirebaseManager.Instance.LogModeComplete(9);
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX("SFX_Win");
+
+        // Hiện MREC màn hình kết thúc
         if (AdsManager.Instance != null) AdsManager.Instance.ShowMREC("is_show_mrec_complete_game");
 
         if (p1Crown != null) p1Crown.SetActive(winnerID == 1);
@@ -416,12 +400,18 @@ public class BoomChipManager : MonoBehaviour
     {
         if (currentPhase == GamePhase.Phase1 || currentPhase == GamePhase.Phase2)
         {
-            if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX("SFX_Click");
-            if (selectionLogic != null) selectionLogic.HandleTileClick(tileIndex, tile);
+            if (selectionLogic != null)
+            {
+                selectionLogic.HandleTileClick(tileIndex, tile);
+                bool isSelected = selectionLogic.IsTileSelected(currentPhase == GamePhase.Phase1 ? 1 : 2, tileIndex);
+                Sprite mySkin = (currentPhase == GamePhase.Phase1) ? p1SkinSprite : p2SkinSprite;
+                tile.SetVisual(isSelected ? mySkin : null);
+                if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX("SFX_Click");
+            }
         }
         else if (currentPhase == GamePhase.Phase3)
         {
-            int owner = tile.transform.IsChildOf(p1BoardArea.transform) ? 1 : 2;
+            int owner = tile.ownerID;
             ExecuteTurn(tileIndex, tile, owner);
         }
     }
@@ -437,17 +427,25 @@ public class BoomChipManager : MonoBehaviour
 
     public void Rematch()
     {
-        if (AdsManager.Instance != null) AdsManager.Instance.HideMREC();
         if (AdsManager.Instance != null)
-            AdsManager.Instance.ShowInterstitial("is_show_inter_retry", () => SceneManager.LoadScene(SceneManager.GetActiveScene().name));
+        {
+            AdsManager.Instance.HideMREC();
+            AdsManager.Instance.ShowInterstitial("is_show_inter_retry", () => {
+                SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+            });
+        }
         else SceneManager.LoadScene(SceneManager.GetActiveScene().name);
     }
 
     public void GoToSelection()
     {
-        if (AdsManager.Instance != null) AdsManager.Instance.HideMREC();
         if (AdsManager.Instance != null)
-            AdsManager.Instance.ShowInterstitial("is_show_inter_back_home", () => SceneManager.LoadScene("SelectScene"));
+        {
+            AdsManager.Instance.HideMREC();
+            AdsManager.Instance.ShowInterstitial("is_show_inter_back_home", () => {
+                SceneManager.LoadScene("SelectScene");
+            });
+        }
         else SceneManager.LoadScene("SelectScene");
     }
 
