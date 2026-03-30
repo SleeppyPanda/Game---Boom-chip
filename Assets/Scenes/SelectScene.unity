@@ -7404,7 +7404,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   type: 1
   unlockKey: Hero8
-  indexValue: 9
+  indexValue: 8
   lockIcon: {fileID: 872834461}
   blurOverlay: {fileID: 1283681995}
   displayAvatar: {fileID: 1789505586}
