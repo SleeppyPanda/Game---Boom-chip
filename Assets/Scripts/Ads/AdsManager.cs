@@ -48,18 +48,33 @@ public class AdsManager : MonoBehaviour
 
     void Start()
     {
-        // Khởi tạo AppsFlyer
+        // 1. Khởi tạo AppsFlyer
         AppsFlyer.initSDK(appsFlyerDevKey, appId);
         AppsFlyer.startSDK();
 
-        // Khởi tạo AdMob
-        MobileAds.Initialize(initStatus => {
-            LoadInterstitialAd();
-            LoadRewardedAd();
-            LoadAppOpenAd();
+        // 2. Khởi tạo AdMob
+        MobileAds.Initialize((InitializationStatus initStatus) =>
+        {
+            // Dùng Coroutine thay cho MobileAdsEventExecutor để an toàn 100%
+            StartCoroutine(LoadAdsAfterInit());
         });
 
         InitializeFirebase();
+    }
+
+    private IEnumerator LoadAdsAfterInit()
+    {
+        // Đợi một chút để đảm bảo SDK đã sẵn sàng trên Android
+        yield return new WaitForSeconds(0.5f);
+        LoadInterstitialAd();
+        LoadRewardedAd();
+        LoadAppOpenAd();
+    }
+
+    // Cách tạo Request đơn giản nhất để tránh lỗi Builder trên bản 11.x
+    private AdRequest CreateAdRequest()
+    {
+        return new AdRequest();
     }
 
     private void InitializeFirebase()
@@ -116,13 +131,11 @@ public class AdsManager : MonoBehaviour
         double revenue = adValue.Value / 1000000f;
         string currency = adValue.CurrencyCode;
 
-        // 1. Log Firebase Ad Impression
         AdEventTracker.LogAdImpression("AdMob", "admob", format, revenue);
 
-        // 2. Log AppsFlyer Ad Revenue (Chuẩn af_ad_revenue & af_revenue)
         Dictionary<string, string> afParams = new Dictionary<string, string> {
             { AFInAppEvents.CURRENCY, currency },
-            { AFInAppEvents.REVENUE, revenue.ToString() }, // Ghi nhận doanh thu af_revenue
+            { AFInAppEvents.REVENUE, revenue.ToString() },
             { "af_ad_platform", "admob" },
             { "af_ad_format", format },
             { "af_ad_unit_name", GetUnitIDByFormat(format) }
@@ -144,12 +157,13 @@ public class AdsManager : MonoBehaviour
     }
     #endregion
 
-    #region INTERSTITIAL (AppsFlyer: af_inters_...)
+    #region INTERSTITIAL
     public void LoadInterstitialAd()
     {
-        if (_interstitialAd != null) _interstitialAd.Destroy();
-        InterstitialAd.Load(adUnitIdInter, new AdRequest(), (ad, error) => {
-            if (error != null) return;
+        if (_interstitialAd != null) { _interstitialAd.Destroy(); _interstitialAd = null; }
+
+        InterstitialAd.Load(adUnitIdInter, CreateAdRequest(), (ad, error) => {
+            if (error != null || ad == null) return;
             _interstitialAd = ad;
             _interstitialAd.OnAdPaid += (adValue) => SendRevenueToAll("INTER", adValue);
         });
@@ -157,7 +171,6 @@ public class AdsManager : MonoBehaviour
 
     public void ShowInterstitial(string placementConfigKey, Action onAdClosed)
     {
-        // Eligible: Khi bắt đầu gọi logic show (nút bấm)
         AdEventTracker.TrackInterEligible();
 
         bool isEnable = AdEventTracker.GetBool(placementConfigKey);
@@ -167,16 +180,12 @@ public class AdsManager : MonoBehaviour
         {
             if (_interstitialAd != null && _interstitialAd.CanShowAd())
             {
-                // Api Called: Khi ads đã load xong và sẵn sàng hiển thị
                 AdEventTracker.TrackInterApiCalled();
-
                 _interstitialAd.OnAdFullScreenContentOpened += () => {
                     _isAdShowing = true;
                     _lastTimeShowInterstitial = Time.time;
-                    // Displayed: Khi ad hiện lên màn hình
                     AdEventTracker.TrackInterDisplayed();
                 };
-
                 _interstitialAd.OnAdFullScreenContentClosed += () => {
                     _isAdShowing = false;
                     LoadInterstitialAd();
@@ -190,12 +199,13 @@ public class AdsManager : MonoBehaviour
     }
     #endregion
 
-    #region REWARDED ADS (AppsFlyer: af_rewarded_...)
+    #region REWARDED
     public void LoadRewardedAd()
     {
-        if (_rewardedAd != null) _rewardedAd.Destroy();
-        RewardedAd.Load(adUnitIdRewarded, new AdRequest(), (ad, error) => {
-            if (error != null) return;
+        if (_rewardedAd != null) { _rewardedAd.Destroy(); _rewardedAd = null; }
+
+        RewardedAd.Load(adUnitIdRewarded, CreateAdRequest(), (ad, error) => {
+            if (error != null || ad == null) return;
             _rewardedAd = ad;
             _rewardedAd.OnAdPaid += (adValue) => SendRevenueToAll("REWARDED", adValue);
         });
@@ -203,46 +213,32 @@ public class AdsManager : MonoBehaviour
 
     public void ShowRewardedAd(string logicKey, Action onRewardEarned, Action onAdFailed = null)
     {
-        // Eligible
         AdEventTracker.TrackRewardEligible();
-
-        if (!AdEventTracker.GetBool(logicKey))
-        {
-            onRewardEarned?.Invoke();
-            return;
-        }
+        if (!AdEventTracker.GetBool(logicKey)) { onRewardEarned?.Invoke(); return; }
 
         if (_rewardedAd != null && _rewardedAd.CanShowAd())
         {
-            // Api Called
             AdEventTracker.TrackRewardApiCalled();
-
             _rewardedAd.OnAdFullScreenContentOpened += () => {
                 _isAdShowing = true;
-                // Displayed
                 AdEventTracker.TrackRewardDisplayed();
             };
-
             _rewardedAd.OnAdFullScreenContentClosed += () => {
                 _isAdShowing = false;
                 LoadRewardedAd();
             };
             _rewardedAd.Show((reward) => onRewardEarned?.Invoke());
         }
-        else
-        {
-            onAdFailed?.Invoke();
-            LoadRewardedAd();
-        }
+        else { onAdFailed?.Invoke(); LoadRewardedAd(); }
     }
     #endregion
 
     #region APP OPEN ADS
     public void LoadAppOpenAd()
     {
-        if (_appOpenAd != null) _appOpenAd.Destroy();
-        AppOpenAd.Load(adUnitIdAOA, new AdRequest(), (ad, error) => {
-            if (error != null) return;
+        if (_appOpenAd != null) { _appOpenAd.Destroy(); _appOpenAd = null; }
+        AppOpenAd.Load(adUnitIdAOA, CreateAdRequest(), (ad, error) => {
+            if (error != null || ad == null) return;
             _appOpenAd = ad;
             _aoaExpireTime = DateTime.Now.AddHours(4);
             _appOpenAd.OnAdPaid += (adValue) => SendRevenueToAll("AOA", adValue);
@@ -252,15 +248,11 @@ public class AdsManager : MonoBehaviour
     public void ShowAppOpenAd(bool isResume)
     {
         if (!AdEventTracker.GetBool(AdEventTracker.KEY_SHOW_OPEN_ADS) || _isAdShowing) return;
-
-        if (!isResume && _isFirstTimeTruly)
+        if (!isResume && _isFirstTimeTruly && !AdEventTracker.GetBool(AdEventTracker.KEY_SHOW_OPEN_ADS_FIRST))
         {
-            if (!AdEventTracker.GetBool(AdEventTracker.KEY_SHOW_OPEN_ADS_FIRST))
-            {
-                PlayerPrefs.SetInt("Truly_First_Open_Completed", 1);
-                _isFirstTimeTruly = false;
-                return;
-            }
+            PlayerPrefs.SetInt("Truly_First_Open_Completed", 1);
+            _isFirstTimeTruly = false;
+            return;
         }
 
         if (_appOpenAd != null && _appOpenAd.CanShowAd() && DateTime.Now < _aoaExpireTime)
@@ -274,8 +266,7 @@ public class AdsManager : MonoBehaviour
 
     private void OnApplicationFocus(bool focus)
     {
-        if (focus && AdEventTracker.GetBool(AdEventTracker.KEY_SHOW_RESUME_ADS))
-            ShowAppOpenAd(true);
+        if (focus && AdEventTracker.GetBool(AdEventTracker.KEY_SHOW_RESUME_ADS)) ShowAppOpenAd(true);
     }
     #endregion
 
@@ -288,7 +279,7 @@ public class AdsManager : MonoBehaviour
         AdSize adaptiveSize = AdSize.GetCurrentOrientationAnchoredAdaptiveBannerAdSizeWithWidth(AdSize.FullWidth);
         _bannerView = new BannerView(adUnitIdBanner, adaptiveSize, AdPosition.Bottom);
 
-        AdRequest request = new AdRequest();
+        AdRequest request = CreateAdRequest();
         float reloadTime = AdEventTracker.GetFloat(AdEventTracker.KEY_TIME_RELOAD_COLLAP, 10f);
 
         if (reloadTime > 0)
@@ -304,8 +295,8 @@ public class AdsManager : MonoBehaviour
 
     public void HideBanner()
     {
-        if (_bannerReloadCoroutine != null) { StopCoroutine(_bannerReloadCoroutine); _bannerReloadCoroutine = null; }
-        if (_bannerView != null) { _bannerView.Destroy(); _bannerView = null; }
+        if (_bannerReloadCoroutine != null) StopCoroutine(_bannerReloadCoroutine);
+        if (_bannerView != null) _bannerView.Destroy();
     }
 
     private IEnumerator ReloadBannerAfterTime(float seconds)
@@ -321,20 +312,16 @@ public class AdsManager : MonoBehaviour
 
         _mrecView = new BannerView(adUnitIdMREC, AdSize.MediumRectangle, AdPosition.Bottom);
         _mrecView.OnAdPaid += (adValue) => SendRevenueToAll("MREC", adValue);
-        _mrecView.LoadAd(new AdRequest());
+        _mrecView.LoadAd(CreateAdRequest());
     }
 
-    public void HideMREC()
-    {
-        if (_mrecView != null) { _mrecView.Destroy(); _mrecView = null; }
-    }
+    public void HideMREC() { if (_mrecView != null) _mrecView.Destroy(); }
     #endregion
 
-    #region RATING (In-App Review)
+    #region RATING
     public void CheckShowRating()
     {
-        if (AdEventTracker.GetBool(AdEventTracker.KEY_RATING_POPUP))
-            StartCoroutine(RequestReviewProcedure());
+        if (AdEventTracker.GetBool(AdEventTracker.KEY_RATING_POPUP)) StartCoroutine(RequestReviewProcedure());
     }
 
     private IEnumerator RequestReviewProcedure()

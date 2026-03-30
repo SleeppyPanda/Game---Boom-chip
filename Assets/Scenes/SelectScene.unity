@@ -204,8 +204,8 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 531836345}
   m_HandleRect: {fileID: 531836344}
   m_Direction: 2
-  m_Value: 1.0000002
-  m_Size: 0.43274856
+  m_Value: 1.0000004
+  m_Size: 0.4327486
   m_NumberOfSteps: 0
   m_OnValueChanged:
     m_PersistentCalls:
@@ -4842,7 +4842,7 @@ MonoBehaviour:
   blurOverlay: {fileID: 1618706162}
   displayAvatar: {fileID: 830234945}
   menuManager: {fileID: 758553935}
-  accountManager: {fileID: 758553937}
+  accountManager: {fileID: 0}
 --- !u!1 &687332045
 GameObject:
   m_ObjectHideFlags: 0
@@ -7473,7 +7473,7 @@ MonoBehaviour:
   sceneToLoad: BoomDice
   gameModeID: 9
   isBombMode: 1
-  setWinByHittingThree: 1
+  setWinByHittingThree: 0
   p1Selection: {fileID: 21300000, guid: 4e35982b00219a74ebf313f0549444e8, type: 3}
   p1HitSFX: Chip
   p2Selection: {fileID: 21300000, guid: 4e35982b00219a74ebf313f0549444e8, type: 3}
@@ -12747,7 +12747,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   m_Material: {fileID: 0}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
-  m_RaycastTarget: 1
+  m_RaycastTarget: 0
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
   m_OnCullStateChanged:
@@ -13145,7 +13145,7 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 1730417057}
         m_TargetAssemblyTypeName: UnlockButton, Assembly-CSharp
-        m_MethodName: OnClick
+        m_MethodName: 
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
@@ -13224,7 +13224,7 @@ MonoBehaviour:
   blurOverlay: {fileID: 1624076140}
   displayAvatar: {fileID: 745522875}
   menuManager: {fileID: 758553935}
-  accountManager: {fileID: 758553937}
+  accountManager: {fileID: 0}
 --- !u!1 &1731004685
 GameObject:
   m_ObjectHideFlags: 0

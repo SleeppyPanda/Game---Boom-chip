@@ -129,16 +129,33 @@ public static class AdEventTracker
 
     // --- REMOTE CONFIG GETTERS ---
 
+    // --- REMOTE CONFIG GETTERS ---
+
     public static bool GetBool(string key, bool defaultValue = false)
     {
         if (FirebaseRemoteConfig.DefaultInstance == null) return defaultValue;
         return FirebaseRemoteConfig.DefaultInstance.GetValue(key).BooleanValue;
     }
 
-    public static float GetFloat(string key, float defaultValue = 0f)
+    // THÊM TỪ KHÓA static VÀO ĐÂY
+    public static float GetFloat(string key, float defaultValue)
     {
-        if (FirebaseRemoteConfig.DefaultInstance == null) return defaultValue;
-        return (float)FirebaseRemoteConfig.DefaultInstance.GetValue(key).DoubleValue;
+        try
+        {
+            if (FirebaseRemoteConfig.DefaultInstance == null) return defaultValue;
+
+            var config = FirebaseRemoteConfig.DefaultInstance;
+            string value = config.GetValue(key).StringValue;
+
+            if (string.IsNullOrEmpty(value)) return defaultValue;
+
+            // Ép kiểu an toàn, bất chấp dấu phẩy hay dấu chấm
+            return float.Parse(value, System.Globalization.CultureInfo.InvariantCulture);
+        }
+        catch
+        {
+            return defaultValue; // Nếu lỗi (FormatException), trả về số mặc định để game KHÔNG BỊ LIỆT
+        }
     }
 
     public static string GetString(string key, string defaultValue = "")

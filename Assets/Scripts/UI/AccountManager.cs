@@ -110,9 +110,7 @@ public class AccountManager : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Cập nhật Avatar hiện tại, chạy hiệu ứng và bắn event Firebase
-    /// </summary>
+   
     public void SetAvatar(int index)
     {
         currentTempIndex = index;
@@ -120,9 +118,17 @@ public class AccountManager : MonoBehaviour
         if (avatarDisplayInPanel != null)
         {
             avatarDisplayInPanel.sprite = allAvatars[index];
+
+            // Dừng các tween cũ để tránh xung đột
             avatarDisplayInPanel.rectTransform.DOKill(true);
-            avatarDisplayInPanel.rectTransform.localScale = Vector3.one;
-            avatarDisplayInPanel.rectTransform.DOPunchScale(new Vector3(0.15f, 0.15f, 0), 0.3f, 5, 1);
+
+            // --- THAY ĐỔI TẠI ĐÂY: Thiết lập scale mặc định là 0.7116897f ---
+            float targetScale = 0.7116897f;
+            avatarDisplayInPanel.rectTransform.localScale = new Vector3(targetScale, targetScale, 1f);
+
+            // Hiệu ứng PunchScale sẽ nẩy dựa trên scale hiện tại (0.7116897)
+            // Nếu bạn muốn hiệu ứng mạnh hơn hoặc nhẹ hơn, có thể chỉnh thông số 0.1f ở dưới
+            avatarDisplayInPanel.rectTransform.DOPunchScale(new Vector3(0.1f, 0.1f, 0), 0.3f, 5, 1);
         }
 
         // --- FIREBASE TRACKING: count_avatar_xx ---

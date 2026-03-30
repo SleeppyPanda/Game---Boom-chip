@@ -3,10 +3,6 @@ apply plugin: 'com.android.library'
 
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
-    
-    // Thêm dòng này để hỗ trợ MultiDex
-    implementation 'androidx.multidex:multidex:2.0.1'
-
 // Android Resolver Dependencies Start
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4' // Assets/GoogleMobileAds/Editor/GoogleMobileAdsDependencies.xml:12
     implementation 'androidx.lifecycle:lifecycle-process:2.6.2' // Assets/GoogleMobileAds/Editor/GoogleMobileAdsDependencies.xml:17
@@ -45,7 +41,6 @@ android {
   }
 }
 // Android Resolver Exclusions End
-
 android {
     namespace "com.unity3d.player"
     ndkPath "**NDKPATH**"
@@ -60,10 +55,6 @@ android {
     defaultConfig {
         minSdkVersion **MINSDKVERSION**
         targetSdkVersion **TARGETSDKVERSION**
-        
-        // Kích hoạt MultiDex để tránh lỗi mergeExtDex
-        multiDexEnabled true 
-
         ndk {
             abiFilters **ABIFILTERS**
         }
