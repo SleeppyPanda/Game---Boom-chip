@@ -38,6 +38,10 @@ public class BoomChipManager : MonoBehaviour
     [Header("Gameplay Phase 3 (Canvas Groups)")]
     public CanvasGroup p1BoardArea;
     public CanvasGroup p2BoardArea;
+
+    [Header("Turn Covers")]
+    public GameObject p1Cover;
+    public GameObject p2Cover;
     public bool isP1Turn;
 
     [Header("Win Panel Custom UI")]
@@ -55,7 +59,6 @@ public class BoomChipManager : MonoBehaviour
     public bool winByHittingThree = true;
 
     [Header("Audio Configuration")]
-    // Bạn có thể đổi tên nhạc nền cho Scene này tại đây trong Inspector
     public string gameplayMusicName = "backround_02";
     private string currentHitSound;
     private string currentMissSound;
@@ -69,7 +72,6 @@ public class BoomChipManager : MonoBehaviour
     {
         selectionLogic = GetComponent<PlayerSelection>();
 
-        // 1. Cấu hình Sprite từ Settings (Nếu có custom từ người dùng)
         if (BoomChipSettings.customHitSprite != null)
         {
             hitSprite = BoomChipSettings.customHitSprite;
@@ -82,17 +84,14 @@ public class BoomChipManager : MonoBehaviour
 
         winByHittingThree = BoomChipSettings.winByHittingThree;
 
-        // 2. Cấu hình âm thanh hiệu ứng (SFX)
         currentHitSound = !string.IsNullOrEmpty(BoomChipSettings.hitSFXName) ? BoomChipSettings.hitSFXName : "SFX_Bomb_Hit";
         currentMissSound = !string.IsNullOrEmpty(BoomChipSettings.missSFXName) ? BoomChipSettings.missSFXName : "SFX_Bomb_Miss";
 
-        // 3. Quản lý âm thanh nhạc nền (BGM) cho riêng Scene này
         if (AudioManager.Instance != null)
         {
             AudioManager.Instance.PlayMusic(gameplayMusicName);
         }
 
-        // 4. Thiết lập trạng thái ban đầu cho UI Panels
         panelPhase1.SetActive(true);
         panelPhase2.SetActive(false);
         panelPhase3.SetActive(false);
@@ -101,13 +100,11 @@ public class BoomChipManager : MonoBehaviour
         if (panelSetting != null) panelSetting.SetActive(false);
         if (panelTransition != null) panelTransition.SetActive(false);
 
-        // 5. Ẩn các nút Next và Crown lúc đầu
         if (nextButtonPhase1 != null) nextButtonPhase1.SetActive(false);
         if (nextButtonPhase2 != null) nextButtonPhase2.SetActive(false);
         if (p1Crown != null) p1Crown.SetActive(false);
         if (p2Crown != null) p2Crown.SetActive(false);
 
-        // 6. Khởi tạo hệ thống Gameplay
         InitializeHearts();
         RotatePlayer2TileVisuals();
         InitBoardSprites();
@@ -116,15 +113,11 @@ public class BoomChipManager : MonoBehaviour
     private void InitBoardSprites()
     {
         if (selectionLogic == null) return;
-
-        // Gán sprite mặc định cho bảng P1 (thường là màu Xanh) từ PlayerSelection
         if (panelPhase1 != null && selectionLogic.defaultSpritePhase1 != null)
         {
             TileButton[] tilesP1 = panelPhase1.GetComponentsInChildren<TileButton>(true);
             foreach (var t in tilesP1) t.SetVisual(selectionLogic.defaultSpritePhase1);
         }
-
-        // Gán sprite mặc định cho bảng P2 (thường là màu Đỏ) từ PlayerSelection
         if (panelPhase2 != null && selectionLogic.defaultSpritePhase2 != null)
         {
             TileButton[] tilesP2 = panelPhase2.GetComponentsInChildren<TileButton>(true);
@@ -165,12 +158,10 @@ public class BoomChipManager : MonoBehaviour
         }
 
         panelTransition.SetActive(true);
-
         Vector2 targetLeftStrip = leftStrip.anchoredPosition;
         Vector2 targetRightStrip = rightStrip.anchoredPosition;
         Vector2 targetLeftObj = leftObj.anchoredPosition;
         Vector2 targetRightObj = rightObj.anchoredPosition;
-
         Vector2 startLeftStrip = new Vector2(-2000f, targetLeftStrip.y);
         Vector2 startRightStrip = new Vector2(2000f, targetRightStrip.y);
         Vector2 startLeftObj = new Vector2(-2000f, targetLeftObj.y);
@@ -210,7 +201,6 @@ public class BoomChipManager : MonoBehaviour
         panelPhase2.SetActive(false);
         panelPhase3.SetActive(true);
         panelAnimation.SetActive(true);
-
         yield return new WaitForSeconds(0.8f);
 
         elapsed = 0;
@@ -225,7 +215,6 @@ public class BoomChipManager : MonoBehaviour
             centerLogo.transform.localScale = Vector3.one * (1 - t);
             yield return null;
         }
-
         yield return new WaitForSeconds(0.8f);
 
         elapsed = 0;
@@ -241,7 +230,6 @@ public class BoomChipManager : MonoBehaviour
 
         panelTransition.SetActive(false);
         currentPhase = GamePhase.Animation;
-
         CoinFlipController flip = FindFirstObjectByType<CoinFlipController>();
         if (flip != null)
         {
@@ -288,7 +276,6 @@ public class BoomChipManager : MonoBehaviour
             tile.SetVisual(hitSprite);
             if (isP1Turn) p1HitCount++; else p2HitCount++;
             UpdateHeartsUI(isP1Turn ? 1 : 2);
-
             if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(currentHitSound);
             GlobalSettings.PlayVibrate();
         }
@@ -323,16 +310,19 @@ public class BoomChipManager : MonoBehaviour
     {
         if (p1BoardArea != null)
         {
-            p1BoardArea.alpha = isP1Turn ? 1.0f : 0.6f;
+            p1BoardArea.alpha = 1.0f;
             p1BoardArea.interactable = isP1Turn;
             p1BoardArea.blocksRaycasts = isP1Turn;
         }
         if (p2BoardArea != null)
         {
-            p2BoardArea.alpha = isP1Turn ? 0.6f : 1.0f;
+            p2BoardArea.alpha = 1.0f;
             p2BoardArea.interactable = !isP1Turn;
             p2BoardArea.blocksRaycasts = !isP1Turn;
         }
+
+        if (p1Cover != null) p1Cover.SetActive(!isP1Turn);
+        if (p2Cover != null) p2Cover.SetActive(isP1Turn);
     }
 
     void CheckWinCondition()
@@ -354,6 +344,13 @@ public class BoomChipManager : MonoBehaviour
         panelWin.SetActive(true);
         GlobalSettings.PlayVibrate();
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX("SFX_Win");
+
+        // --- LOGIC MỚI: Tắt tất cả tấm che khi kết thúc game ---
+        if (p1Cover != null) p1Cover.SetActive(false);
+        if (p2Cover != null) p2Cover.SetActive(false);
+        // Tắt cả tương tác để người chơi không bấm thêm được gì
+        if (p1BoardArea != null) p1BoardArea.interactable = false;
+        if (p2BoardArea != null) p2BoardArea.interactable = false;
 
         if (p1Crown != null) p1Crown.SetActive(winnerID == 1);
         if (p2Crown != null) p2Crown.SetActive(winnerID == 2);
@@ -381,7 +378,6 @@ public class BoomChipManager : MonoBehaviour
     {
         if (currentPhase == GamePhase.Phase1 || currentPhase == GamePhase.Phase2)
         {
-            // Âm thanh khi chọn/bỏ chọn bôm
             if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(currentHitSound);
         }
         if (selectionLogic != null) selectionLogic.HandleTileClick(tileIndex, tile);
