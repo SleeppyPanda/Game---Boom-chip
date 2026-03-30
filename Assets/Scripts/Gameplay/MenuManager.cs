@@ -1,5 +1,6 @@
 ﻿using UnityEngine;
-using UnityEngine.UI; // Thêm thư viện UI
+using UnityEngine.UI;
+using TMPro;
 using DG.Tweening;
 
 public class MenuManager : MonoBehaviour
@@ -12,14 +13,15 @@ public class MenuManager : MonoBehaviour
     public CanvasGroup panelSetting;
 
     [Header("Danh sách các Transform của Button")]
-    public RectTransform[] menuButtons; // Đây là Transform để Scale
+    public RectTransform[] menuButtons; // Index 0: Mode 1, 1: Mode 2, 2: Mode 3
     public RectTransform btnAccount;
     public RectTransform btnSetting;
 
     [Header("Cấu hình Sprite Khung (Bottom Bar)")]
-    public Sprite frameSelected;   // Kéo Sprite khung Hồng vào đây
-    public Sprite frameUnselected; // Kéo Sprite khung Tím vào đây
-    private Image[] buttonImages;  // Mảng lưu Image component của 3 nút Mode
+    public Sprite frameSelected;
+    public Sprite frameUnselected;
+    private Image[] buttonImages;
+    private TextMeshProUGUI[] buttonTexts;
 
     [Header("Cấu hình hiệu ứng")]
     public float fadeDuration = 0.3f;
@@ -28,11 +30,13 @@ public class MenuManager : MonoBehaviour
 
     void Start()
     {
-        // Khởi tạo mảng Image từ menuButtons
         buttonImages = new Image[menuButtons.Length];
+        buttonTexts = new TextMeshProUGUI[menuButtons.Length];
+
         for (int i = 0; i < menuButtons.Length; i++)
         {
             buttonImages[i] = menuButtons[i].GetComponent<Image>();
+            buttonTexts[i] = menuButtons[i].GetComponentInChildren<TextMeshProUGUI>();
         }
 
         InitPanel(panelMode1);
@@ -41,7 +45,7 @@ public class MenuManager : MonoBehaviour
         InitPanel(panelAccount);
         InitPanel(panelSetting);
 
-        ShowPanel1(); // Mặc định mở Mode 1
+        ShowPanel1();
     }
 
     private void InitPanel(CanvasGroup cg)
@@ -55,31 +59,65 @@ public class MenuManager : MonoBehaviour
     public void ShowPanel2() { SwitchToMode(panelMode2, 1); }
     public void ShowPanel3() { SwitchToMode(panelMode3, 2); }
 
-    public void ShowAccount() { SwitchToExtra(panelAccount, btnAccount, 1.6187f); }
-    public void ShowSetting() { SwitchToExtra(panelSetting, btnSetting, 1.0f); }
-
-    // Logic đổi Sprite và Mode
     private void SwitchToMode(CanvasGroup target, int index)
     {
-        // 1. Cập nhật Sprite khung cho 3 nút Mode
-        for (int i = 0; i < buttonImages.Length; i++)
+        // --- LOGIC DỊCH CHUYỂN POS X CHO MODE 1 ---
+        // Giả sử menuButtons[0] luôn là Mode 1
+        if (menuButtons[0] != null)
         {
-            if (buttonImages[i] == null) continue;
-
-            if (i == index)
-                buttonImages[i].sprite = frameSelected; // Đổi sang hồng
-            else
-                buttonImages[i].sprite = frameUnselected; // Đổi về tím
+            if (index == 1) // Nếu chọn Mode 2
+            {
+                menuButtons[0].DOAnchorPosX(29f, 0.25f);
+            }
+            else if (index == 2) // Nếu chọn Mode 3
+            {
+                menuButtons[0].DOAnchorPosX(-29f, 0.25f);
+            }
+            else if (index == 0) // Nếu chọn chính Mode 1 (về lại vị trí mặc định của bạn)
+            {
+                // Bạn có thể để 0 hoặc giá trị pos X mặc định mà bạn đã thiết lập ban đầu
+                menuButtons[0].DOAnchorPosX(0f, 0.25f);
+            }
         }
 
-        // 2. Hiệu ứng Scale
-        AnimateButtonScale(menuButtons[index], 1.35f);
+        for (int i = 0; i < menuButtons.Length; i++)
+        {
+            if (menuButtons[i] == null) continue;
+            // Không DOKill toàn bộ để tránh ngắt quãng DOAnchorPosX của Mode 1 ở trên
+            menuButtons[i].DOScale(menuButtons[i].localScale, 0);
+
+            if (i == index)
+            {
+                if (buttonImages[i] != null) buttonImages[i].sprite = frameSelected;
+                if (buttonTexts[i] != null) buttonTexts[i].color = Color.white;
+
+                menuButtons[i].DOAnchorPosY(69f, 0.25f).SetEase(Ease.OutBack);
+                menuButtons[i].DOScale(1.374428f, 0.25f).SetEase(Ease.OutBack);
+            }
+            else
+            {
+                if (buttonImages[i] != null) buttonImages[i].sprite = frameUnselected;
+
+                if (buttonTexts[i] != null)
+                {
+                    Color unselectedColor;
+                    ColorUtility.TryParseHtmlString("#CCABFC", out unselectedColor);
+                    buttonTexts[i].color = unselectedColor;
+                }
+
+                menuButtons[i].DOAnchorPosY(22f, 0.25f);
+                menuButtons[i].DOScale(1.1591f, 0.25f);
+            }
+        }
 
         if (target == null || currentPanel == target) return;
-
         previousModePanel = target;
         HandleTransition(target);
     }
+
+    // Các hàm còn lại giữ nguyên...
+    public void ShowAccount() { SwitchToExtra(panelAccount, btnAccount, 1.6187f); }
+    public void ShowSetting() { SwitchToExtra(panelSetting, btnSetting, 1.0f); }
 
     private void SwitchToExtra(CanvasGroup target, RectTransform btn, float scale)
     {
@@ -96,12 +134,10 @@ public class MenuManager : MonoBehaviour
             oldPanel.DOFade(0, fadeDuration);
             oldPanel.transform.DOScale(0.8f, fadeDuration).OnComplete(() => oldPanel.gameObject.SetActive(false));
         }
-
         target.gameObject.SetActive(true);
         target.DOFade(1, fadeDuration);
         target.transform.localScale = Vector3.one * 0.8f;
         target.transform.DOScale(Vector3.one, fadeDuration).SetEase(Ease.OutBack);
-
         currentPanel = target;
     }
 
@@ -109,7 +145,6 @@ public class MenuManager : MonoBehaviour
     {
         if (currentPanel == null) return;
         CanvasGroup closingPanel = currentPanel;
-
         closingPanel.DOFade(0, fadeDuration);
         closingPanel.transform.DOScale(0.8f, fadeDuration).OnComplete(() => {
             closingPanel.gameObject.SetActive(false);
@@ -122,7 +157,6 @@ public class MenuManager : MonoBehaviour
     {
         if (btn == null) return;
         btn.DOKill(true);
-        btn.DOScale(Vector3.one * targetScale, 0.2f); // Đổi sang DOScale mượt mà hơn
-        btn.DOPunchScale(new Vector3(0.1f, 0.1f, 0), 0.25f, 10, 1);
+        btn.DOScale(Vector3.one * targetScale, 0.2f);
     }
 }
