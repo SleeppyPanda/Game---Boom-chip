@@ -20,4 +20,7 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/Mode3GamePlay.unity
     guid: 7e9ee05256853ee45907ba653cbe14f9
+  - enabled: 1
+    path: Assets/Scenes/BoomDice.unity
+    guid: 27b74f5e02bac28479627de5c62d0549
   m_configObjects: {}

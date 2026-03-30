@@ -15,7 +15,7 @@ public class MenuManager : MonoBehaviour
     public CanvasGroup panelSetting;
 
     [Header("Danh sách các Transform của Button")]
-    public RectTransform[] menuButtons; // Index 0: Mode 1, 1: Mode 2, 2: Mode 3
+    public RectTransform[] menuButtons;
     public RectTransform btnAccount;
     public RectTransform btnSetting;
 
@@ -35,6 +35,8 @@ public class MenuManager : MonoBehaviour
 
     void Start()
     {
+        DOTween.KillAll();
+
         if (AudioManager.Instance != null)
         {
             AudioManager.Instance.PlayMusic("background_01");
@@ -62,87 +64,63 @@ public class MenuManager : MonoBehaviour
     private void InitPanel(CanvasGroup cg)
     {
         if (cg == null) return;
+        cg.DOKill();
         cg.alpha = 0;
+        cg.interactable = false;
+        cg.blocksRaycasts = false;
+        cg.transform.localScale = Vector3.one;
         cg.gameObject.SetActive(false);
     }
 
-    // --- HÀM SHOW PANEL (CÓ KIỂM TRA UNLOCK & REMOTE CONFIG) ---
     public void ShowPanel1()
     {
         if (currentPanel == panelMode2) ClosePanelMode2();
         else if (currentPanel == panelMode3) ClosePanelMode3();
 
         SwitchToMode(panelMode1, 0, false);
-
-        // Firebase: Tracking vào màn hình chính (Mode 1) sử dụng API mới LogModeEnter
-        if (FirebaseManager.Instance != null) FirebaseManager.Instance.LogModeEnter(1);
     }
+
+    /// <summary>
+    /// Chuyển trực tiếp đến Mode (Dùng cho callback sau khi xem Ads thành công)
+    /// </summary>
+    public void DirectSwitchToMode(int index)
+    {
+        if (index == 1) SwitchToMode(panelMode2, 1, true);
+        else if (index == 2) SwitchToMode(panelMode3, 2, true);
+    }
+
+    // --- Cập nhật logic mở khóa cho các Button trên giao diện ---
 
     public void ShowPanel2WithAvatar(Sprite avatar)
     {
-        bool isConfigOpen = AdsManager.Instance != null ? AdsManager.Instance.IsShowRwChallenge : true;
-
-        if (!isConfigOpen)
+        // Sử dụng HandleUnlockFlow: Tự động check Remote Config "is_show_rw_challenge"
+        if (UnlockSystemManager.Instance != null)
         {
-            SwitchToMode(panelMode2, 1, true);
-        }
-        else
-        {
-            CheckUnlockAndShow("Mode2", panelMode2, 1, avatar, "Challenge");
+            UnlockSystemManager.Instance.HandleUnlockFlow("Mode2", "is_show_rw_challenge", avatar, () => {
+                SwitchToMode(panelMode2, 1, true);
+            });
         }
     }
 
     public void ShowPanel3WithAvatar(Sprite avatar)
     {
-        bool isConfigOpen = AdsManager.Instance != null ? AdsManager.Instance.IsShowRwPrediction : true;
-
-        if (!isConfigOpen)
+        // Sử dụng HandleUnlockFlow: Tự động check Remote Config "is_show_rw_prediction"
+        if (UnlockSystemManager.Instance != null)
         {
-            SwitchToMode(panelMode3, 2, true);
-        }
-        else
-        {
-            CheckUnlockAndShow("Mode3", panelMode3, 2, avatar, "Prediction");
-        }
-    }
-
-    private void CheckUnlockAndShow(string itemID, CanvasGroup targetPanel, int index, Sprite avatarSprite, string adType)
-    {
-        bool isUnlocked = UnlockSystemManager.Instance != null && UnlockSystemManager.Instance.IsItemUnlocked(itemID);
-
-        if (isUnlocked)
-        {
-            SwitchToMode(targetPanel, index, true);
-        }
-        else
-        {
-            if (UnlockSystemManager.Instance != null)
-            {
-                UnlockSystemManager.Instance.OpenUnlockPopup(itemID, avatarSprite, () => {
-                    SwitchToMode(targetPanel, index, true);
-                });
-            }
-            else
-            {
-                SwitchToMode(targetPanel, index, true);
-            }
+            UnlockSystemManager.Instance.HandleUnlockFlow("Mode3", "is_show_rw_prediction", avatar, () => {
+                SwitchToMode(panelMode3, 2, true);
+            });
         }
     }
 
     private void SwitchToMode(CanvasGroup target, int index, bool isPopup)
     {
+        if (target == null) return;
         HandleButtonAnimationOnly(index);
-
-        if (target == null || currentPanel == target) return;
-
         HandleTransition(target, !isPopup);
         currentPanel = target;
-
-        // Firebase: Tracking count_mode_xx (xx là 01, 02, 03...) sử dụng API mới LogModeEnter
-        if (FirebaseManager.Instance != null) FirebaseManager.Instance.LogModeEnter(index + 1);
     }
 
-    // --- HÀM ĐÓNG POPUP ---
     public void ClosePanelMode2() { CloseSpecificPopup(panelMode2); }
     public void ClosePanelMode3() { CloseSpecificPopup(panelMode3); }
 
@@ -150,24 +128,34 @@ public class MenuManager : MonoBehaviour
     {
         if (popup == null) return;
         popup.DOKill();
+        popup.interactable = false;
+        popup.blocksRaycasts = false;
+
         popup.DOFade(0, fadeDuration);
         popup.transform.DOScale(0.8f, fadeDuration).OnComplete(() => {
             popup.gameObject.SetActive(false);
             currentPanel = panelMode1;
+
+            panelMode1.gameObject.SetActive(true);
+            panelMode1.DOKill();
+            panelMode1.transform.localScale = Vector3.one;
+            panelMode1.alpha = 1;
+            panelMode1.interactable = true;
+            panelMode1.blocksRaycasts = true;
+
             HandleButtonAnimationOnly(0);
         });
     }
 
-    // --- HÀM CHUYỂN SCENE ---
     public void StartGameMode2() { LoadGameplay(2, sceneNameMode2); }
     public void StartGameMode3() { LoadGameplay(3, sceneNameMode3); }
 
     private void LoadGameplay(int mode, string sceneName)
     {
         PlayerPrefs.SetInt("SelectedMode", mode);
-        PlayerPrefs.SetInt("CurrentLevel", 1);
         PlayerPrefs.Save();
 
+        // Tích hợp Interstitial khi bắt đầu game
         if (AdsManager.Instance != null)
         {
             AdsManager.Instance.ShowInterstitial("is_show_inter_p1_choose", () => {
@@ -177,11 +165,11 @@ public class MenuManager : MonoBehaviour
         }
         else
         {
+            DOTween.KillAll();
             SceneManager.LoadScene(sceneName);
         }
     }
 
-    // --- LOGIC ANIMATION BOTTOM BAR ---
     public void HandleButtonAnimationOnly(int index)
     {
         if (menuButtons.Length > 0 && menuButtons[0] != null)
@@ -194,34 +182,29 @@ public class MenuManager : MonoBehaviour
         for (int i = 0; i < menuButtons.Length; i++)
         {
             if (menuButtons[i] == null) continue;
-
             if (i == index)
             {
                 if (buttonImages[i] != null) buttonImages[i].sprite = frameSelected;
                 if (buttonTexts[i] != null) buttonTexts[i].color = Color.white;
-
                 menuButtons[i].DOAnchorPosY(200f, 0.25f).SetEase(Ease.OutBack);
-                menuButtons[i].DOScale(1.374428f, 0.25f).SetEase(Ease.OutBack);
+                menuButtons[i].DOScale(1.37f, 0.25f).SetEase(Ease.OutBack);
             }
             else
             {
                 if (buttonImages[i] != null) buttonImages[i].sprite = frameUnselected;
-
                 if (buttonTexts[i] != null)
                 {
                     Color unselectedColor;
                     ColorUtility.TryParseHtmlString("#CCABFC", out unselectedColor);
                     buttonTexts[i].color = unselectedColor;
                 }
-
                 menuButtons[i].DOAnchorPosY(150f, 0.25f);
-                menuButtons[i].DOScale(1.1591f, 0.25f);
+                menuButtons[i].DOScale(1.15f, 0.25f);
             }
         }
     }
 
-    // --- ACCOUNT & SETTING ---
-    public void ShowAccount() { SwitchToExtra(panelAccount, btnAccount, 1.6187f); }
+    public void ShowAccount() { SwitchToExtra(panelAccount, btnAccount, 1.6f); }
     public void ShowSetting() { SwitchToExtra(panelSetting, btnSetting, 1.0f); }
 
     private void SwitchToExtra(CanvasGroup target, RectTransform btn, float scale)
@@ -233,32 +216,53 @@ public class MenuManager : MonoBehaviour
 
     private void HandleTransition(CanvasGroup target, bool hideOld)
     {
-        if (hideOld && currentPanel != null)
+        if (hideOld && currentPanel != null && currentPanel != target)
         {
             CanvasGroup old = currentPanel;
             old.DOKill();
+            old.interactable = false;
+            old.blocksRaycasts = false;
             old.DOFade(0, fadeDuration);
             old.transform.DOScale(0.8f, fadeDuration).OnComplete(() => old.gameObject.SetActive(false));
         }
 
         target.gameObject.SetActive(true);
         target.DOKill();
-        target.DOFade(1, fadeDuration);
+        target.alpha = 0;
         target.transform.localScale = Vector3.one * 0.8f;
-        target.transform.DOScale(Vector3.one, fadeDuration).SetEase(Ease.OutBack);
+
+        target.DOFade(1, fadeDuration);
+        target.transform.DOScale(Vector3.one, fadeDuration).SetEase(Ease.OutBack).OnComplete(() => {
+            target.interactable = true;
+            target.blocksRaycasts = true;
+        });
+
         currentPanel = target;
     }
 
     public void CloseExtraPanel()
     {
-        if (currentPanel == null) return;
+        if (currentPanel == null || currentPanel == panelMode1) return;
+
         CanvasGroup closingPanel = currentPanel;
         closingPanel.DOKill();
+        closingPanel.interactable = false;
+        closingPanel.blocksRaycasts = false;
+
+        AnimateButtonScale(btnAccount, 1.0f);
+        AnimateButtonScale(btnSetting, 1.0f);
+
         closingPanel.DOFade(0, fadeDuration).OnComplete(() => {
             closingPanel.gameObject.SetActive(false);
+
             currentPanel = panelMode1;
             panelMode1.gameObject.SetActive(true);
-            panelMode1.DOFade(1, fadeDuration);
+            panelMode1.DOKill();
+            panelMode1.transform.localScale = Vector3.one;
+            panelMode1.DOFade(1, fadeDuration).OnComplete(() => {
+                panelMode1.interactable = true;
+                panelMode1.blocksRaycasts = true;
+            });
         });
     }
 
