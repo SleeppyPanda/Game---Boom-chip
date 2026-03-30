@@ -30,6 +30,10 @@ public class MenuManager : MonoBehaviour
 
     void Start()
     {
+        if (AudioManager.Instance != null)
+        {
+            AudioManager.Instance.PlayMusic("background_01");
+        }
         buttonImages = new Image[menuButtons.Length];
         buttonTexts = new TextMeshProUGUI[menuButtons.Length];
 

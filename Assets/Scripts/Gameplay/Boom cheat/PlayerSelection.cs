@@ -8,7 +8,10 @@ public class PlayerSelection : MonoBehaviour
 
     [Header("Cấu hình hiển thị")]
     public Sprite selectedSprite;
-    public Sprite defaultSprite;
+
+    // Tách riêng 2 Sprite mặc định để phù hợp với màu sắc từng bảng
+    public Sprite defaultSpritePhase1;
+    public Sprite defaultSpritePhase2;
 
     private BoomChipManager manager;
 
@@ -16,7 +19,7 @@ public class PlayerSelection : MonoBehaviour
     {
         manager = GetComponent<BoomChipManager>();
 
-        // --- CẬP NHẬT: Nhận Sprite từ Settings nếu có ---
+        // Ưu tiên dùng Sprite tùy chỉnh từ Settings nếu người chơi đã cài đặt
         if (BoomChipSettings.customHitSprite != null)
         {
             selectedSprite = BoomChipSettings.customHitSprite;
@@ -25,23 +28,26 @@ public class PlayerSelection : MonoBehaviour
 
     public void HandleTileClick(int tileIndex, TileButton tile)
     {
-        // Xác định Player nào đang thực hiện chọn dựa trên Phase
-        int currentPlayerID = (manager.currentPhase == GamePhase.Phase1) ? 1 : 2;
-
-        // Chỉ cho phép chọn nếu đúng Phase 1 hoặc Phase 2
+        // Chỉ cho phép chọn trong Phase 1 hoặc Phase 2
         if (manager.currentPhase != GamePhase.Phase1 && manager.currentPhase != GamePhase.Phase2) return;
 
+        // Xác định Player và Sprite mặc định tương ứng
+        int currentPlayerID = (manager.currentPhase == GamePhase.Phase1) ? 1 : 2;
         List<int> targetList = (currentPlayerID == 1) ? p1SelectedTiles : p2SelectedTiles;
+        Sprite currentDefault = (currentPlayerID == 1) ? defaultSpritePhase1 : defaultSpritePhase2;
 
         if (targetList.Contains(tileIndex))
         {
-            // Nếu đã chọn rồi thì bỏ chọn (Toggle)
+            // --- HÀNH ĐỘNG: BỎ CHỌN (TOGGLE OFF) ---
             targetList.Remove(tileIndex);
-            tile.SetVisual(defaultSprite);
+
+            // Trả về đúng màu sắc mặc định của bảng đó
+            tile.SetVisual(currentDefault);
         }
         else
         {
-            // Kiểm tra giới hạn tối đa (ví dụ: 3 quả)
+            // --- HÀNH ĐỘNG: CHỌN MỚI (TOGGLE ON) ---
+            // Kiểm tra giới hạn tối đa (thường là 3)
             if (targetList.Count < GameConstants.MAX_SELECTIONS)
             {
                 targetList.Add(tileIndex);
@@ -49,7 +55,7 @@ public class PlayerSelection : MonoBehaviour
             }
         }
 
-        // Cập nhật trạng thái hiển thị nút "Next" trên UI
+        // Cập nhật trạng thái hiển thị nút "Next" trên UI của Manager
         manager.UpdateButtonNextVisibility();
     }
 

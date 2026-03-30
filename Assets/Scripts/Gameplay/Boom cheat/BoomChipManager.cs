@@ -45,14 +45,20 @@ public class BoomChipManager : MonoBehaviour
     public GameObject p2Crown;
     public TextMeshProUGUI p1HitCounterText;
     public TextMeshProUGUI p2HitCounterText;
-    // Cập nhật: Thêm Image để hiển thị đúng loại bom người chơi đã chọn
     public Image p1WinBombImage;
     public Image p2WinBombImage;
 
     [Header("Settings & Sprites")]
+    public GameObject panelSetting;
     public Sprite hitSprite;
     public Sprite missSprite;
     public bool winByHittingThree = true;
+
+    [Header("Audio Configuration")]
+    // Bạn có thể đổi tên nhạc nền cho Scene này tại đây trong Inspector
+    public string gameplayMusicName = "backround_02";
+    private string currentHitSound;
+    private string currentMissSound;
 
     private List<int> p1TargetBombs = new List<int>();
     private List<int> p2TargetBombs = new List<int>();
@@ -63,18 +69,10 @@ public class BoomChipManager : MonoBehaviour
     {
         selectionLogic = GetComponent<PlayerSelection>();
 
-        // --- CẬP NHẬT: Nhận dữ liệu truyền từ Selection Scene ---
+        // 1. Cấu hình Sprite từ Settings (Nếu có custom từ người dùng)
         if (BoomChipSettings.customHitSprite != null)
         {
             hitSprite = BoomChipSettings.customHitSprite;
-
-            // Đồng bộ sprite quả bom vào logic lựa chọn (PlayerSelection)
-            if (selectionLogic != null)
-            {
-                selectionLogic.selectedSprite = hitSprite;
-            }
-
-            // Gán sprite vào các icon trên màn hình Win và giữ tỉ lệ
             if (p1WinBombImage != null) SetupWinImage(p1WinBombImage, hitSprite);
             if (p2WinBombImage != null) SetupWinImage(p2WinBombImage, hitSprite);
         }
@@ -83,33 +81,67 @@ public class BoomChipManager : MonoBehaviour
             missSprite = BoomChipSettings.customMissSprite;
 
         winByHittingThree = BoomChipSettings.winByHittingThree;
-        // -------------------------------------------------------
 
+        // 2. Cấu hình âm thanh hiệu ứng (SFX)
+        currentHitSound = !string.IsNullOrEmpty(BoomChipSettings.hitSFXName) ? BoomChipSettings.hitSFXName : "SFX_Bomb_Hit";
+        currentMissSound = !string.IsNullOrEmpty(BoomChipSettings.missSFXName) ? BoomChipSettings.missSFXName : "SFX_Bomb_Miss";
+
+        // 3. Quản lý âm thanh nhạc nền (BGM) cho riêng Scene này
+        if (AudioManager.Instance != null)
+        {
+            AudioManager.Instance.PlayMusic(gameplayMusicName);
+        }
+
+        // 4. Thiết lập trạng thái ban đầu cho UI Panels
         panelPhase1.SetActive(true);
         panelPhase2.SetActive(false);
         panelPhase3.SetActive(false);
         panelAnimation.SetActive(false);
         panelWin.SetActive(false);
+        if (panelSetting != null) panelSetting.SetActive(false);
         if (panelTransition != null) panelTransition.SetActive(false);
 
+        // 5. Ẩn các nút Next và Crown lúc đầu
         if (nextButtonPhase1 != null) nextButtonPhase1.SetActive(false);
         if (nextButtonPhase2 != null) nextButtonPhase2.SetActive(false);
         if (p1Crown != null) p1Crown.SetActive(false);
         if (p2Crown != null) p2Crown.SetActive(false);
 
+        // 6. Khởi tạo hệ thống Gameplay
         InitializeHearts();
         RotatePlayer2TileVisuals();
+        InitBoardSprites();
     }
 
-    // Hàm bổ trợ để thiết lập Image giữ đúng tỷ lệ
+    private void InitBoardSprites()
+    {
+        if (selectionLogic == null) return;
+
+        // Gán sprite mặc định cho bảng P1 (thường là màu Xanh) từ PlayerSelection
+        if (panelPhase1 != null && selectionLogic.defaultSpritePhase1 != null)
+        {
+            TileButton[] tilesP1 = panelPhase1.GetComponentsInChildren<TileButton>(true);
+            foreach (var t in tilesP1) t.SetVisual(selectionLogic.defaultSpritePhase1);
+        }
+
+        // Gán sprite mặc định cho bảng P2 (thường là màu Đỏ) từ PlayerSelection
+        if (panelPhase2 != null && selectionLogic.defaultSpritePhase2 != null)
+        {
+            TileButton[] tilesP2 = panelPhase2.GetComponentsInChildren<TileButton>(true);
+            foreach (var t in tilesP2) t.SetVisual(selectionLogic.defaultSpritePhase2);
+        }
+    }
+
     private void SetupWinImage(Image img, Sprite sp)
     {
         img.sprite = sp;
-        img.preserveAspect = true; // Giữ đúng tỷ lệ định dạng cho mọi chỗ được gán
+        img.preserveAspect = true;
     }
 
     public void NextPhase()
     {
+        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX("SFX_Click");
+
         if (currentPhase == GamePhase.Phase1)
         {
             currentPhase = GamePhase.Phase2;
@@ -235,6 +267,9 @@ public class BoomChipManager : MonoBehaviour
         string winnerName = (winnerID == 0) ? "PLAYER 1" : "PLAYER 2";
         TextMeshProUGUI animText = panelAnimation.GetComponentInChildren<TextMeshProUGUI>();
         if (animText != null) animText.text = "<color=yellow>" + winnerName + "</color> GO FIRST!";
+
+        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX("SFX_StartTurn");
+
         yield return new WaitForSeconds(1.5f);
         panelAnimation.SetActive(false);
         UpdateBoardVisuals();
@@ -245,17 +280,32 @@ public class BoomChipManager : MonoBehaviour
         if (currentPhase != GamePhase.Phase3) return;
         if (isP1Turn && boardOwnerID != 1) return;
         if (!isP1Turn && boardOwnerID != 2) return;
+
         List<int> targetList = (isP1Turn) ? p1TargetBombs : p2TargetBombs;
+
         if (targetList.Contains(tileIndex))
         {
             tile.SetVisual(hitSprite);
             if (isP1Turn) p1HitCount++; else p2HitCount++;
             UpdateHeartsUI(isP1Turn ? 1 : 2);
+
+            if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(currentHitSound);
+            GlobalSettings.PlayVibrate();
         }
-        else tile.SetVisual(missSprite);
+        else
+        {
+            tile.SetVisual(missSprite);
+            if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(currentMissSound);
+        }
+
         tile.SetInteractable(false);
         CheckWinCondition();
-        if (!panelWin.activeSelf) { isP1Turn = !isP1Turn; UpdateBoardVisuals(); }
+
+        if (!panelWin.activeSelf)
+        {
+            isP1Turn = !isP1Turn;
+            UpdateBoardVisuals();
+        }
     }
 
     private void UpdateHeartsUI(int playerID)
@@ -302,6 +352,9 @@ public class BoomChipManager : MonoBehaviour
     void ShowWinScreen(int winnerID)
     {
         panelWin.SetActive(true);
+        GlobalSettings.PlayVibrate();
+        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX("SFX_Win");
+
         if (p1Crown != null) p1Crown.SetActive(winnerID == 1);
         if (p2Crown != null) p2Crown.SetActive(winnerID == 2);
         if (p1HitCounterText != null) p1HitCounterText.text = "x " + p1HitCount;
@@ -326,6 +379,11 @@ public class BoomChipManager : MonoBehaviour
 
     public void HandleTileClick(int tileIndex, TileButton tile)
     {
+        if (currentPhase == GamePhase.Phase1 || currentPhase == GamePhase.Phase2)
+        {
+            // Âm thanh khi chọn/bỏ chọn bôm
+            if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(currentHitSound);
+        }
         if (selectionLogic != null) selectionLogic.HandleTileClick(tileIndex, tile);
     }
 
@@ -338,6 +396,27 @@ public class BoomChipManager : MonoBehaviour
             nextButtonPhase2.SetActive(selectionLogic.IsSelectionComplete(2));
     }
 
-    public void Rematch() => SceneManager.LoadScene(SceneManager.GetActiveScene().name);
-    public void GoToSelection() => SceneManager.LoadScene("SelectScene");
+    public void OpenSetting()
+    {
+        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX("SFX_Click");
+        if (panelSetting != null) panelSetting.SetActive(true);
+    }
+
+    public void CloseSetting()
+    {
+        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX("SFX_Click");
+        if (panelSetting != null) panelSetting.SetActive(false);
+    }
+
+    public void Rematch()
+    {
+        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX("SFX_Click");
+        SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+    }
+
+    public void GoToSelection()
+    {
+        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX("SFX_Click");
+        SceneManager.LoadScene("SelectScene");
+    }
 }
