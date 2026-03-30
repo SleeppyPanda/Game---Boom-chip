@@ -1,16 +1,17 @@
 ﻿using UnityEngine;
 using System.Collections;
 using UnityEngine.UI;
-using TMPro; // Thêm thư viện TextMeshPro
+using TMPro;
 
 public class CoinFlipController : MonoBehaviour
 {
     private Animator animator;
     private Image coinImage;
     private BoomChipManager manager;
+    private RectTransform rectTransform;
 
     [Header("UI Elements")]
-    public TextMeshProUGUI flipStatusText; // Kéo Text trong Panel Animation vào đây
+    public TextMeshProUGUI flipStatusText;
 
     [Header("Sprites Kết Quả")]
     public Sprite p1ResultSprite;
@@ -20,13 +21,13 @@ public class CoinFlipController : MonoBehaviour
     {
         animator = GetComponent<Animator>();
         coinImage = GetComponent<Image>();
+        rectTransform = GetComponent<RectTransform>(); // Lấy RectTransform để xử lý rotation chính xác trong UI
     }
 
     public void StartCoinFlip()
     {
         gameObject.SetActive(true);
 
-        // 1. Hiển thị dòng chữ đang quay ngay lập tức
         if (flipStatusText != null)
         {
             flipStatusText.text = "FLIPPING COIN...";
@@ -35,7 +36,7 @@ public class CoinFlipController : MonoBehaviour
         if (animator != null)
         {
             animator.enabled = true;
-            animator.SetTrigger("StartFlip"); // Kích hoạt animation quay vòng lặp
+            animator.SetTrigger("StartFlip");
         }
 
         StartCoroutine(FlipRoutine());
@@ -43,10 +44,9 @@ public class CoinFlipController : MonoBehaviour
 
     private IEnumerator FlipRoutine()
     {
-        // 1. Cập nhật Text ngay khi bắt đầu (như đã thảo luận)
         if (flipStatusText != null) flipStatusText.text = "FLIPPING COIN...";
 
-        // 2. Cho phép quay trong 2 giây
+        // 1. Cho phép quay trong 2 giây
         yield return new WaitForSeconds(2.0f);
 
         int winnerID = Random.Range(0, 2);
@@ -55,12 +55,19 @@ public class CoinFlipController : MonoBehaviour
         {
             animator.SetTrigger("StopFlip");
 
-            // QUAN TRỌNG: Vì bật "Has Exit Time", bạn cần chờ một khoảng thời gian 
-            // đủ để Animator chạy nốt vòng quay cuối và chuyển về trạng thái nghỉ.
-            // Khoảng 0.5s đến 0.8s thường là con số an toàn.
+            // Chờ Animator hoàn tất vòng quay cuối (Exit Time)
             yield return new WaitForSeconds(0.6f);
 
+            // Tắt Animator để quyền điều khiển transform quay về script
             animator.enabled = false;
+        }
+
+        // 2. GHI ĐÈ ROTATION: Đưa về trạng thái phẳng (0,0,0)
+        // Điều này cực kỳ quan trọng để tránh đồng xu bị đứng ở góc 90 độ (không thấy hình)
+        if (rectTransform != null)
+        {
+            rectTransform.localRotation = Quaternion.identity;
+            // Quaternion.identity tương đương với Rotation(0, 0, 0)
         }
 
         // 3. HIỂN THỊ KẾT QUẢ MẶT TĨNH
@@ -70,7 +77,7 @@ public class CoinFlipController : MonoBehaviour
             coinImage.color = Color.white;
         }
 
-        // 4. Giữ mặt tĩnh lại một chút để người chơi nhận diện P1 hay P2 thắng tung xu
+        // 4. Giữ mặt tĩnh lại một chút để người chơi nhận diện
         yield return new WaitForSeconds(0.5f);
 
         if (manager == null) manager = FindFirstObjectByType<BoomChipManager>();

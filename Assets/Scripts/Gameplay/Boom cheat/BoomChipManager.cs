@@ -178,7 +178,7 @@ public class BoomChipManager : MonoBehaviour
         yield return new WaitForSeconds(1.0f);
 
         elapsed = 0;
-        float outDuration = 2.5f; // Chỉnh lên 2.5s theo yêu cầu
+        float outDuration = 2.5f;
 
         while (elapsed < outDuration)
         {
@@ -198,7 +198,12 @@ public class BoomChipManager : MonoBehaviour
 
         currentPhase = GamePhase.Animation;
         CoinFlipController flip = FindFirstObjectByType<CoinFlipController>();
-        if (flip != null) flip.StartCoinFlip();
+        if (flip != null)
+        {
+            // Reset rotation đồng xu về 0 trước khi bắt đầu tung để tránh lỗi góc quay
+            flip.transform.localRotation = Quaternion.identity;
+            flip.StartCoinFlip();
+        }
     }
 
     public void OnCoinFlipFinished(int winnerID)
@@ -207,7 +212,6 @@ public class BoomChipManager : MonoBehaviour
         currentPhase = GamePhase.Phase3;
         isP1Turn = (winnerID == 0);
 
-        // P1 bắn tìm bom trong danh sách bom P2 đã đặt
         p1TargetBombs = new List<int>(selectionLogic.p2SelectedTiles);
         p2TargetBombs = new List<int>(selectionLogic.p1SelectedTiles);
 
@@ -217,6 +221,10 @@ public class BoomChipManager : MonoBehaviour
     private IEnumerator ShowTurnAndStartGame(int winnerID)
     {
         panelAnimation.SetActive(true);
+
+        // Reset rotation của Text hoặc Image kết quả nếu cần để hiển thị rõ nhất
+        panelAnimation.transform.localRotation = Quaternion.identity;
+
         string winnerName = (winnerID == 0) ? "PLAYER 1" : "PLAYER 2";
         TextMeshProUGUI animText = panelAnimation.GetComponentInChildren<TextMeshProUGUI>();
         if (animText != null) animText.text = "<color=yellow>" + winnerName + "</color> GO FIRST!";
@@ -232,11 +240,9 @@ public class BoomChipManager : MonoBehaviour
     {
         if (currentPhase != GamePhase.Phase3) return;
 
-        // ĐÃ SỬA: Lượt P1 (isP1Turn = true) thì bảng tương tác phải là bảng P1 sáng (boardOwnerID 1)
         if (isP1Turn && boardOwnerID != 1) return;
         if (!isP1Turn && boardOwnerID != 2) return;
 
-        // P1 bắn trúng danh sách bom của P2
         List<int> targetList = (isP1Turn) ? p1TargetBombs : p2TargetBombs;
 
         if (targetList.Contains(tileIndex))
@@ -273,7 +279,6 @@ public class BoomChipManager : MonoBehaviour
 
     void UpdateBoardVisuals()
     {
-        // ĐÃ SỬA: Lượt ai bảng đó sáng rõ (1.0) và nhấn được (interactable)
         if (p1BoardArea != null)
         {
             p1BoardArea.alpha = isP1Turn ? 1.0f : 0.6f;
