@@ -402,6 +402,7 @@ GameObject:
   - component: {fileID: 8132798193751247889}
   - component: {fileID: 8531960248570877621}
   - component: {fileID: 5878803492780142918}
+  - component: {fileID: 3905292519057869794}
   m_Layer: 5
   m_Name: No Internet
   m_TagString: Untagged
@@ -482,3 +483,17 @@ CanvasGroup:
   m_Interactable: 1
   m_BlocksRaycasts: 1
   m_IgnoreParentGroups: 0
+--- !u!114 &3905292519057869794
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8636539164337732840}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b2d07de774163b748a506053f41444f2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  panel: {fileID: 8636539164337732840}
+  retryButton: {fileID: 8461270778573690827}

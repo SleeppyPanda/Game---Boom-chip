@@ -1,17 +1,23 @@
 ﻿using UnityEngine;
 using UnityEngine.UI;
+using System.Collections;
 
-public partial class TileButton : MonoBehaviour
+public class TileButton : MonoBehaviour
 {
+    [Header("Cấu hình ô")]
     public int tileIndex;
+
     [Header("1 cho bảng P1, 2 cho bảng P2")]
-    public int ownerID; // ID để xác định ô này thuộc về bàn cờ của ai (PlayerID)
+    public int ownerID; // Xác định ô này thuộc về "người chơi" nào (Chủ nhà)
+
+    [Header("ID bảng (Thường giống ownerID)")]
+    public int boardID; // Xác định ô này nằm trên "bàn cờ" vật lý nào (1 hoặc 2)
 
     private Button button;
     private Image buttonImage;
     private BoomChipManager manager;
 
-    // Lưu lại hình ảnh gốc (ví dụ: hình ô gạch chưa lật hoặc hình mặc định)
+    // Lưu lại hình ảnh gốc (ô gạch chưa lật)
     private Sprite originalSprite;
 
     void Awake()
@@ -19,7 +25,7 @@ public partial class TileButton : MonoBehaviour
         button = GetComponent<Button>();
         buttonImage = GetComponent<Image>();
 
-        // Lưu lại hình ảnh mặc định trong Editor/Prefab ngay khi Awake
+        // Lưu lại hình ảnh mặc định ngay khi Awake
         if (buttonImage != null)
         {
             originalSprite = buttonImage.sprite;
@@ -41,7 +47,7 @@ public partial class TileButton : MonoBehaviour
 
     private void ApplyInitialSkin()
     {
-        // Đảm bảo lúc bắt đầu ô hiện hình ảnh mặc định (originalSprite)
+        // Đảm bảo lúc bắt đầu ô hiện hình ảnh mặc định
         if (buttonImage != null && originalSprite != null)
         {
             buttonImage.sprite = originalSprite;
@@ -67,10 +73,12 @@ public partial class TileButton : MonoBehaviour
         // --- GIAI ĐOẠN CHIẾN ĐẤU (Phase 3) ---
         else if (manager.currentPhase == GamePhase.Phase3)
         {
-            // Logic tách biệt: 
-            // ownerID đóng vai trò xác định bảng của người chơi bị tác động vật lý.
-            // manager.ExecuteTurn sẽ kiểm tra lượt (isP1Turn) và so khớp với ownerID này.
-            manager.ExecuteTurn(tileIndex, this, ownerID);
+            // Truyền đủ 4 tham số sang Manager để xử lý logic "Sân ai hiện skin người đó"
+            // tileIndex: vị trí ô
+            // this: chính component này để đổi sprite
+            // ownerID: để lấy Skin của chủ nhà
+            // boardID: để biết kiểm tra túi bom của ai (đã đảo)
+            manager.ExecuteTurn(tileIndex, this, ownerID, boardID);
         }
     }
 
@@ -93,11 +101,10 @@ public partial class TileButton : MonoBehaviour
     }
 
     /// <summary>
-    /// Reset ô về trạng thái ban đầu để chơi ván mới hoặc reset phase
+    /// Reset ô về trạng thái ban đầu để chơi ván mới
     /// </summary>
     public void ResetTile(Sprite defaultSprite = null)
     {
-        // Nếu defaultSprite truyền vào là null, SetVisual sẽ tự lấy originalSprite
         SetVisual(defaultSprite);
         SetInteractable(true);
     }

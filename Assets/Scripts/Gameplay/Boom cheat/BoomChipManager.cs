@@ -26,7 +26,6 @@ public class BoomChipManager : MonoBehaviour
     public Image avatarImageP1;
     public TextMeshProUGUI nameTextP2;
     public Image avatarImageP2;
-    // Đã loại bỏ List<Sprite> allAvatars vì dùng chung từ AccountManager
 
     [Header("Transition Elements (Strips)")]
     public RectTransform leftStrip;
@@ -77,8 +76,9 @@ public class BoomChipManager : MonoBehaviour
     public string p2HitSFX;
     public string globalMissSFX;
 
-    private List<int> p1TargetBombs = new List<int>();
-    private List<int> p2TargetBombs = new List<int>();
+    // Dữ liệu bom đã được đảo để phục vụ Phase 3
+    private List<int> board1TargetBombs = new List<int>();
+    private List<int> board2TargetBombs = new List<int>();
     private int p1HitCount = 0;
     private int p2HitCount = 0;
 
@@ -112,7 +112,6 @@ public class BoomChipManager : MonoBehaviour
 
     private void UpdatePlayerInfoUI()
     {
-        // Sử dụng AccountManager.Instance để lấy dữ liệu thay vì PlayerPrefs trực tiếp
         if (AccountManager.Instance != null)
         {
             if (nameTextP1 != null) nameTextP1.text = AccountManager.Instance.GetPlayerName(1);
@@ -123,7 +122,6 @@ public class BoomChipManager : MonoBehaviour
         }
         else
         {
-            // Fallback nếu không tìm thấy Instance (để tránh lỗi trong Editor)
             if (nameTextP1 != null) nameTextP1.text = PlayerPrefs.GetString("PlayerName_P1", "P1");
             if (nameTextP2 != null) nameTextP2.text = PlayerPrefs.GetString("PlayerName_P2", "P2");
         }
@@ -200,7 +198,7 @@ public class BoomChipManager : MonoBehaviour
                 AdsManager.Instance.ShowMREC("is_show_mrec_p2_choose");
                 break;
             case GamePhase.Phase3:
-                AdsManager.Instance.ShowMREC("is_show_mrec_gameplay");
+                AdsManager.Instance.HideMREC();
                 break;
             default:
                 AdsManager.Instance.HideMREC();
@@ -303,8 +301,9 @@ public class BoomChipManager : MonoBehaviour
         currentPhase = GamePhase.Phase3;
         isP1Turn = (winnerID == 0);
 
-        p1TargetBombs = new List<int>(selectionLogic.p1SelectedTiles);
-        p2TargetBombs = new List<int>(selectionLogic.p2SelectedTiles);
+        // ĐẢO BOM: Bảng 1 chứa bom P2 đặt, Bảng 2 chứa bom P1 đặt
+        board1TargetBombs = new List<int>(selectionLogic.p2SelectedTiles);
+        board2TargetBombs = new List<int>(selectionLogic.p1SelectedTiles);
 
         StartCoroutine(ShowTurnAndStartGame(winnerID));
     }
@@ -327,22 +326,26 @@ public class BoomChipManager : MonoBehaviour
         UpdateBoardVisuals();
     }
 
-    public void ExecuteTurn(int tileIndex, TileButton tile, int boardOwnerID)
+    public void ExecuteTurn(int tileIndex, TileButton tile, int boardOwnerID, int boardID)
     {
-        if (currentPhase != GamePhase.Phase3) return;
+        if (currentPhase != GamePhase.Phase3 || panelWin.activeSelf) return;
 
+        // Bảng của ai người nấy mới được click (P1 click bảng P1, P2 click bảng P2)
         if (isP1Turn && boardOwnerID != 1) return;
         if (!isP1Turn && boardOwnerID != 2) return;
 
-        List<int> targetList = isP1Turn ? p1TargetBombs : p2TargetBombs;
+        // Lấy danh sách bom dựa trên boardID (vị trí bảng)
+        List<int> targetList = (boardID == 1) ? board1TargetBombs : board2TargetBombs;
 
         if (targetList.Contains(tileIndex))
         {
-            Sprite mySkin = (boardOwnerID == 1) ? p1SkinSprite : p2SkinSprite;
-            tile.SetVisual(mySkin);
+            // VISUAL: Sân của ai hiện skin người đó (Chủ nhà)
+            Sprite ownerSkin = (boardOwnerID == 1) ? p1SkinSprite : p2SkinSprite;
+            tile.SetVisual(ownerSkin);
 
-            if (isP1Turn) p1HitCount++; else p2HitCount++;
-            UpdateHeartsUI(isP1Turn ? 1 : 2);
+            // Cộng điểm cho chủ sân (vì họ "tìm thấy" bom trên sân mình)
+            if (boardOwnerID == 1) p1HitCount++; else p2HitCount++;
+            UpdateHeartsUI(boardOwnerID);
 
             string sound = (boardOwnerID == 1) ? p1HitSFX : p2HitSFX;
             if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(sound);
@@ -421,7 +424,6 @@ public class BoomChipManager : MonoBehaviour
 
     void ShowWinScreen(int winnerID)
     {
-        // Ghi nhận người thắng vào AccountManager để Win Panel hiển thị
         AccountManager.SetWinResult(winnerID);
 
         panelWin.SetActive(true);
@@ -470,8 +472,8 @@ public class BoomChipManager : MonoBehaviour
         }
         else if (currentPhase == GamePhase.Phase3)
         {
-            int owner = tile.ownerID;
-            ExecuteTurn(tileIndex, tile, owner);
+            // Ở Phase 3, dùng boardOwnerID và boardID để xử lý turn
+            ExecuteTurn(tileIndex, tile, tile.ownerID, tile.boardID);
         }
     }
 
@@ -522,13 +524,11 @@ public class BoomChipManager : MonoBehaviour
         if (panelSetting != null)
         {
             panelSetting.SetActive(false);
-            if (panelWin.activeSelf && AdsManager.Instance != null)
-            {
-                AdsManager.Instance.ShowMREC("is_show_mrec_complete_game");
-            }
-            else if (currentPhase == GamePhase.Phase1 || currentPhase == GamePhase.Phase2 || currentPhase == GamePhase.Phase3)
+            if (currentPhase == GamePhase.Phase1 || currentPhase == GamePhase.Phase2 || panelWin.activeSelf)
             {
                 ShowMRECByPhase();
+                if (panelWin.activeSelf && AdsManager.Instance != null)
+                    AdsManager.Instance.ShowMREC("is_show_mrec_complete_game");
             }
         }
     }

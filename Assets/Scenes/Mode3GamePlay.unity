@@ -1630,7 +1630,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 2013457310074012892, guid: 7db468ac4fffb094b9a404626775d043, type: 3}
       propertyPath: m_AnchoredPosition.y
-      value: -334
+      value: -100
       objectReference: {fileID: 0}
     - target: {fileID: 5150516749344464328, guid: 7db468ac4fffb094b9a404626775d043, type: 3}
       propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_Target
@@ -1650,7 +1650,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5766482030724548493, guid: 7db468ac4fffb094b9a404626775d043, type: 3}
       propertyPath: m_IsActive
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     m_RemovedComponents:
     - {fileID: 2255960029028641901, guid: 7db468ac4fffb094b9a404626775d043, type: 3}
@@ -3112,7 +3112,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 1, y: 0.5}
   m_AnchorMax: {x: 1, y: 0.5}
-  m_AnchoredPosition: {x: -150, y: -334}
+  m_AnchoredPosition: {x: -150, y: -100}
   m_SizeDelta: {x: 333, y: 210}
   m_Pivot: {x: 1, y: 0.5}
 --- !u!114 &1606843076

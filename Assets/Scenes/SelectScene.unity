@@ -402,7 +402,7 @@ MonoBehaviour:
   lockIcon: {fileID: 1713842268}
   blurOverlay: {fileID: 555789527}
   displayAvatar: {fileID: 2067621158}
-  menuManager: {fileID: 0}
+  menuManager: {fileID: 758553935}
   accountManager: {fileID: 981132935}
 --- !u!1 &71220902
 GameObject:
@@ -3072,7 +3072,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!225 &374640014
 CanvasGroup:
   m_ObjectHideFlags: 0
@@ -5115,7 +5115,7 @@ MonoBehaviour:
   blurOverlay: {fileID: 1618706162}
   displayAvatar: {fileID: 830234945}
   menuManager: {fileID: 758553935}
-  accountManager: {fileID: 0}
+  accountManager: {fileID: 981132935}
 --- !u!1 &687332045
 GameObject:
   m_ObjectHideFlags: 0
@@ -6019,8 +6019,8 @@ MonoBehaviour:
   simpleAdPanel: {fileID: 1778611314}
   popupContent: {fileID: 581563912}
   watchAdButton: {fileID: 2057213830}
-  closeButton: {fileID: 0}
-  displayAvatar: {fileID: 1731004687}
+  closeButton: {fileID: 797874342}
+  displayAvatar: {fileID: 1935592521}
   fadeDuration: 0.3
   panelsToHide: []
   ignorePanels: []
@@ -6328,7 +6328,7 @@ MonoBehaviour:
   lockIcon: {fileID: 1263251520}
   blurOverlay: {fileID: 1363207090}
   displayAvatar: {fileID: 1261824349}
-  menuManager: {fileID: 0}
+  menuManager: {fileID: 758553935}
   accountManager: {fileID: 981132935}
 --- !u!1 &795081605
 GameObject:
@@ -6441,7 +6441,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 297.99573, y: -40.549194}
+  m_AnchoredPosition: {x: 300.17157, y: -35.862305}
   m_SizeDelta: {x: 283, y: 74}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &796920705
@@ -7408,7 +7408,7 @@ MonoBehaviour:
   lockIcon: {fileID: 872834461}
   blurOverlay: {fileID: 1283681995}
   displayAvatar: {fileID: 1789505586}
-  menuManager: {fileID: 0}
+  menuManager: {fileID: 758553935}
   accountManager: {fileID: 981132935}
 --- !u!1 &913000510
 GameObject:
@@ -7755,7 +7755,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 580.9957, y: -40.549194}
+  m_AnchoredPosition: {x: 583.1716, y: -35.862305}
   m_SizeDelta: {x: 283, y: 74}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &956517575
@@ -8451,7 +8451,7 @@ MonoBehaviour:
   lockIcon: {fileID: 242897932}
   blurOverlay: {fileID: 714606356}
   displayAvatar: {fileID: 1063601279}
-  menuManager: {fileID: 0}
+  menuManager: {fileID: 758553935}
   accountManager: {fileID: 981132935}
 --- !u!1 &1014622015
 GameObject:
@@ -9120,7 +9120,7 @@ MonoBehaviour:
   lockIcon: {fileID: 333623702}
   blurOverlay: {fileID: 1153458183}
   displayAvatar: {fileID: 102993539}
-  menuManager: {fileID: 0}
+  menuManager: {fileID: 758553935}
   accountManager: {fileID: 981132935}
 --- !u!1 &1063601277
 GameObject:
@@ -9351,7 +9351,7 @@ MonoBehaviour:
   lockIcon: {fileID: 468350416}
   blurOverlay: {fileID: 349115425}
   displayAvatar: {fileID: 404128547}
-  menuManager: {fileID: 0}
+  menuManager: {fileID: 758553935}
   accountManager: {fileID: 981132935}
 --- !u!1 &1081356909
 GameObject:
@@ -12880,7 +12880,7 @@ MonoBehaviour:
   lockIcon: {fileID: 206358968}
   blurOverlay: {fileID: 1615809476}
   displayAvatar: {fileID: 307978983}
-  menuManager: {fileID: 0}
+  menuManager: {fileID: 758553935}
   accountManager: {fileID: 981132935}
 --- !u!1 &1661068743
 GameObject:
@@ -13786,7 +13786,7 @@ MonoBehaviour:
   blurOverlay: {fileID: 1624076140}
   displayAvatar: {fileID: 745522875}
   menuManager: {fileID: 758553935}
-  accountManager: {fileID: 0}
+  accountManager: {fileID: 981132935}
 --- !u!1 &1731004685
 GameObject:
   m_ObjectHideFlags: 0
@@ -15731,7 +15731,7 @@ MonoBehaviour:
   lockIcon: {fileID: 1019706289}
   blurOverlay: {fileID: 1783386876}
   displayAvatar: {fileID: 1580607589}
-  menuManager: {fileID: 0}
+  menuManager: {fileID: 758553935}
   accountManager: {fileID: 981132935}
 --- !u!1 &2048201097
 GameObject:

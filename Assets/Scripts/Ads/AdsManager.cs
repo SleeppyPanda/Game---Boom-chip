@@ -27,19 +27,13 @@ public class AdsManager : MonoBehaviour
     public string adUnitIdAOA = "ca-app-pub-3940256099942544/3419835294";
     public string adUnitIdMREC = "ca-app-pub-3940256099942544/6300978111";
 
-    // Google AdMob test ad unit IDs — dùng để override trong debug builds
     private const string TEST_BANNER = "ca-app-pub-3940256099942544/6300978111";
     private const string TEST_INTER = "ca-app-pub-3940256099942544/1033173712";
     private const string TEST_REWARDED = "ca-app-pub-3940256099942544/5224354917";
     private const string TEST_AOA = "ca-app-pub-3940256099942544/3419835294";
     private const string TEST_MREC = "ca-app-pub-3940256099942544/6300978111";
 
-    [Header("Network Error Popup (gán trong Editor)")]
-    public GameObject networkErrorPanel;
-    public UnityEngine.UI.Button networkRetryButton;
-
     private const int ADMOB_ERROR_NETWORK = 2;
-    private Action _networkRetryAction;
 
     private BannerView _bannerView;
     private BannerView _mrecView;
@@ -52,7 +46,7 @@ public class AdsManager : MonoBehaviour
     private float _lastTimeShowInterstitial = -100f;
     private DateTime _aoaExpireTime;
     private Coroutine _bannerReloadCoroutine;
-    private int _bannerHeightDP = 60; // Chiều cao banner adaptive (dp), cập nhật khi load
+    private int _bannerHeightDP = 60;
 
     void Awake()
     {
@@ -66,7 +60,6 @@ public class AdsManager : MonoBehaviour
 
         _isFirstTimeTruly = PlayerPrefs.GetInt("Truly_First_Open_Completed", 0) == 0;
 
-        // Debug build → force test IDs để không bao giờ dùng nhầm real IDs
         if (Debug.isDebugBuild || Application.isEditor)
         {
             adUnitIdBanner = TEST_BANNER;
@@ -86,21 +79,11 @@ public class AdsManager : MonoBehaviour
     private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
         HideMREC();
-        // Ngắt reload banner cũ khi chuyển scene để tránh lỗi logic
         if (_bannerReloadCoroutine != null) StopCoroutine(_bannerReloadCoroutine);
     }
 
     void Start()
     {
-        // 0. Setup Network Error Popup
-        if (networkErrorPanel != null) networkErrorPanel.SetActive(false);
-        if (networkRetryButton != null)
-            networkRetryButton.onClick.AddListener(() => {
-                Action retry = _networkRetryAction;
-                HideNetworkError();
-                retry?.Invoke();
-            });
-
         // 1. Khởi tạo AppsFlyer
         AppsFlyer.initSDK(appsFlyerDevKey, appId);
         AppsFlyer.startSDK();
@@ -125,14 +108,11 @@ public class AdsManager : MonoBehaviour
     #region NETWORK ERROR POPUP
     private void ShowNetworkError(Action retryAction)
     {
-        _networkRetryAction = retryAction;
-        if (networkErrorPanel != null) networkErrorPanel.SetActive(true);
-    }
-
-    private void HideNetworkError()
-    {
-        if (networkErrorPanel != null) networkErrorPanel.SetActive(false);
-        _networkRetryAction = null;
+        // Gọi sang script UI đã tách
+        if (NetworkErrorUI.Instance != null)
+        {
+            NetworkErrorUI.Instance.Show(retryAction);
+        }
     }
 
     private bool IsNetworkError(LoadAdError error)
@@ -244,7 +224,6 @@ public class AdsManager : MonoBehaviour
         });
     }
 
-    // Hàm gọi quảng cáo có delay cho màn BoomChip
     public void ShowInterstitialWithDelay(string placementConfigKey, Action onAdClosed, float delay = 1.0f)
     {
         StartCoroutine(ExecuteDelayShow(placementConfigKey, onAdClosed, delay));
@@ -267,7 +246,6 @@ public class AdsManager : MonoBehaviour
         {
             if (_interstitialAd != null && _interstitialAd.CanShowAd())
             {
-                // Tắt Banner/MREC để tránh crash RAM khi đang hiện Inter
                 HideBanner();
                 HideMREC();
 
@@ -279,7 +257,6 @@ public class AdsManager : MonoBehaviour
                 };
 
                 _interstitialAd.OnAdFullScreenContentClosed += () => {
-                    // Dùng Coroutine đẩy về Main Thread để tránh crash khi load tiếp game
                     StartCoroutine(HandleAdClosedMainThread(onAdClosed));
                 };
 
@@ -294,12 +271,8 @@ public class AdsManager : MonoBehaviour
     {
         _isAdShowing = false;
         LoadInterstitialAd();
-
-        yield return null; // Chờ 1 frame ổn định hệ thống
-
+        yield return null;
         onAdClosed?.Invoke();
-
-        // Hiện lại banner sau khi đóng Inter nếu config đang bật
         ShowBanner();
     }
     #endregion
@@ -322,7 +295,6 @@ public class AdsManager : MonoBehaviour
 
     public void ShowRewardedAd(string logicKey, Action onRewardEarned, Action onAdFailed = null)
     {
-        // is_show_rw_profile là string (danh sách avatar ID), không phải bool
         bool shouldShowAd = (logicKey == AdEventTracker.KEY_RW_PROFILE)
             ? !string.IsNullOrEmpty(AdEventTracker.GetString(logicKey))
             : AdEventTracker.GetBool(logicKey);
@@ -366,7 +338,6 @@ public class AdsManager : MonoBehaviour
     {
         if (_isAdShowing) return;
 
-        // Resume AOA và Launch AOA dùng config độc lập theo spec
         if (isResume)
         {
             if (!AdEventTracker.GetBool(AdEventTracker.KEY_SHOW_RESUME_ADS)) return;
@@ -431,7 +402,6 @@ public class AdsManager : MonoBehaviour
     private IEnumerator ReloadBannerAfterTime(float seconds)
     {
         yield return new WaitForSeconds(seconds);
-        // Không reload banner nếu đang có quảng cáo toàn màn hình
         if (AdEventTracker.GetBool(AdEventTracker.KEY_SHOW_BANNER) && !_isAdShowing) ShowBanner();
     }
 
@@ -439,7 +409,6 @@ public class AdsManager : MonoBehaviour
     {
         if (!AdEventTracker.GetBool(configKey)) { HideMREC(); return; }
 
-        // Hiện Banner cùng lúc — spec yêu cầu MREC nằm phía trên Banner
         ShowBanner();
 
         if (_mrecView != null) _mrecView.Destroy();
@@ -450,9 +419,7 @@ public class AdsManager : MonoBehaviour
         float screenWidthDP = Screen.width / density;
         float screenHeightDP = Screen.height / density;
 
-        // Căn giữa MREC (300x250) theo chiều ngang
         int xPos = (int)((screenWidthDP - 300) / 2);
-        // Đặt MREC ngay trên Banner adaptive: bottom offset = MREC height + banner height
         int mrecHeight = 250;
         int yPos = (int)(screenHeightDP - mrecHeight - _bannerHeightDP);
 
