@@ -17,31 +17,36 @@ public class SettingManager : MonoBehaviour
     public Sprite sfxOffSprite;
 
     [Header("Rung (Vibration)")]
-    public Image vibrateBtnImage; // Kéo Image của nút Rung vào đây
-    public Sprite vibrateOnSprite; // Sprite khi bật rung
-    public Sprite vibrateOffSprite; // Sprite khi tắt rung
+    public Image vibrateBtnImage;
+    public Sprite vibrateOnSprite;
+    public Sprite vibrateOffSprite;
+
+    [Header("Privacy Policy Panel")]
+    public GameObject privacyPolicyPanel; 
 
     void Start()
     {
-        // 1. Load giá trị từ GlobalSettings (đã bao gồm PlayerPrefs)
-        musicSlider.value = GlobalSettings.MusicVolume;
-        sfxSlider.value = GlobalSettings.SFXVolume;
+        if (musicSlider != null) musicSlider.value = GlobalSettings.MusicVolume;
+        if (sfxSlider != null) sfxSlider.value = GlobalSettings.SFXVolume;
 
-        // 2. Đăng ký sự kiện thay đổi giá trị cho Slider
-        musicSlider.onValueChanged.AddListener(OnMusicSliderChanged);
-        sfxSlider.onValueChanged.AddListener(OnSFXSliderChanged);
+        if (musicSlider != null) musicSlider.onValueChanged.AddListener(OnMusicSliderChanged);
+        if (sfxSlider != null) sfxSlider.onValueChanged.AddListener(OnSFXSliderChanged);
 
-        // 3. Cập nhật giao diện và âm lượng Mixer ban đầu
         UpdateVisuals();
         SyncMixerVolumes();
+
+        if (privacyPolicyPanel != null) privacyPolicyPanel.SetActive(false);
     }
 
     private void SyncMixerVolumes()
     {
         if (AudioManager.Instance != null && AudioManager.Instance.mainMixer != null)
         {
-            AudioManager.Instance.mainMixer.SetFloat("MusicVol", GlobalSettings.SliderToDecibel(musicSlider.value));
-            AudioManager.Instance.mainMixer.SetFloat("SFXVol", GlobalSettings.SliderToDecibel(sfxSlider.value));
+            if (musicSlider != null)
+                AudioManager.Instance.mainMixer.SetFloat("MusicVol", GlobalSettings.SliderToDecibel(musicSlider.value));
+
+            if (sfxSlider != null)
+                AudioManager.Instance.mainMixer.SetFloat("SFXVol", GlobalSettings.SliderToDecibel(sfxSlider.value));
         }
     }
 
@@ -65,57 +70,66 @@ public class SettingManager : MonoBehaviour
         UpdateVisuals();
     }
 
-    // Hàm xử lý khi bấm vào nút Rung (Gán vào OnClick của Button Rung)
     public void ToggleVibrate()
     {
         GlobalSettings.IsVibrate = !GlobalSettings.IsVibrate;
-
         if (GlobalSettings.IsVibrate)
         {
-            GlobalSettings.PlayVibrate(); // Rung thử một cái khi bật
+            GlobalSettings.PlayVibrate();
         }
-
         UpdateVisuals();
+        PlayerPrefs.SetInt("VibrateEnable", GlobalSettings.IsVibrate ? 1 : 0);
     }
+
+    public void OpenPrivacyPolicy()
+    {
+        if (privacyPolicyPanel != null)
+        {
+            if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX("SFX_Click");
+            privacyPolicyPanel.SetActive(true);
+        }
+    }
+
+    public void ClosePrivacyPolicy()
+    {
+        if (privacyPolicyPanel != null)
+        {
+            if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX("SFX_Click");
+            privacyPolicyPanel.SetActive(false);
+        }
+    }
+
 
     public void ToggleMusic()
     {
-        musicSlider.value = (musicSlider.value > 0) ? 0 : 0.75f;
+        if (musicSlider != null)
+            musicSlider.value = (musicSlider.value > 0) ? 0 : 0.75f;
     }
 
     public void ToggleSFX()
     {
-        sfxSlider.value = (sfxSlider.value > 0) ? 0 : 0.75f;
+        if (sfxSlider != null)
+            sfxSlider.value = (sfxSlider.value > 0) ? 0 : 0.75f;
     }
 
     private void UpdateVisuals()
     {
-        // Cập nhật Sprite cho loa Nhạc
-        if (musicBtnImage != null)
-            musicBtnImage.sprite = (musicSlider.value > 0) ? musicOnSprite : musicOffSprite;
+        if (musicBtnImage != null && musicSlider != null)
+            musicBtnImage.sprite = (musicSlider.value > 1e-4) ? musicOnSprite : musicOffSprite;
 
-        // Cập nhật Sprite cho loa SFX
-        if (sfxBtnImage != null)
-            sfxBtnImage.sprite = (sfxSlider.value > 0) ? sfxOnSprite : sfxOffSprite;
+        if (sfxBtnImage != null && sfxSlider != null)
+            sfxBtnImage.sprite = (sfxSlider.value > 1e-4) ? sfxOnSprite : sfxOffSprite;
 
-        // Cập nhật Sprite cho nút Rung
         if (vibrateBtnImage != null)
+        {
             vibrateBtnImage.sprite = GlobalSettings.IsVibrate ? vibrateOnSprite : vibrateOffSprite;
+        }
     }
 
     public void CloseSetting()
     {
+        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX("SFX_Click");
         PlayerPrefs.Save();
-
-        CanvasGroup cg = GetComponent<CanvasGroup>();
-        if (cg != null)
-        {
-            // Tắt Panel
-            this.gameObject.SetActive(false);
-        }
-        else
-        {
-            this.gameObject.SetActive(false);
-        }
+        this.gameObject.SetActive(false);
     }
 }
