@@ -7,6 +7,8 @@ using UnityEngine.SceneManagement;
 
 public class BoomChipManager : MonoBehaviour
 {
+    public static BoomChipManager Instance;
+
     public GamePhase currentPhase = GamePhase.Phase1;
     private PlayerSelection selectionLogic;
 
@@ -18,12 +20,19 @@ public class BoomChipManager : MonoBehaviour
     public GameObject panelWin;
     public GameObject panelTransition;
 
-    [Header("Transition Elements")]
+    [Header("Transition Elements (Strips)")]
     public RectTransform leftStrip;
     public RectTransform rightStrip;
+
+    [Header("Transition Elements (Objects & Logo)")]
     public RectTransform leftObj;
     public RectTransform rightObj;
     public CanvasGroup centerLogo;
+
+    private Vector2 _leftStripOrig;
+    private Vector2 _rightStripOrig;
+    private Vector2 _leftObjOrig;
+    private Vector2 _rightObjOrig;
 
     [Header("Phase Next Buttons")]
     public GameObject nextButtonPhase1;
@@ -70,7 +79,13 @@ public class BoomChipManager : MonoBehaviour
 
     void Awake()
     {
+        Instance = this;
         selectionLogic = GetComponent<PlayerSelection>();
+
+        if (leftStrip != null) _leftStripOrig = leftStrip.anchoredPosition;
+        if (rightStrip != null) _rightStripOrig = rightStrip.anchoredPosition;
+        if (leftObj != null) _leftObjOrig = leftObj.anchoredPosition;
+        if (rightObj != null) _rightObjOrig = rightObj.anchoredPosition;
 
         if (BoomChipSettings.customHitSprite != null)
         {
@@ -86,11 +101,6 @@ public class BoomChipManager : MonoBehaviour
 
         currentHitSound = !string.IsNullOrEmpty(BoomChipSettings.hitSFXName) ? BoomChipSettings.hitSFXName : "SFX_Bomb_Hit";
         currentMissSound = !string.IsNullOrEmpty(BoomChipSettings.missSFXName) ? BoomChipSettings.missSFXName : "SFX_Bomb_Miss";
-
-        if (AudioManager.Instance != null)
-        {
-            AudioManager.Instance.PlayMusic(gameplayMusicName);
-        }
 
         panelPhase1.SetActive(true);
         panelPhase2.SetActive(false);
@@ -108,6 +118,13 @@ public class BoomChipManager : MonoBehaviour
         InitializeHearts();
         RotatePlayer2TileVisuals();
         InitBoardSprites();
+    }
+
+    void Start()
+    {
+        if (FirebaseManager.Instance != null) FirebaseManager.Instance.LogModeEnter(9);
+        if (AudioManager.Instance != null) AudioManager.Instance.PlayMusic(gameplayMusicName);
+        ShowMRECByPhase();
     }
 
     private void InitBoardSprites()
@@ -131,130 +148,164 @@ public class BoomChipManager : MonoBehaviour
         img.preserveAspect = true;
     }
 
+    #region PHASE NAVIGATION & ADS
     public void NextPhase()
     {
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX("SFX_Click");
 
         if (currentPhase == GamePhase.Phase1)
         {
-            currentPhase = GamePhase.Phase2;
-            panelPhase1.SetActive(false);
-            panelPhase2.SetActive(true);
+            if (AdsManager.Instance != null)
+                AdsManager.Instance.ShowInterstitial("is_show_inter_p1_choose", () => ExecutePhase2Transition());
+            else ExecutePhase2Transition();
         }
         else if (currentPhase == GamePhase.Phase2)
         {
-            StartCoroutine(TransitionSequence());
+            if (AdsManager.Instance != null)
+                AdsManager.Instance.ShowInterstitial("is_show_inter_p2_choose", () => StartCoroutine(TransitionSequence()));
+            else StartCoroutine(TransitionSequence());
         }
     }
 
+    private void ExecutePhase2Transition()
+    {
+        currentPhase = GamePhase.Phase2;
+        panelPhase1.SetActive(false);
+        panelPhase2.SetActive(true);
+        ShowMRECByPhase();
+    }
+
+    private void ShowMRECByPhase()
+    {
+        if (AdsManager.Instance == null) return;
+        switch (currentPhase)
+        {
+            case GamePhase.Phase1: AdsManager.Instance.ShowMREC("is_show_mrec_p1_choose"); break;
+            case GamePhase.Phase2: AdsManager.Instance.ShowMREC("is_show_mrec_p2_choose"); break;
+            case GamePhase.Phase3: AdsManager.Instance.ShowMREC("is_show_mrec_gameplay"); break;
+        }
+    }
+    #endregion
+
+    #region TRANSITION LOGIC (NEW TIMELINE)
     private IEnumerator TransitionSequence()
     {
         if (panelTransition == null)
         {
-            panelPhase2.SetActive(false);
-            panelPhase3.SetActive(true);
-            panelAnimation.SetActive(true);
+            SwitchToPhase3State();
             yield break;
         }
 
         panelTransition.SetActive(true);
-        Vector2 targetLeftStrip = leftStrip.anchoredPosition;
-        Vector2 targetRightStrip = rightStrip.anchoredPosition;
-        Vector2 targetLeftObj = leftObj.anchoredPosition;
-        Vector2 targetRightObj = rightObj.anchoredPosition;
-        Vector2 startLeftStrip = new Vector2(-2000f, targetLeftStrip.y);
-        Vector2 startRightStrip = new Vector2(2000f, targetRightStrip.y);
-        Vector2 startLeftObj = new Vector2(-2000f, targetLeftObj.y);
-        Vector2 startRightObj = new Vector2(2000f, targetRightObj.y);
 
-        leftStrip.anchoredPosition = startLeftStrip;
-        rightStrip.anchoredPosition = startRightStrip;
-        leftObj.anchoredPosition = startLeftObj;
-        rightObj.anchoredPosition = startRightObj;
-        centerLogo.alpha = 0;
-        centerLogo.transform.localScale = Vector3.zero;
+        // Reset trạng thái ban đầu
+        if (centerLogo != null) { centerLogo.transform.localScale = Vector3.zero; centerLogo.alpha = 0; }
+        SetStripsPos(0);
+        SetObjectsPos(0);
 
-        float elapsed = 0;
-        float stripInDuration = 0.4f;
-        while (elapsed < stripInDuration)
-        {
-            elapsed += Time.deltaTime;
-            float t = Mathf.SmoothStep(0, 1, elapsed / stripInDuration);
-            leftStrip.anchoredPosition = Vector2.Lerp(startLeftStrip, targetLeftStrip, t);
-            rightStrip.anchoredPosition = Vector2.Lerp(startRightStrip, targetRightStrip, t);
-            yield return null;
-        }
+        // --- GIAI ĐOẠN 1: BAY VÀO ---
+        // 1. 2 Strip bay vào (0.5s)
+        yield return StartCoroutine(AnimateStrips(0, 1, 0.5f));
 
-        elapsed = 0;
-        float objInDuration = 0.5f;
-        while (elapsed < objInDuration)
-        {
-            elapsed += Time.deltaTime;
-            float t = Mathf.SmoothStep(0, 1, elapsed / objInDuration);
-            leftObj.anchoredPosition = Vector2.Lerp(startLeftObj, targetLeftObj, t);
-            rightObj.anchoredPosition = Vector2.Lerp(startRightObj, targetRightObj, t);
-            centerLogo.alpha = t;
-            centerLogo.transform.localScale = Vector3.one * t;
-            yield return null;
-        }
+        // 2. 0.5s sau, 2 Obj bay vào (0.5s)
+        yield return StartCoroutine(AnimateSideElements(0, 1, 0.5f));
 
+        // 3. Hiện logo (Ngay sau khi Obj vào xong)
+        if (centerLogo != null) { centerLogo.transform.localScale = Vector3.one; centerLogo.alpha = 1; }
+
+        // Chuyển UI ngầm bên dưới transition
+        SwitchToPhase3State();
+
+        // --- GIAI ĐOẠN 2: NGHỈ ---
+        // Nghỉ 1s
+        yield return new WaitForSeconds(1.0f);
+
+        // --- GIAI ĐOẠN 3: BAY RA (PHỐI HỢP THỜI GIAN) ---
+        // 1. 2 Obj bắt đầu bay ra (0.5s)
+        StartCoroutine(AnimateSideElements(1, 0, 0.5f));
+
+        // 2. Logo biến mất ngay khi Obj bắt đầu bay ra (như yêu cầu: logo mất cùng lúc panel/obj bay ra)
+        if (centerLogo != null) { centerLogo.transform.localScale = Vector3.zero; centerLogo.alpha = 0; }
+
+        // 3. Đợi 0.2s rồi 2 Strip (panel) bay ra (0.5s)
+        yield return new WaitForSeconds(0.2f);
+        yield return StartCoroutine(AnimateStrips(1, 0, 0.5f));
+
+        // Kết thúc
+        panelTransition.SetActive(false);
+        currentPhase = GamePhase.Animation;
+
+        CoinFlipController flip = FindFirstObjectByType<CoinFlipController>();
+        if (flip != null) flip.StartCoinFlip();
+    }
+
+    private void SwitchToPhase3State()
+    {
         panelPhase2.SetActive(false);
         panelPhase3.SetActive(true);
         panelAnimation.SetActive(true);
-        yield return new WaitForSeconds(0.8f);
-
-        elapsed = 0;
-        float objOutDuration = 0.5f;
-        while (elapsed < objOutDuration)
-        {
-            elapsed += Time.deltaTime;
-            float t = Mathf.SmoothStep(0, 1, elapsed / objOutDuration);
-            leftObj.anchoredPosition = Vector2.Lerp(targetLeftObj, startLeftObj, t);
-            rightObj.anchoredPosition = Vector2.Lerp(targetRightObj, startRightObj, t);
-            centerLogo.alpha = 1 - t;
-            centerLogo.transform.localScale = Vector3.one * (1 - t);
-            yield return null;
-        }
-        yield return new WaitForSeconds(0.8f);
-
-        elapsed = 0;
-        float stripOutDuration = 1.0f;
-        while (elapsed < stripOutDuration)
-        {
-            elapsed += Time.deltaTime;
-            float t = Mathf.SmoothStep(0, 1, elapsed / stripOutDuration);
-            leftStrip.anchoredPosition = Vector2.Lerp(targetLeftStrip, startLeftStrip, t);
-            rightStrip.anchoredPosition = Vector2.Lerp(targetRightStrip, startRightStrip, t);
-            yield return null;
-        }
-
-        panelTransition.SetActive(false);
-        currentPhase = GamePhase.Animation;
-        CoinFlipController flip = FindFirstObjectByType<CoinFlipController>();
-        if (flip != null)
-        {
-            flip.transform.localRotation = Quaternion.identity;
-            flip.StartCoinFlip();
-        }
+        ShowMRECByPhase();
     }
 
+    private void SetStripsPos(float t)
+    {
+        float offset = 2000f;
+        if (leftStrip) leftStrip.anchoredPosition = Vector2.Lerp(_leftStripOrig + new Vector2(-offset, 0), _leftStripOrig, t);
+        if (rightStrip) rightStrip.anchoredPosition = Vector2.Lerp(_rightStripOrig + new Vector2(offset, 0), _rightStripOrig, t);
+    }
+
+    private void SetObjectsPos(float t)
+    {
+        float offset = 1500f;
+        if (leftObj) leftObj.anchoredPosition = Vector2.Lerp(_leftObjOrig + new Vector2(-offset, 0), _leftObjOrig, t);
+        if (rightObj) rightObj.anchoredPosition = Vector2.Lerp(_rightObjOrig + new Vector2(offset, 0), _rightObjOrig, t);
+    }
+
+    private IEnumerator AnimateStrips(float start, float end, float duration)
+    {
+        float elapsed = 0;
+        while (elapsed < duration)
+        {
+            elapsed += Time.deltaTime;
+            float currentT = Mathf.Lerp(start, end, Mathf.SmoothStep(0, 1, elapsed / duration));
+            SetStripsPos(currentT);
+            yield return null;
+        }
+        SetStripsPos(end);
+    }
+
+    private IEnumerator AnimateSideElements(float start, float end, float duration)
+    {
+        float elapsed = 0;
+        while (elapsed < duration)
+        {
+            elapsed += Time.deltaTime;
+            float currentT = Mathf.Lerp(start, end, Mathf.SmoothStep(0, 1, elapsed / duration));
+            SetObjectsPos(currentT);
+            yield return null;
+        }
+        SetObjectsPos(end);
+    }
+    #endregion
+
+    #region GAMEPLAY LOGIC
     public void OnCoinFlipFinished(int winnerID)
     {
         panelAnimation.SetActive(false);
         currentPhase = GamePhase.Phase3;
         isP1Turn = (winnerID == 0);
+
         p1TargetBombs = new List<int>(selectionLogic.p2SelectedTiles);
         p2TargetBombs = new List<int>(selectionLogic.p1SelectedTiles);
+
         StartCoroutine(ShowTurnAndStartGame(winnerID));
     }
 
     private IEnumerator ShowTurnAndStartGame(int winnerID)
     {
         panelAnimation.SetActive(true);
-        panelAnimation.transform.localRotation = Quaternion.identity;
-        string winnerName = (winnerID == 0) ? "PLAYER 1" : "PLAYER 2";
         TextMeshProUGUI animText = panelAnimation.GetComponentInChildren<TextMeshProUGUI>();
-        if (animText != null) animText.text = "<color=yellow>" + winnerName + "</color> GO FIRST!";
+        if (animText != null) animText.text = (winnerID == 0 ? "PLAYER 1" : "PLAYER 2") + " GO FIRST!";
 
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX("SFX_StartTurn");
 
@@ -266,10 +317,11 @@ public class BoomChipManager : MonoBehaviour
     public void ExecuteTurn(int tileIndex, TileButton tile, int boardOwnerID)
     {
         if (currentPhase != GamePhase.Phase3) return;
+
         if (isP1Turn && boardOwnerID != 1) return;
         if (!isP1Turn && boardOwnerID != 2) return;
 
-        List<int> targetList = (isP1Turn) ? p1TargetBombs : p2TargetBombs;
+        List<int> targetList = isP1Turn ? p1TargetBombs : p2TargetBombs;
 
         if (targetList.Contains(tileIndex))
         {
@@ -277,7 +329,7 @@ public class BoomChipManager : MonoBehaviour
             if (isP1Turn) p1HitCount++; else p2HitCount++;
             UpdateHeartsUI(isP1Turn ? 1 : 2);
             if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(currentHitSound);
-            GlobalSettings.PlayVibrate();
+            Handheld.Vibrate();
         }
         else
         {
@@ -308,21 +360,11 @@ public class BoomChipManager : MonoBehaviour
 
     void UpdateBoardVisuals()
     {
-        if (p1BoardArea != null)
-        {
-            p1BoardArea.alpha = 1.0f;
-            p1BoardArea.interactable = isP1Turn;
-            p1BoardArea.blocksRaycasts = isP1Turn;
-        }
-        if (p2BoardArea != null)
-        {
-            p2BoardArea.alpha = 1.0f;
-            p2BoardArea.interactable = !isP1Turn;
-            p2BoardArea.blocksRaycasts = !isP1Turn;
-        }
-
         if (p1Cover != null) p1Cover.SetActive(!isP1Turn);
         if (p2Cover != null) p2Cover.SetActive(isP1Turn);
+
+        if (p1BoardArea != null) p1BoardArea.interactable = isP1Turn;
+        if (p2BoardArea != null) p2BoardArea.interactable = !isP1Turn;
     }
 
     void CheckWinCondition()
@@ -342,22 +384,18 @@ public class BoomChipManager : MonoBehaviour
     void ShowWinScreen(int winnerID)
     {
         panelWin.SetActive(true);
-        GlobalSettings.PlayVibrate();
+        if (FirebaseManager.Instance != null) FirebaseManager.Instance.LogModeComplete(9);
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX("SFX_Win");
-
-        // --- LOGIC MỚI: Tắt tất cả tấm che khi kết thúc game ---
-        if (p1Cover != null) p1Cover.SetActive(false);
-        if (p2Cover != null) p2Cover.SetActive(false);
-        // Tắt cả tương tác để người chơi không bấm thêm được gì
-        if (p1BoardArea != null) p1BoardArea.interactable = false;
-        if (p2BoardArea != null) p2BoardArea.interactable = false;
+        if (AdsManager.Instance != null) AdsManager.Instance.ShowMREC("is_show_mrec_complete_game");
 
         if (p1Crown != null) p1Crown.SetActive(winnerID == 1);
         if (p2Crown != null) p2Crown.SetActive(winnerID == 2);
         if (p1HitCounterText != null) p1HitCounterText.text = "x " + p1HitCount;
         if (p2HitCounterText != null) p2HitCounterText.text = "x " + p2HitCount;
     }
+    #endregion
 
+    #region UTILS & BUTTONS
     private void InitializeHearts()
     {
         Sprite startSprite = winByHittingThree ? heartEmptySprite : heartFullSprite;
@@ -378,9 +416,14 @@ public class BoomChipManager : MonoBehaviour
     {
         if (currentPhase == GamePhase.Phase1 || currentPhase == GamePhase.Phase2)
         {
-            if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(currentHitSound);
+            if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX("SFX_Click");
+            if (selectionLogic != null) selectionLogic.HandleTileClick(tileIndex, tile);
         }
-        if (selectionLogic != null) selectionLogic.HandleTileClick(tileIndex, tile);
+        else if (currentPhase == GamePhase.Phase3)
+        {
+            int owner = tile.transform.IsChildOf(p1BoardArea.transform) ? 1 : 2;
+            ExecuteTurn(tileIndex, tile, owner);
+        }
     }
 
     public void UpdateButtonNextVisibility()
@@ -392,27 +435,23 @@ public class BoomChipManager : MonoBehaviour
             nextButtonPhase2.SetActive(selectionLogic.IsSelectionComplete(2));
     }
 
-    public void OpenSetting()
-    {
-        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX("SFX_Click");
-        if (panelSetting != null) panelSetting.SetActive(true);
-    }
-
-    public void CloseSetting()
-    {
-        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX("SFX_Click");
-        if (panelSetting != null) panelSetting.SetActive(false);
-    }
-
     public void Rematch()
     {
-        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX("SFX_Click");
-        SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+        if (AdsManager.Instance != null) AdsManager.Instance.HideMREC();
+        if (AdsManager.Instance != null)
+            AdsManager.Instance.ShowInterstitial("is_show_inter_retry", () => SceneManager.LoadScene(SceneManager.GetActiveScene().name));
+        else SceneManager.LoadScene(SceneManager.GetActiveScene().name);
     }
 
     public void GoToSelection()
     {
-        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX("SFX_Click");
-        SceneManager.LoadScene("SelectScene");
+        if (AdsManager.Instance != null) AdsManager.Instance.HideMREC();
+        if (AdsManager.Instance != null)
+            AdsManager.Instance.ShowInterstitial("is_show_inter_back_home", () => SceneManager.LoadScene("SelectScene"));
+        else SceneManager.LoadScene("SelectScene");
     }
+
+    public void OpenSetting() { if (panelSetting != null) panelSetting.SetActive(true); }
+    public void CloseSetting() { if (panelSetting != null) panelSetting.SetActive(false); }
+    #endregion
 }

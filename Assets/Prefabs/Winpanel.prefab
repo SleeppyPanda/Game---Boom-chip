@@ -1366,7 +1366,6 @@ GameObject:
   - component: {fileID: 745433346680515497}
   - component: {fileID: 989188934427053773}
   - component: {fileID: 335665298885145808}
-  - component: {fileID: 2255960029028641901}
   m_Layer: 5
   m_Name: Winpanel
   m_TagString: Untagged
@@ -1436,19 +1435,6 @@ MonoBehaviour:
   m_FillOrigin: 0
   m_UseSpriteMesh: 0
   m_PixelsPerUnitMultiplier: 1
---- !u!114 &2255960029028641901
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5766482030724548493}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 2bf5c4b7967511346815a61983df400f, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  position: 1
 --- !u!1 &6954491336769598397
 GameObject:
   m_ObjectHideFlags: 0

@@ -1,15 +1,15 @@
 ﻿using UnityEngine;
+using System;
 using System.Collections.Generic;
 
 public class PlayerSelection : MonoBehaviour
 {
+    [Header("Dữ liệu lựa chọn")]
     public List<int> p1SelectedTiles = new List<int>();
     public List<int> p2SelectedTiles = new List<int>();
 
     [Header("Cấu hình hiển thị")]
     public Sprite selectedSprite;
-
-    // Tách riêng 2 Sprite mặc định để phù hợp với màu sắc từng bảng
     public Sprite defaultSpritePhase1;
     public Sprite defaultSpritePhase2;
 
@@ -19,50 +19,83 @@ public class PlayerSelection : MonoBehaviour
     {
         manager = GetComponent<BoomChipManager>();
 
-        // Ưu tiên dùng Sprite tùy chỉnh từ Settings nếu người chơi đã cài đặt
+        // Ưu tiên dùng Sprite tùy chỉnh từ Settings (Hệ thống Unlock đã làm trước đó)
         if (BoomChipSettings.customHitSprite != null)
         {
             selectedSprite = BoomChipSettings.customHitSprite;
         }
     }
 
+    /// <summary>
+    /// Xử lý khi click vào một ô Tile
+    /// </summary>
     public void HandleTileClick(int tileIndex, TileButton tile)
     {
-        // Chỉ cho phép chọn trong Phase 1 hoặc Phase 2
+        // Chỉ cho phép thao tác trong Phase 1 hoặc Phase 2
         if (manager.currentPhase != GamePhase.Phase1 && manager.currentPhase != GamePhase.Phase2) return;
 
-        // Xác định Player và Sprite mặc định tương ứng
         int currentPlayerID = (manager.currentPhase == GamePhase.Phase1) ? 1 : 2;
         List<int> targetList = (currentPlayerID == 1) ? p1SelectedTiles : p2SelectedTiles;
         Sprite currentDefault = (currentPlayerID == 1) ? defaultSpritePhase1 : defaultSpritePhase2;
 
         if (targetList.Contains(tileIndex))
         {
-            // --- HÀNH ĐỘNG: BỎ CHỌN (TOGGLE OFF) ---
+            // --- HÀNH ĐỘNG: BỎ CHỌN ---
             targetList.Remove(tileIndex);
-
-            // Trả về đúng màu sắc mặc định của bảng đó
             tile.SetVisual(currentDefault);
         }
         else
         {
-            // --- HÀNH ĐỘNG: CHỌN MỚI (TOGGLE ON) ---
-            // Kiểm tra giới hạn tối đa (thường là 3)
+            // --- HÀNH ĐỘNG: CHỌN MỚI ---
             if (targetList.Count < GameConstants.MAX_SELECTIONS)
             {
                 targetList.Add(tileIndex);
                 tile.SetVisual(selectedSprite);
+
+                // Rung nhẹ khi chọn đủ số lượng (Tăng UX trên Mobile)
+                if (targetList.Count == GameConstants.MAX_SELECTIONS)
+                {
+                    VibrateDevice();
+                }
             }
         }
 
-        // Cập nhật trạng thái hiển thị nút "Next" trên UI của Manager
+        // Cập nhật nút Next trên Manager UI
         manager.UpdateButtonNextVisibility();
     }
 
+    /// <summary>
+    /// Kiểm tra trạng thái hoàn thành để mở khóa nút Next
+    /// </summary>
     public bool IsSelectionComplete(int playerID)
     {
-        // Kiểm tra xem Player đã chọn đủ số lượng yêu cầu chưa
         List<int> targetList = (playerID == 1) ? p1SelectedTiles : p2SelectedTiles;
         return targetList.Count >= GameConstants.MAX_SELECTIONS;
+    }
+
+    /// <summary>
+    /// Reset dữ liệu cho lượt chơi mới
+    /// </summary>
+    public void ResetSelections()
+    {
+        p1SelectedTiles.Clear();
+        p2SelectedTiles.Clear();
+    }
+
+    /// <summary>
+    /// Rung máy nhẹ khi hoàn thành thao tác chọn
+    /// </summary>
+    private void VibrateDevice()
+    {
+        #if UNITY_ANDROID || UNITY_IOS
+        try 
+        {
+            Handheld.Vibrate();
+        }
+            catch (Exception e) 
+        {
+            Debug.LogWarning("Vibration not supported or failed: " + e.Message);
+        }
+        #endif
     }
 }

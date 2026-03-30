@@ -2,6 +2,8 @@
 using UnityEngine.UI;
 using TMPro;
 using DG.Tweening;
+using UnityEngine.SceneManagement;
+using System.Collections.Generic;
 
 public class MenuManager : MonoBehaviour
 {
@@ -26,7 +28,10 @@ public class MenuManager : MonoBehaviour
     [Header("Cấu hình hiệu ứng")]
     public float fadeDuration = 0.3f;
     private CanvasGroup currentPanel;
-    private CanvasGroup previousModePanel;
+
+    [Header("Tên Scene Gameplay")]
+    public string sceneNameMode2 = "GameplayMode2";
+    public string sceneNameMode3 = "GameplayMode3";
 
     void Start()
     {
@@ -34,11 +39,13 @@ public class MenuManager : MonoBehaviour
         {
             AudioManager.Instance.PlayMusic("background_01");
         }
+
         buttonImages = new Image[menuButtons.Length];
         buttonTexts = new TextMeshProUGUI[menuButtons.Length];
 
         for (int i = 0; i < menuButtons.Length; i++)
         {
+            if (menuButtons[i] == null) continue;
             buttonImages[i] = menuButtons[i].GetComponent<Image>();
             buttonTexts[i] = menuButtons[i].GetComponentInChildren<TextMeshProUGUI>();
         }
@@ -59,43 +66,141 @@ public class MenuManager : MonoBehaviour
         cg.gameObject.SetActive(false);
     }
 
-    public void ShowPanel1() { SwitchToMode(panelMode1, 0); }
-    public void ShowPanel2() { SwitchToMode(panelMode2, 1); }
-    public void ShowPanel3() { SwitchToMode(panelMode3, 2); }
-
-    private void SwitchToMode(CanvasGroup target, int index)
+    // --- HÀM SHOW PANEL (CÓ KIỂM TRA UNLOCK & REMOTE CONFIG) ---
+    public void ShowPanel1()
     {
-        // --- LOGIC DỊCH CHUYỂN POS X CHO MODE 1 ---
-        // Giả sử menuButtons[0] luôn là Mode 1
-        if (menuButtons[0] != null)
+        if (currentPanel == panelMode2) ClosePanelMode2();
+        else if (currentPanel == panelMode3) ClosePanelMode3();
+
+        SwitchToMode(panelMode1, 0, false);
+
+        // Firebase: Tracking vào màn hình chính (Mode 1) sử dụng API mới LogModeEnter
+        if (FirebaseManager.Instance != null) FirebaseManager.Instance.LogModeEnter(1);
+    }
+
+    public void ShowPanel2WithAvatar(Sprite avatar)
+    {
+        bool isConfigOpen = AdsManager.Instance != null ? AdsManager.Instance.IsShowRwChallenge : true;
+
+        if (!isConfigOpen)
         {
-            if (index == 1) // Nếu chọn Mode 2
+            SwitchToMode(panelMode2, 1, true);
+        }
+        else
+        {
+            CheckUnlockAndShow("Mode2", panelMode2, 1, avatar, "Challenge");
+        }
+    }
+
+    public void ShowPanel3WithAvatar(Sprite avatar)
+    {
+        bool isConfigOpen = AdsManager.Instance != null ? AdsManager.Instance.IsShowRwPrediction : true;
+
+        if (!isConfigOpen)
+        {
+            SwitchToMode(panelMode3, 2, true);
+        }
+        else
+        {
+            CheckUnlockAndShow("Mode3", panelMode3, 2, avatar, "Prediction");
+        }
+    }
+
+    private void CheckUnlockAndShow(string itemID, CanvasGroup targetPanel, int index, Sprite avatarSprite, string adType)
+    {
+        bool isUnlocked = UnlockSystemManager.Instance != null && UnlockSystemManager.Instance.IsItemUnlocked(itemID);
+
+        if (isUnlocked)
+        {
+            SwitchToMode(targetPanel, index, true);
+        }
+        else
+        {
+            if (UnlockSystemManager.Instance != null)
             {
-                menuButtons[0].DOAnchorPosX(29f, 0.25f);
+                UnlockSystemManager.Instance.OpenUnlockPopup(itemID, avatarSprite, () => {
+                    SwitchToMode(targetPanel, index, true);
+                });
             }
-            else if (index == 2) // Nếu chọn Mode 3
+            else
             {
-                menuButtons[0].DOAnchorPosX(-29f, 0.25f);
+                SwitchToMode(targetPanel, index, true);
             }
-            else if (index == 0) // Nếu chọn chính Mode 1 (về lại vị trí mặc định của bạn)
-            {
-                // Bạn có thể để 0 hoặc giá trị pos X mặc định mà bạn đã thiết lập ban đầu
-                menuButtons[0].DOAnchorPosX(0f, 0.25f);
-            }
+        }
+    }
+
+    private void SwitchToMode(CanvasGroup target, int index, bool isPopup)
+    {
+        HandleButtonAnimationOnly(index);
+
+        if (target == null || currentPanel == target) return;
+
+        HandleTransition(target, !isPopup);
+        currentPanel = target;
+
+        // Firebase: Tracking count_mode_xx (xx là 01, 02, 03...) sử dụng API mới LogModeEnter
+        if (FirebaseManager.Instance != null) FirebaseManager.Instance.LogModeEnter(index + 1);
+    }
+
+    // --- HÀM ĐÓNG POPUP ---
+    public void ClosePanelMode2() { CloseSpecificPopup(panelMode2); }
+    public void ClosePanelMode3() { CloseSpecificPopup(panelMode3); }
+
+    private void CloseSpecificPopup(CanvasGroup popup)
+    {
+        if (popup == null) return;
+        popup.DOKill();
+        popup.DOFade(0, fadeDuration);
+        popup.transform.DOScale(0.8f, fadeDuration).OnComplete(() => {
+            popup.gameObject.SetActive(false);
+            currentPanel = panelMode1;
+            HandleButtonAnimationOnly(0);
+        });
+    }
+
+    // --- HÀM CHUYỂN SCENE ---
+    public void StartGameMode2() { LoadGameplay(2, sceneNameMode2); }
+    public void StartGameMode3() { LoadGameplay(3, sceneNameMode3); }
+
+    private void LoadGameplay(int mode, string sceneName)
+    {
+        PlayerPrefs.SetInt("SelectedMode", mode);
+        PlayerPrefs.SetInt("CurrentLevel", 1);
+        PlayerPrefs.Save();
+
+        if (AdsManager.Instance != null)
+        {
+            AdsManager.Instance.ShowInterstitial("is_show_inter_p1_choose", () => {
+                DOTween.KillAll();
+                SceneManager.LoadScene(sceneName);
+            });
+        }
+        else
+        {
+            SceneManager.LoadScene(sceneName);
+        }
+    }
+
+    // --- LOGIC ANIMATION BOTTOM BAR ---
+    public void HandleButtonAnimationOnly(int index)
+    {
+        if (menuButtons.Length > 0 && menuButtons[0] != null)
+        {
+            if (index == 1) menuButtons[0].DOAnchorPosX(29f, 0.25f);
+            else if (index == 2) menuButtons[0].DOAnchorPosX(-29f, 0.25f);
+            else if (index == 0) menuButtons[0].DOAnchorPosX(0f, 0.25f);
         }
 
         for (int i = 0; i < menuButtons.Length; i++)
         {
             if (menuButtons[i] == null) continue;
-            // Không DOKill toàn bộ để tránh ngắt quãng DOAnchorPosX của Mode 1 ở trên
-            menuButtons[i].DOScale(menuButtons[i].localScale, 0);
 
             if (i == index)
             {
                 if (buttonImages[i] != null) buttonImages[i].sprite = frameSelected;
                 if (buttonTexts[i] != null) buttonTexts[i].color = Color.white;
 
-                menuButtons[i].DOAnchorPosY(69f, 0.25f).SetEase(Ease.OutBack);
+                menuButtons[i].DOAnchorPosY(200f, 0.25f).SetEase(Ease.OutBack);
                 menuButtons[i].DOScale(1.374428f, 0.25f).SetEase(Ease.OutBack);
             }
             else
@@ -109,17 +214,13 @@ public class MenuManager : MonoBehaviour
                     buttonTexts[i].color = unselectedColor;
                 }
 
-                menuButtons[i].DOAnchorPosY(22f, 0.25f);
+                menuButtons[i].DOAnchorPosY(150f, 0.25f);
                 menuButtons[i].DOScale(1.1591f, 0.25f);
             }
         }
-
-        if (target == null || currentPanel == target) return;
-        previousModePanel = target;
-        HandleTransition(target);
     }
 
-    // Các hàm còn lại giữ nguyên...
+    // --- ACCOUNT & SETTING ---
     public void ShowAccount() { SwitchToExtra(panelAccount, btnAccount, 1.6187f); }
     public void ShowSetting() { SwitchToExtra(panelSetting, btnSetting, 1.0f); }
 
@@ -127,18 +228,21 @@ public class MenuManager : MonoBehaviour
     {
         AnimateButtonScale(btn, scale);
         if (target == null || currentPanel == target) return;
-        HandleTransition(target);
+        HandleTransition(target, true);
     }
 
-    private void HandleTransition(CanvasGroup target)
+    private void HandleTransition(CanvasGroup target, bool hideOld)
     {
-        if (currentPanel != null)
+        if (hideOld && currentPanel != null)
         {
-            CanvasGroup oldPanel = currentPanel;
-            oldPanel.DOFade(0, fadeDuration);
-            oldPanel.transform.DOScale(0.8f, fadeDuration).OnComplete(() => oldPanel.gameObject.SetActive(false));
+            CanvasGroup old = currentPanel;
+            old.DOKill();
+            old.DOFade(0, fadeDuration);
+            old.transform.DOScale(0.8f, fadeDuration).OnComplete(() => old.gameObject.SetActive(false));
         }
+
         target.gameObject.SetActive(true);
+        target.DOKill();
         target.DOFade(1, fadeDuration);
         target.transform.localScale = Vector3.one * 0.8f;
         target.transform.DOScale(Vector3.one, fadeDuration).SetEase(Ease.OutBack);
@@ -149,11 +253,12 @@ public class MenuManager : MonoBehaviour
     {
         if (currentPanel == null) return;
         CanvasGroup closingPanel = currentPanel;
-        closingPanel.DOFade(0, fadeDuration);
-        closingPanel.transform.DOScale(0.8f, fadeDuration).OnComplete(() => {
+        closingPanel.DOKill();
+        closingPanel.DOFade(0, fadeDuration).OnComplete(() => {
             closingPanel.gameObject.SetActive(false);
-            currentPanel = null;
-            if (previousModePanel != null) HandleTransition(previousModePanel);
+            currentPanel = panelMode1;
+            panelMode1.gameObject.SetActive(true);
+            panelMode1.DOFade(1, fadeDuration);
         });
     }
 
@@ -162,44 +267,5 @@ public class MenuManager : MonoBehaviour
         if (btn == null) return;
         btn.DOKill(true);
         btn.DOScale(Vector3.one * targetScale, 0.2f);
-    }
-
-    // Thêm hàm này vào MenuManager.cs
-    public void HandleButtonAnimationOnly(int index)
-    {
-        // Copy logic xử lý visual từ SwitchToMode sang đây
-        // (Bao gồm DOAnchorPosX cho Mode 1, Scale, Sprite, Text Color...)
-
-        // Logic dịch chuyển Mode 1
-        if (menuButtons[0] != null)
-        {
-            if (index == 1) menuButtons[0].DOAnchorPosX(29f, 0.25f);
-            else if (index == 2) menuButtons[0].DOAnchorPosX(-29f, 0.25f);
-            else if (index == 0) menuButtons[0].DOAnchorPosX(0f, 0.25f);
-        }
-
-        for (int i = 0; i < menuButtons.Length; i++)
-        {
-            if (menuButtons[i] == null) continue;
-            if (i == index)
-            {
-                if (buttonImages[i] != null) buttonImages[i].sprite = frameSelected;
-                if (buttonTexts[i] != null) buttonTexts[i].color = Color.white;
-                menuButtons[i].DOAnchorPosY(69f, 0.25f).SetEase(DG.Tweening.Ease.OutBack);
-                menuButtons[i].DOScale(1.374428f, 0.25f).SetEase(DG.Tweening.Ease.OutBack);
-            }
-            else
-            {
-                if (buttonImages[i] != null) buttonImages[i].sprite = frameUnselected;
-                if (buttonTexts[i] != null)
-                {
-                    Color unselectedColor;
-                    ColorUtility.TryParseHtmlString("#CCABFC", out unselectedColor);
-                    buttonTexts[i].color = unselectedColor;
-                }
-                menuButtons[i].DOAnchorPosY(22f, 0.25f);
-                menuButtons[i].DOScale(1.1591f, 0.25f);
-            }
-        }
     }
 }

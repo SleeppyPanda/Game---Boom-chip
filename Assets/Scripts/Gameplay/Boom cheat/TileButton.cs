@@ -5,7 +5,7 @@ public partial class TileButton : MonoBehaviour
 {
     public int tileIndex;
     [Header("1 cho bảng P1, 2 cho bảng P2")]
-    public int ownerID; // Thêm ID để biết ô này thuộc về ai
+    public int ownerID; // ID để xác định ô này thuộc về bàn cờ của ai
 
     private Button button;
     private Image buttonImage;
@@ -15,6 +15,8 @@ public partial class TileButton : MonoBehaviour
     {
         button = GetComponent<Button>();
         buttonImage = GetComponent<Image>();
+
+        // Sử dụng FindFirstObjectByType để tìm Manager trong Scene
         manager = FindFirstObjectByType<BoomChipManager>();
 
         if (button != null)
@@ -25,19 +27,21 @@ public partial class TileButton : MonoBehaviour
 
     void OnClicked()
     {
-        if (manager != null)
+        if (manager == null) return;
+
+        // Giữ logic tách biệt theo yêu cầu của bạn
+        if (manager.currentPhase == GamePhase.Phase1 || manager.currentPhase == GamePhase.Phase2)
         {
-            if (manager.currentPhase == GamePhase.Phase1 || manager.currentPhase == GamePhase.Phase2)
-            {
-                // Gọi qua Manager để sửa lỗi CS1061
-                manager.HandleTileClick(tileIndex, this);
-            }
-            else if (manager.currentPhase == GamePhase.Phase3)
-            {
-                manager.ExecuteTurn(tileIndex, this, ownerID);
-            }
+            // Xử lý chọn vị trí bom (Giai đoạn chuẩn bị)
+            manager.HandleTileClick(tileIndex, this);
+        }
+        else if (manager.currentPhase == GamePhase.Phase3)
+        {
+            // Xử lý bắn bom (Giai đoạn chiến đấu) - Cần truyền thêm ownerID
+            manager.ExecuteTurn(tileIndex, this, ownerID);
         }
     }
+
     public void SetVisual(Sprite newSprite)
     {
         if (newSprite != null && buttonImage != null)
@@ -51,7 +55,6 @@ public partial class TileButton : MonoBehaviour
         if (buttonImage != null) buttonImage.sprite = defaultSprite;
         if (button != null) button.interactable = true;
     }
-
     public void SetInteractable(bool state)
     {
         if (button != null) button.interactable = state;
