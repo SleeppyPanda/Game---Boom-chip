@@ -13145,7 +13145,7 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 1730417057}
         m_TargetAssemblyTypeName: UnlockButton, Assembly-CSharp
-        m_MethodName: 
+        m_MethodName: OnClick
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
