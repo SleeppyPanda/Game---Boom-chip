@@ -159,4 +159,43 @@ public class MenuManager : MonoBehaviour
         btn.DOKill(true);
         btn.DOScale(Vector3.one * targetScale, 0.2f);
     }
+
+    // Thêm hàm này vào MenuManager.cs
+    public void HandleButtonAnimationOnly(int index)
+    {
+        // Copy logic xử lý visual từ SwitchToMode sang đây
+        // (Bao gồm DOAnchorPosX cho Mode 1, Scale, Sprite, Text Color...)
+
+        // Logic dịch chuyển Mode 1
+        if (menuButtons[0] != null)
+        {
+            if (index == 1) menuButtons[0].DOAnchorPosX(29f, 0.25f);
+            else if (index == 2) menuButtons[0].DOAnchorPosX(-29f, 0.25f);
+            else if (index == 0) menuButtons[0].DOAnchorPosX(0f, 0.25f);
+        }
+
+        for (int i = 0; i < menuButtons.Length; i++)
+        {
+            if (menuButtons[i] == null) continue;
+            if (i == index)
+            {
+                if (buttonImages[i] != null) buttonImages[i].sprite = frameSelected;
+                if (buttonTexts[i] != null) buttonTexts[i].color = Color.white;
+                menuButtons[i].DOAnchorPosY(69f, 0.25f).SetEase(DG.Tweening.Ease.OutBack);
+                menuButtons[i].DOScale(1.374428f, 0.25f).SetEase(DG.Tweening.Ease.OutBack);
+            }
+            else
+            {
+                if (buttonImages[i] != null) buttonImages[i].sprite = frameUnselected;
+                if (buttonTexts[i] != null)
+                {
+                    Color unselectedColor;
+                    ColorUtility.TryParseHtmlString("#CCABFC", out unselectedColor);
+                    buttonTexts[i].color = unselectedColor;
+                }
+                menuButtons[i].DOAnchorPosY(22f, 0.25f);
+                menuButtons[i].DOScale(1.1591f, 0.25f);
+            }
+        }
+    }
 }
