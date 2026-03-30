@@ -35,15 +35,22 @@ public class MenuManager : MonoBehaviour
 
     void Start()
     {
-        // Dọn dẹp các tween cũ để tránh xung đột khi load lại scene
+        // 1. Dọn dẹp tween cũ
         DOTween.KillAll();
 
+        // 2. Play nhạc nền
         if (AudioManager.Instance != null)
         {
             AudioManager.Instance.PlayMusic("background_01");
         }
 
-        // Khởi tạo mảng lưu trữ component UI của các nút menu chính
+        // 3. Khởi tạo Banner ngay khi vào Menu
+        if (AdsManager.Instance != null)
+        {
+            AdsManager.Instance.ShowBanner();
+        }
+
+        // 4. Cache UI components
         buttonImages = new Image[menuButtons.Length];
         buttonTexts = new TextMeshProUGUI[menuButtons.Length];
 
@@ -54,14 +61,14 @@ public class MenuManager : MonoBehaviour
             buttonTexts[i] = menuButtons[i].GetComponentInChildren<TextMeshProUGUI>();
         }
 
-        // Đưa tất cả các panel về trạng thái ẩn ban đầu
+        // 5. Khởi tạo trạng thái ẩn cho các Panel
         InitPanel(panelMode1);
         InitPanel(panelMode2);
         InitPanel(panelMode3);
         InitPanel(panelAccount);
         InitPanel(panelSetting);
 
-        // Hiển thị Mode 1 (Panel chính) ngay khi bắt đầu
+        // 6. Hiển thị Panel chính
         ShowPanel1();
     }
 
@@ -78,17 +85,17 @@ public class MenuManager : MonoBehaviour
 
     public void ShowPanel1()
     {
-        // Nếu đang ở các popup con của Mode thì phải đóng chúng trước
+        // Nếu quay về từ các popup hoặc mode khác, cần dọn dẹp Ads tương ứng
         if (currentPanel == panelMode2) ClosePanelMode2();
         else if (currentPanel == panelMode3) ClosePanelMode3();
         else if (currentPanel == panelAccount || currentPanel == panelSetting) CloseExtraPanel();
 
+        // Panel 1 là menu chính, ẩn MREC để không che nút
+        if (AdsManager.Instance != null) AdsManager.Instance.HideMREC();
+
         SwitchToMode(panelMode1, 0, false);
     }
 
-    /// <summary>
-    /// Chuyển trực tiếp đến Mode (Thường gọi sau khi hoàn thành xem Ads Rewarded)
-    /// </summary>
     public void DirectSwitchToMode(int index)
     {
         if (index == 1) SwitchToMode(panelMode2, 1, true);
@@ -101,6 +108,10 @@ public class MenuManager : MonoBehaviour
         {
             UnlockSystemManager.Instance.HandleUnlockFlow("Mode2", "is_show_rw_challenge", avatar, () => {
                 SwitchToMode(panelMode2, 1, true);
+
+                // Hiển thị MREC khi chọn Mode 2
+                if (AdsManager.Instance != null)
+                    AdsManager.Instance.ShowMREC("is_show_mrec_p1_choose");
             });
         }
     }
@@ -111,6 +122,10 @@ public class MenuManager : MonoBehaviour
         {
             UnlockSystemManager.Instance.HandleUnlockFlow("Mode3", "is_show_rw_prediction", avatar, () => {
                 SwitchToMode(panelMode3, 2, true);
+
+                // Hiển thị MREC khi chọn Mode 3
+                if (AdsManager.Instance != null)
+                    AdsManager.Instance.ShowMREC("is_show_mrec_p1_choose");
             });
         }
     }
@@ -129,6 +144,10 @@ public class MenuManager : MonoBehaviour
     private void CloseSpecificPopup(CanvasGroup popup)
     {
         if (popup == null) return;
+
+        // Ẩn MREC khi đóng popup mode để về menu chính sạch sẽ
+        if (AdsManager.Instance != null) AdsManager.Instance.HideMREC();
+
         popup.DOKill();
         popup.interactable = false;
         popup.blocksRaycasts = false;
@@ -157,23 +176,19 @@ public class MenuManager : MonoBehaviour
         PlayerPrefs.SetInt("SelectedMode", mode);
         PlayerPrefs.Save();
 
+        // Loại bỏ Interstitial theo yêu cầu, chỉ dọn dẹp Ads cũ rồi load scene
         if (AdsManager.Instance != null)
         {
-            AdsManager.Instance.ShowInterstitial("is_show_inter_p1_choose", () => {
-                DOTween.KillAll();
-                SceneManager.LoadScene(sceneName);
-            });
+            AdsManager.Instance.HideBanner();
+            AdsManager.Instance.HideMREC();
         }
-        else
-        {
-            DOTween.KillAll();
-            SceneManager.LoadScene(sceneName);
-        }
+
+        DOTween.KillAll();
+        SceneManager.LoadScene(sceneName);
     }
 
     public void HandleButtonAnimationOnly(int index)
     {
-        // Hiệu ứng dịch chuyển ngang cho thanh bar (nếu có logic đặc biệt cho index 1 và 2)
         if (menuButtons.Length > 0 && menuButtons[0] != null)
         {
             if (index == 1) menuButtons[0].DOAnchorPosX(29f, 0.25f);
@@ -211,6 +226,9 @@ public class MenuManager : MonoBehaviour
 
     private void SwitchToExtra(CanvasGroup target, RectTransform btn, float scale)
     {
+        // Khi mở bảng Account/Setting, tạm ẩn MREC để tránh che giao diện
+        if (AdsManager.Instance != null) AdsManager.Instance.HideMREC();
+
         AnimateButtonScale(btn, scale);
         if (target == null || currentPanel == target) return;
         HandleTransition(target, true);
@@ -246,7 +264,6 @@ public class MenuManager : MonoBehaviour
     {
         if (currentPanel == null || currentPanel == panelMode1) return;
 
-        // Lưu thông tin account trước khi quay về menu chính
         if (currentPanel == panelAccount && AccountManager.Instance != null)
         {
             AccountManager.Instance.SaveAndExit();
@@ -270,6 +287,9 @@ public class MenuManager : MonoBehaviour
             panelMode1.alpha = 1;
             panelMode1.interactable = true;
             panelMode1.blocksRaycasts = true;
+
+            // Đảm bảo Banner hiện lại khi quay về menu chính
+            if (AdsManager.Instance != null) AdsManager.Instance.ShowBanner();
         });
     }
 

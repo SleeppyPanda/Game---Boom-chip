@@ -27,30 +27,51 @@ public class FirebaseManager : MonoBehaviour
         }
     }
 
+    // --- FIX LỖI OnAppDisposed & Finalize ---
+    private void OnDestroy()
+    {
+        if (Instance == this)
+        {
+            isFirebaseInitialized = false;
+            try
+            {
+                // Giải phóng tài nguyên Firebase khi ứng dụng đóng hoặc Object bị hủy
+                if (FirebaseApp.DefaultInstance != null)
+                {
+                    FirebaseApp.DefaultInstance.Dispose();
+                    Debug.Log("<color=red>[Firebase] Disposed Successfully</color>");
+                }
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning("[Firebase] Error during dispose: " + e.Message);
+            }
+        }
+    }
+
     private void InitializeFirebase()
     {
         FirebaseApp.CheckAndFixDependenciesAsync().ContinueWithOnMainThread(task => {
             var dependencyStatus = task.Result;
             if (dependencyStatus == DependencyStatus.Available)
             {
-                // Khởi tạo Analytics
+                // 1. Khởi tạo Analytics
                 FirebaseAnalytics.SetAnalyticsCollectionEnabled(true);
 
-                // Cấu hình Fetch Setting để fix lỗi cache trên điện thoại
+                // 2. Cấu hình Fetch Setting (Fix lỗi cache)
                 ConfigSettings settings = new ConfigSettings
                 {
-                    // Đặt là 0 để luôn ưu tiên lấy data mới nhất khi Fetch
                     MinimumFetchIntervalInMilliseconds = 0
                 };
                 FirebaseRemoteConfig.DefaultInstance.SetConfigSettingsAsync(settings);
 
-                // Khởi tạo Remote Config
+                // 3. Khởi tạo Remote Config
                 InitializeRemoteConfig();
 
                 isFirebaseInitialized = true;
                 Debug.Log("<color=green>[Firebase] Initialized Successfully</color>");
 
-                // Ghi nhận sự kiện loading lần đầu
+                // 4. Ghi nhận sự kiện loading lần đầu
                 LogFirstLoadingComplete();
             }
             else
@@ -62,14 +83,13 @@ public class FirebaseManager : MonoBehaviour
 
     private void InitializeRemoteConfig()
     {
-        // Defaults được set tập trung trong AdsManager.FetchRemoteConfig() theo đúng spec
         FetchRemoteConfig();
     }
 
-    // Hàm quan trọng để fix lỗi: Tự động cập nhật khi người chơi mở lại app từ background
+    // Tự động cập nhật khi người chơi mở lại app từ background
     void OnApplicationPause(bool pauseStatus)
     {
-        // pauseStatus = false có nghĩa là ứng dụng được quay lại (Resume)
+        // pauseStatus = false nghĩa là Resume (quay lại app)
         if (!pauseStatus && isFirebaseInitialized)
         {
             Debug.Log("<color=orange>[Firebase] App Resumed - Refreshing Remote Config...</color>");
@@ -79,7 +99,10 @@ public class FirebaseManager : MonoBehaviour
 
     public void FetchRemoteConfig()
     {
-        // Set defaults tập trung tại đây (single source of truth)
+        // Kiểm tra an toàn trước khi truy cập DefaultInstance
+        if (FirebaseApp.DefaultInstance == null) return;
+
+        // Set defaults tập trung
         Dictionary<string, object> defaults = new Dictionary<string, object> {
             { AdEventTracker.KEY_ADS_INTERVAL, 45 },
             { AdEventTracker.KEY_RATING_POPUP, false },
@@ -103,18 +126,21 @@ public class FirebaseManager : MonoBehaviour
         };
 
         FirebaseRemoteConfig.DefaultInstance.SetDefaultsAsync(defaults).ContinueWithOnMainThread(t => {
+            // Kiểm tra instance lần nữa đề phòng app đóng trong lúc chờ Task
+            if (FirebaseApp.DefaultInstance == null) return;
+
             FirebaseRemoteConfig.DefaultInstance.FetchAndActivateAsync().ContinueWithOnMainThread(task => {
                 if (task.IsFaulted)
                 {
-                    // Remote Config fetch fail hầu như chỉ do mất mạng → luôn hiện popup retry
                     Debug.LogWarning("[Firebase] Remote Config Fetch Failed: " + task.Exception);
                     if (NetworkErrorUI.Instance != null)
                         NetworkErrorUI.Instance.Show(() => FetchRemoteConfig());
                     return;
                 }
+
                 Debug.Log("<color=green>[Firebase] Remote Config Activated & Updated</color>");
 
-                // Chỉ notify AdsManager lần đầu (không notify lại khi resume)
+                // Chỉ notify AdsManager lần đầu tiên
                 if (!_hasNotifiedAdsManager && AdsManager.Instance != null)
                 {
                     _hasNotifiedAdsManager = true;
@@ -131,7 +157,6 @@ public class FirebaseManager : MonoBehaviour
     {
         if (PlayerPrefs.GetInt("FiredFirstLoading", 0) == 0)
         {
-            // Gọi qua AdEventTracker để đồng bộ bắn sang cả AppsFlyer
             AdEventTracker.LogFirstLoadingComplete();
             PlayerPrefs.SetInt("FiredFirstLoading", 1);
             PlayerPrefs.Save();
@@ -141,7 +166,6 @@ public class FirebaseManager : MonoBehaviour
     // --- 2. count_mode_xx ---
     public void LogModeEnter(int modeID)
     {
-        // Chuyển đổi ID int sang Enum để dùng chung logic AdEventTracker
         AdEventTracker.TrackModeEnter((AdEventTracker.GameMode)modeID);
     }
 
@@ -183,7 +207,6 @@ public class FirebaseManager : MonoBehaviour
         if (!isFirebaseInitialized) return;
         FirebaseAnalytics.LogEvent(eventName);
 
-        // FIX LỖI: Gọi đúng AppsflyerManager.Instance thay vì AppsFlyer.Instance
         if (AppsflyerManager.Instance != null)
         {
             AppsflyerManager.Instance.SendCustomEvent(eventName, null);

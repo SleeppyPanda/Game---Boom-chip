@@ -309,27 +309,52 @@ public class AdsManager : MonoBehaviour
 
         if (isResume)
         {
+            // KỊCH BẢN RESUME: Kiểm tra show_resume_ads
             if (!AdEventTracker.GetBool(AdEventTracker.KEY_SHOW_RESUME_ADS)) return;
         }
         else
         {
+            // KỊCH BẢN MỞ APP (AOA): Kiểm tra tổng show_open_ads
             if (!AdEventTracker.GetBool(AdEventTracker.KEY_SHOW_OPEN_ADS)) return;
 
-            if (_isFirstTimeTruly && !AdEventTracker.GetBool(AdEventTracker.KEY_SHOW_OPEN_ADS_FIRST))
+            // KIỂM TRA LẦN ĐẦU (Kịch bản: Không show lần đầu tiên khi vào ứng dụng)
+            if (_isFirstTimeTruly)
             {
-                PlayerPrefs.SetInt("Truly_First_Open_Completed", 1);
-                _isFirstTimeTruly = false;
-                return;
+                // Kiểm tra xem config có cho phép show ở lần đầu không (thường là false theo yêu cầu của bạn)
+                if (!AdEventTracker.GetBool(AdEventTracker.KEY_SHOW_OPEN_ADS_FIRST))
+                {
+                    Debug.Log("<color=cyan>[AOA] First time open detected - Skipping ad per config.</color>");
+                    // Đánh dấu đã qua lần đầu và LƯU LẠI ngay
+                    PlayerPrefs.SetInt("Truly_First_Open_Completed", 1);
+                    PlayerPrefs.Save();
+                    _isFirstTimeTruly = false;
+                    return;
+                }
             }
         }
 
         if (_appOpenAd != null && _appOpenAd.CanShowAd() && DateTime.Now < _aoaExpireTime)
         {
-            _appOpenAd.OnAdFullScreenContentOpened += () => _isAdShowing = true;
-            _appOpenAd.OnAdFullScreenContentClosed += () => { _isAdShowing = false; LoadAppOpenAd(); };
+            _appOpenAd.OnAdFullScreenContentOpened += () => {
+                _isAdShowing = true;
+                // Ẩn Banner/MREC để tránh lỗi hiển thị đè
+                HideBanner();
+                HideMREC();
+            };
+
+            _appOpenAd.OnAdFullScreenContentClosed += () => {
+                _isAdShowing = false;
+                LoadAppOpenAd();
+                // Show lại banner sau khi đóng AOA
+                ShowBanner();
+            };
+
             _appOpenAd.Show();
         }
-        else LoadAppOpenAd();
+        else
+        {
+            LoadAppOpenAd();
+        }
     }
 
     private void OnApplicationFocus(bool focus)
