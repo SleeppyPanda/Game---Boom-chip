@@ -42,6 +42,7 @@ public class AdsManager : MonoBehaviour
     private bool _isAdShowing = false;
     private bool _isFirstTimeTruly = true;
     private float _lastTimeShowInterstitial = -100f;
+    private float _lastFullscreenAdClosedTime = -100f;
     private DateTime _aoaExpireTime;
     private Coroutine _bannerReloadCoroutine;
     private int _bannerHeightDP = 60;
@@ -249,6 +250,7 @@ public class AdsManager : MonoBehaviour
     private IEnumerator HandleAdClosedMainThread(Action onAdClosed)
     {
         _isAdShowing = false;
+        _lastFullscreenAdClosedTime = Time.realtimeSinceStartup;
         LoadInterstitialAd();
         yield return null;
         onAdClosed?.Invoke();
@@ -289,6 +291,7 @@ public class AdsManager : MonoBehaviour
             };
             _rewardedAd.OnAdFullScreenContentClosed += () => {
                 _isAdShowing = false;
+                _lastFullscreenAdClosedTime = Time.realtimeSinceStartup;
                 LoadRewardedAd();
             };
             _rewardedAd.Show((reward) => onRewardEarned?.Invoke());
@@ -348,6 +351,7 @@ public class AdsManager : MonoBehaviour
 
             _appOpenAd.OnAdFullScreenContentClosed += () => {
                 _isAdShowing = false;
+                _lastFullscreenAdClosedTime = Time.realtimeSinceStartup;
                 LoadAppOpenAd();
                 ShowBanner();
             };
@@ -360,9 +364,14 @@ public class AdsManager : MonoBehaviour
         }
     }
 
-    private void OnApplicationFocus(bool focus)
+    private void OnApplicationPause(bool paused)
     {
-        if (focus) ShowAppOpenAd(true);
+        if (!paused)
+        {
+            // Bỏ qua resume từ fullscreen ad (Interstitial/Rewarded/AOA)
+            if (Time.realtimeSinceStartup - _lastFullscreenAdClosedTime < 1f) return;
+            ShowAppOpenAd(true);
+        }
     }
     #endregion
 
