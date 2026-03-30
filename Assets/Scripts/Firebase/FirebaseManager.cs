@@ -1,6 +1,8 @@
 ﻿using UnityEngine;
 using Firebase;
 using Firebase.Analytics;
+using Firebase.RemoteConfig;
+using System;
 using System.Collections.Generic;
 using Firebase.Extensions;
 
@@ -26,16 +28,20 @@ public class FirebaseManager : MonoBehaviour
 
     private void InitializeFirebase()
     {
-        // Sử dụng ContinueWithOnMainThread để đảm bảo an toàn cho Unity
         FirebaseApp.CheckAndFixDependenciesAsync().ContinueWithOnMainThread(task => {
             var dependencyStatus = task.Result;
             if (dependencyStatus == DependencyStatus.Available)
             {
-                isFirebaseInitialized = true;
+                // Khởi tạo Analytics
                 FirebaseAnalytics.SetAnalyticsCollectionEnabled(true);
-                Debug.Log("<color=green>Firebase Analytics Initialized</color>");
 
-                // Ghi nhận sự kiện loading thành công lần đầu
+                // Khởi tạo Remote Config
+                InitializeRemoteConfig();
+
+                isFirebaseInitialized = true;
+                Debug.Log("<color=green>[Firebase] Initialized Successfully</color>");
+
+                // Ghi nhận sự kiện loading lần đầu
                 LogFirstLoadingComplete();
             }
             else
@@ -45,52 +51,73 @@ public class FirebaseManager : MonoBehaviour
         });
     }
 
-    #region CORE EVENTS
+    private void InitializeRemoteConfig()
+    {
+        var defaultValues = new Dictionary<string, object>
+        {
+            { AdEventTracker.KEY_ADS_INTERVAL, 30 },
+            { AdEventTracker.KEY_SHOW_BANNER, true },
+            { AdEventTracker.KEY_RW_CHALLENGE, true }
+        };
+
+        FirebaseRemoteConfig.DefaultInstance.SetDefaultsAsync(defaultValues).ContinueWithOnMainThread(task => {
+            FetchRemoteConfig();
+        });
+    }
+
+    public void FetchRemoteConfig()
+    {
+        FirebaseRemoteConfig.DefaultInstance.FetchAndActivateAsync().ContinueWithOnMainThread(task => {
+            if (task.IsCompleted) Debug.Log("<color=green>[Firebase] Remote Config Activated</color>");
+        });
+    }
+
+    #region CORE EVENTS (Giữ nguyên để fix lỗi cho BoomChipManager)
+
     // --- 1. first_loading_complete ---
     public void LogFirstLoadingComplete()
     {
         if (PlayerPrefs.GetInt("FiredFirstLoading", 0) == 0)
         {
-            LogEvent("first_loading_complete");
+            // Gọi qua AdEventTracker để đồng bộ bắn sang cả AppsFlyer
+            AdEventTracker.LogFirstLoadingComplete();
             PlayerPrefs.SetInt("FiredFirstLoading", 1);
             PlayerPrefs.Save();
         }
     }
 
-    // --- 2. count_mode_xx (Khi người chơi vào một Mode) ---
+    // --- 2. count_mode_xx ---
     public void LogModeEnter(int modeID)
     {
-        LogEvent($"count_mode_{modeID:D2}"); // Ví dụ: count_mode_09
+        // Chuyển đổi ID int sang Enum để dùng chung logic AdEventTracker
+        AdEventTracker.TrackModeEnter((AdEventTracker.GameMode)modeID);
     }
 
-    // --- 3. count_complete_xx (Khi người chơi thắng/xong một Mode) ---
+    // --- 3. count_complete_xx ---
     public void LogModeComplete(int modeID)
     {
-        LogEvent($"count_complete_{modeID:D2}"); // Ví dụ: count_complete_09
+        AdEventTracker.TrackModeComplete((AdEventTracker.GameMode)modeID);
     }
 
     // --- 4. count_avatar_xx ---
     public void LogCountAvatar(int avatarID)
     {
-        LogEvent($"count_avatar_{avatarID:D2}");
+        AdEventTracker.TrackAvatarChoose(avatarID);
     }
     #endregion
 
-    #region ADS REVENUE (AD_IMPRESSION)
-    /// <summary>
-    /// Hàm bắn doanh thu quảng cáo chuẩn theo schema của Firebase/Applovin/Admob
-    /// </summary>
+    #region ADS REVENUE
     public void LogAdImpression(string format, string platform, string source, string unitName, double value, string currency)
     {
         if (!isFirebaseInitialized) return;
 
         Parameter[] AdParameters = {
-            new Parameter("ad_format", format),        // INTER, REWARDED, BANNER, AOA...
-            new Parameter("ad_platform", platform),    // admob, maxads...
-            new Parameter("ad_source", source),        // AdMob_Mediation...
-            new Parameter("ad_unit_name", unitName),   // ID hoặc tên Unit
-            new Parameter("value", value),             // Giá trị doanh thu (0.00x)
-            new Parameter("currency", currency)        // USD, VND...
+            new Parameter("ad_format", format),
+            new Parameter("ad_platform", platform),
+            new Parameter("ad_source", source),
+            new Parameter("ad_unit_name", unitName),
+            new Parameter("value", value),
+            new Parameter("currency", currency)
         };
 
         FirebaseAnalytics.LogEvent("ad_impression", AdParameters);
@@ -99,19 +126,17 @@ public class FirebaseManager : MonoBehaviour
     #endregion
 
     #region HELPER METHODS
-    // Hàm bổ trợ ghi sự kiện nhanh (chỉ có tên event)
-    private void LogEvent(string eventName)
+    public void LogEvent(string eventName)
     {
-        if (!isFirebaseInitialized)
-        {
-            Debug.LogWarning($"Firebase not init. Cannot log: {eventName}");
-            return;
-        }
+        if (!isFirebaseInitialized) return;
         FirebaseAnalytics.LogEvent(eventName);
+
+        // Bắn sang cả AppsFlyer nếu muốn đồng bộ mọi event đơn lẻ
+        AppsFlyerSDK.AppsFlyer.sendEvent(eventName, null);
+
         Debug.Log($"<color=cyan>Firebase Event:</color> {eventName}");
     }
 
-    // Hàm bổ trợ ghi sự kiện có tham số tùy chỉnh nếu cần sau này
     public void LogCustomEvent(string eventName, string paramName, string paramValue)
     {
         if (!isFirebaseInitialized) return;

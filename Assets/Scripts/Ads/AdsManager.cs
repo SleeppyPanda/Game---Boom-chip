@@ -5,7 +5,7 @@ using System;
 using System.Collections.Generic;
 using Firebase.Extensions;
 using System.Collections;
-using AppsFlyerSDK; // Tích hợp AppsFlyer
+using AppsFlyerSDK;
 
 #if UNITY_ANDROID
 using Google.Play.Review; 
@@ -16,8 +16,8 @@ public class AdsManager : MonoBehaviour
     public static AdsManager Instance;
 
     [Header("AppsFlyer Settings")]
-    public string appsFlyerDevKey = "YOUR_DEV_KEY_HERE"; // Thay bằng Dev Key của bạn
-    public string appId = "com.your.package.name";       // Thay bằng Package Name của bạn
+    public string appsFlyerDevKey = "YOUR_DEV_KEY_HERE";
+    public string appId = "com.your.package.name";
 
     [Header("Ad Unit IDs (Test IDs)")]
     public string adUnitIdBanner = "ca-app-pub-3940256099942544/6300978111";
@@ -33,29 +33,26 @@ public class AdsManager : MonoBehaviour
     private AppOpenAd _appOpenAd;
 
     private bool _isAdShowing = false;
-    private bool _isFirstOpenSession = true;
+    private bool _isFirstTimeTruly = true;
     private float _lastTimeShowInterstitial = -100f;
     private DateTime _aoaExpireTime;
     private Coroutine _bannerReloadCoroutine;
-
-    // Properties để các Script khác truy cập nhanh
-    public bool IsShowRwChallenge => GetConfigBool("is_show_rw_challenge");
-    public bool IsShowRwPrediction => GetConfigBool("is_show_rw_prediction");
-    public string RwProfileAvatars => GetConfigString("is_show_rw_profile");
 
     void Awake()
     {
         if (Instance == null) { Instance = this; DontDestroyOnLoad(gameObject); }
         else { Destroy(gameObject); }
+
+        _isFirstTimeTruly = PlayerPrefs.GetInt("Truly_First_Open_Completed", 0) == 0;
     }
 
     void Start()
     {
-        // 1. Khởi tạo AppsFlyer
+        // Khởi tạo AppsFlyer
         AppsFlyer.initSDK(appsFlyerDevKey, appId);
         AppsFlyer.startSDK();
 
-        // 2. Khởi tạo AdMob
+        // Khởi tạo AdMob
         MobileAds.Initialize(initStatus => {
             LoadInterstitialAd();
             LoadRewardedAd();
@@ -67,123 +64,119 @@ public class AdsManager : MonoBehaviour
 
     private void InitializeFirebase()
     {
-#if UNITY_EDITOR
-        Debug.LogWarning("<color=yellow>[AdsManager]</color> Editor Mode: Bypassing Firebase check to avoid DLL error.");
-        FetchRemoteConfig(); // Chạy thẳng Remote Config (sẽ dùng Default values nếu DLL lỗi)
-        return;
-#endif
-
         Firebase.FirebaseApp.CheckAndFixDependenciesAsync().ContinueWithOnMainThread(task => {
             if (task.Result == Firebase.DependencyStatus.Available)
                 FetchRemoteConfig();
             else
-                Debug.LogError("AdsManager: Could not resolve Firebase dependencies: " + task.Result);
+                Debug.LogError("AdsManager: Firebase dependencies error: " + task.Result);
         });
     }
 
     private void FetchRemoteConfig()
     {
         Dictionary<string, object> defaults = new Dictionary<string, object> {
-            { "ads_interval", 45 },
-            { "rating_popup", false },
-            { "show_open_ads", false },
-            { "show_open_ads_first_open", false },
-            { "show_resume_ads", false },
-            { "is_show_inter_p1_choose", false },
-            { "is_show_inter_p2_choose", false },
-            { "is_show_inter_back_home", false },
-            { "is_show_inter_retry", false },
-            { "is_show_banner", false },
-            { "time_reload_collap_ad", 10 },
-            { "is_show_mrec_p1_choose", false },
-            { "is_show_mrec_p2_choose", false },
-            { "is_show_mrec_loading_game", false },
-            { "is_show_mrec_gameplay", false },
-            { "is_show_mrec_complete_game", false },
-            { "is_show_rw_challenge", false },
-            { "is_show_rw_prediction", false },
-            { "is_show_rw_profile", "" }
+            { AdEventTracker.KEY_ADS_INTERVAL, 45 },
+            { AdEventTracker.KEY_RATING_POPUP, false },
+            { AdEventTracker.KEY_SHOW_OPEN_ADS, false },
+            { AdEventTracker.KEY_SHOW_OPEN_ADS_FIRST, false },
+            { AdEventTracker.KEY_SHOW_RESUME_ADS, false },
+            { AdEventTracker.KEY_SHOW_BANNER, false },
+            { AdEventTracker.KEY_TIME_RELOAD_COLLAP, 10 },
+            { AdEventTracker.KEY_INTER_P1_CHOOSE, false },
+            { AdEventTracker.KEY_INTER_P2_CHOOSE, false },
+            { AdEventTracker.KEY_INTER_BACK_HOME, false },
+            { AdEventTracker.KEY_INTER_RETRY, false },
+            { AdEventTracker.KEY_RW_CHALLENGE, false },
+            { AdEventTracker.KEY_RW_PREDICTION, false },
+            { AdEventTracker.KEY_RW_PROFILE, "" },
+            { AdEventTracker.KEY_MREC_P1_CHOOSE, false },
+            { AdEventTracker.KEY_MREC_P2_CHOOSE, false },
+            { AdEventTracker.KEY_MREC_LOADING, false },
+            { AdEventTracker.KEY_MREC_GAMEPLAY, false },
+            { AdEventTracker.KEY_MREC_COMPLETE, false }
         };
 
-        // Tránh gọi Firebase logic nếu đang ở Editor và bị lỗi DLL
-        try
-        {
-            FirebaseRemoteConfig.DefaultInstance.SetDefaultsAsync(defaults).ContinueWithOnMainThread(t => {
-                FirebaseRemoteConfig.DefaultInstance.FetchAndActivateAsync().ContinueWithOnMainThread(task => {
-                    if (task.IsCompleted)
-                    {
-                        Debug.Log("AdsManager: Remote Config Synchronized!");
-                        ShowBanner();
-                        CheckShowRating();
-                    }
-                });
+        FirebaseRemoteConfig.DefaultInstance.SetDefaultsAsync(defaults).ContinueWithOnMainThread(t => {
+            FirebaseRemoteConfig.DefaultInstance.FetchAndActivateAsync().ContinueWithOnMainThread(task => {
+                if (task.IsCompleted)
+                {
+                    Debug.Log("AdsManager: Remote Config Synchronized!");
+                    AdEventTracker.LogFirstLoadingComplete();
+                    ShowBanner();
+                    CheckShowRating();
+                    ShowAppOpenAd(false);
+                }
             });
-        }
-        catch (Exception e)
+        });
+    }
+
+    #region REVENUE LOGGING
+    private void SendRevenueToAll(string format, AdValue adValue)
+    {
+        double revenue = adValue.Value / 1000000f;
+        string currency = adValue.CurrencyCode;
+
+        // 1. Log Firebase Ad Impression
+        AdEventTracker.LogAdImpression("AdMob", "admob", format, revenue);
+
+        // 2. Log AppsFlyer Ad Revenue (Chuẩn af_ad_revenue & af_revenue)
+        Dictionary<string, string> afParams = new Dictionary<string, string> {
+            { AFInAppEvents.CURRENCY, currency },
+            { AFInAppEvents.REVENUE, revenue.ToString() }, // Ghi nhận doanh thu af_revenue
+            { "af_ad_platform", "admob" },
+            { "af_ad_format", format },
+            { "af_ad_unit_name", GetUnitIDByFormat(format) }
+        };
+        AppsFlyer.sendEvent("af_ad_revenue", afParams);
+    }
+
+    private string GetUnitIDByFormat(string format)
+    {
+        return format switch
         {
-            Debug.LogWarning("AdsManager: Firebase DLL not found, using local defaults. " + e.Message);
-        }
-    }
-
-    public bool GetConfigBool(string key)
-    {
-        try { return FirebaseRemoteConfig.DefaultInstance.GetValue(key).BooleanValue; }
-        catch { return false; }
-    }
-    public long GetConfigLong(string key)
-    {
-        try { return FirebaseRemoteConfig.DefaultInstance.GetValue(key).LongValue; }
-        catch { return 0; }
-    }
-    public string GetConfigString(string key)
-    {
-        try { return FirebaseRemoteConfig.DefaultInstance.GetValue(key).StringValue; }
-        catch { return ""; }
-    }
-
-    #region APPSFLYER LOGGING HELPERS
-    private void LogAppsFlyer(string eventName, Dictionary<string, string> parameters = null)
-    {
-        AppsFlyer.sendEvent(eventName, parameters);
-        Debug.Log($"<color=orange>[AppsFlyer Log]</color> {eventName}");
+            "INTER" => adUnitIdInter,
+            "REWARDED" => adUnitIdRewarded,
+            "BANNER" => adUnitIdBanner,
+            "AOA" => adUnitIdAOA,
+            "MREC" => adUnitIdMREC,
+            _ => "unknown",
+        };
     }
     #endregion
 
-    #region INTERSTITIAL
+    #region INTERSTITIAL (AppsFlyer: af_inters_...)
     public void LoadInterstitialAd()
     {
         if (_interstitialAd != null) _interstitialAd.Destroy();
         InterstitialAd.Load(adUnitIdInter, new AdRequest(), (ad, error) => {
             if (error != null) return;
             _interstitialAd = ad;
-
-            // AppsFlyer: API Called (Ad is ready)
-            LogAppsFlyer("af_inters_api_called");
-
-            _interstitialAd.OnAdPaid += (adValue) => {
-                SendRevenueToAll("INTER", "admob", adValue);
-            };
+            _interstitialAd.OnAdPaid += (adValue) => SendRevenueToAll("INTER", adValue);
         });
     }
 
     public void ShowInterstitial(string placementConfigKey, Action onAdClosed)
     {
-        // AppsFlyer: Eligible
-        LogAppsFlyer("af_inters_ad_eligible");
+        // Eligible: Khi bắt đầu gọi logic show (nút bấm)
+        AdEventTracker.TrackInterEligible();
 
-        bool canShowByConfig = GetConfigBool(placementConfigKey);
-        float interval = (float)GetConfigLong("ads_interval");
+        bool isEnable = AdEventTracker.GetBool(placementConfigKey);
+        float interval = AdEventTracker.GetFloat(AdEventTracker.KEY_ADS_INTERVAL, 45f);
 
-        if (canShowByConfig && (Time.time - _lastTimeShowInterstitial >= interval))
+        if (isEnable && (Time.time - _lastTimeShowInterstitial >= interval))
         {
             if (_interstitialAd != null && _interstitialAd.CanShowAd())
             {
+                // Api Called: Khi ads đã load xong và sẵn sàng hiển thị
+                AdEventTracker.TrackInterApiCalled();
+
                 _interstitialAd.OnAdFullScreenContentOpened += () => {
                     _isAdShowing = true;
                     _lastTimeShowInterstitial = Time.time;
-                    // AppsFlyer: Displayed
-                    LogAppsFlyer("af_inters_displayed");
+                    // Displayed: Khi ad hiện lên màn hình
+                    AdEventTracker.TrackInterDisplayed();
                 };
+
                 _interstitialAd.OnAdFullScreenContentClosed += () => {
                     _isAdShowing = false;
                     LoadInterstitialAd();
@@ -197,80 +190,54 @@ public class AdsManager : MonoBehaviour
     }
     #endregion
 
-    #region REWARDED
+    #region REWARDED ADS (AppsFlyer: af_rewarded_...)
     public void LoadRewardedAd()
     {
         if (_rewardedAd != null) _rewardedAd.Destroy();
         RewardedAd.Load(adUnitIdRewarded, new AdRequest(), (ad, error) => {
             if (error != null) return;
             _rewardedAd = ad;
-
-            // AppsFlyer: API Called
-            LogAppsFlyer("af_rewarded_api_called");
-
-            _rewardedAd.OnAdPaid += (adValue) => {
-                SendRevenueToAll("REWARDED", "admob", adValue);
-            };
+            _rewardedAd.OnAdPaid += (adValue) => SendRevenueToAll("REWARDED", adValue);
         });
     }
 
-    public void ShowRewardedAd(string rewardType, Action onRewardEarned)
+    public void ShowRewardedAd(string logicKey, Action onRewardEarned, Action onAdFailed = null)
     {
-        // AppsFlyer: Eligible
-        LogAppsFlyer("af_rewarded_ad_eligible");
+        // Eligible
+        AdEventTracker.TrackRewardEligible();
+
+        if (!AdEventTracker.GetBool(logicKey))
+        {
+            onRewardEarned?.Invoke();
+            return;
+        }
 
         if (_rewardedAd != null && _rewardedAd.CanShowAd())
         {
+            // Api Called
+            AdEventTracker.TrackRewardApiCalled();
+
             _rewardedAd.OnAdFullScreenContentOpened += () => {
                 _isAdShowing = true;
-                // AppsFlyer: Displayed
-                LogAppsFlyer("af_rewarded_ad_displayed");
+                // Displayed
+                AdEventTracker.TrackRewardDisplayed();
             };
+
             _rewardedAd.OnAdFullScreenContentClosed += () => {
                 _isAdShowing = false;
                 LoadRewardedAd();
             };
-
-            _rewardedAd.Show((reward) => {
-                onRewardEarned?.Invoke();
-            });
+            _rewardedAd.Show((reward) => onRewardEarned?.Invoke());
         }
-        else LoadRewardedAd();
-    }
-    #endregion
-
-    #region REVENUE LOGGING (Firebase + AppsFlyer)
-    private void SendRevenueToAll(string format, string platform, AdValue adValue)
-    {
-        double revenue = adValue.Value / 1000000f;
-        string currency = adValue.CurrencyCode;
-
-        // 1. Firebase Log
-        if (FirebaseManager.Instance != null)
+        else
         {
-            FirebaseManager.Instance.LogAdImpression(format, platform, "AdMob_Mediation", "Direct_Unit", revenue, currency);
+            onAdFailed?.Invoke();
+            LoadRewardedAd();
         }
-
-        // 2. AppsFlyer Ad Revenue (af_ad_revenue)
-        Dictionary<string, string> afParams = new Dictionary<string, string>();
-        afParams.Add(AFInAppEvents.CURRENCY, currency);
-        afParams.Add(AFInAppEvents.REVENUE, revenue.ToString());
-        afParams.Add("af_ad_platform", platform);
-        afParams.Add("af_ad_format", format);
-        LogAppsFlyer("af_ad_revenue", afParams);
-
-        // 3. AppsFlyer In-App Purchase/Revenue Style (af_revenue)
-        Dictionary<string, string> afRev = new Dictionary<string, string>();
-        afRev.Add(AFInAppEvents.REVENUE, revenue.ToString());
-        afRev.Add(AFInAppEvents.CURRENCY, currency);
-        LogAppsFlyer(AFInAppEvents.REVENUE, afRev);
     }
     #endregion
 
-    #region OTHERS (Banner, AOA, Rating)
-    // Các hàm ShowBanner, LoadAppOpenAd, CheckShowRating... giữ nguyên logic cũ 
-    // nhưng đã được bọc bởi try-catch trong Remote Config để không crash.
-
+    #region APP OPEN ADS
     public void LoadAppOpenAd()
     {
         if (_appOpenAd != null) _appOpenAd.Destroy();
@@ -278,13 +245,24 @@ public class AdsManager : MonoBehaviour
             if (error != null) return;
             _appOpenAd = ad;
             _aoaExpireTime = DateTime.Now.AddHours(4);
-            _appOpenAd.OnAdPaid += (adValue) => SendRevenueToAll("AOA", "admob", adValue);
+            _appOpenAd.OnAdPaid += (adValue) => SendRevenueToAll("AOA", adValue);
         });
     }
 
-    public void ShowAppOpenAd()
+    public void ShowAppOpenAd(bool isResume)
     {
-        if (!GetConfigBool("show_open_ads") || _isAdShowing) return;
+        if (!AdEventTracker.GetBool(AdEventTracker.KEY_SHOW_OPEN_ADS) || _isAdShowing) return;
+
+        if (!isResume && _isFirstTimeTruly)
+        {
+            if (!AdEventTracker.GetBool(AdEventTracker.KEY_SHOW_OPEN_ADS_FIRST))
+            {
+                PlayerPrefs.SetInt("Truly_First_Open_Completed", 1);
+                _isFirstTimeTruly = false;
+                return;
+            }
+        }
+
         if (_appOpenAd != null && _appOpenAd.CanShowAd() && DateTime.Now < _aoaExpireTime)
         {
             _appOpenAd.OnAdFullScreenContentOpened += () => _isAdShowing = true;
@@ -294,51 +272,70 @@ public class AdsManager : MonoBehaviour
         else LoadAppOpenAd();
     }
 
+    private void OnApplicationFocus(bool focus)
+    {
+        if (focus && AdEventTracker.GetBool(AdEventTracker.KEY_SHOW_RESUME_ADS))
+            ShowAppOpenAd(true);
+    }
+    #endregion
+
+    #region BANNER & MREC
     public void ShowBanner()
     {
-        if (!GetConfigBool("is_show_banner")) { if (_bannerView != null) _bannerView.Destroy(); return; }
+        if (!AdEventTracker.GetBool(AdEventTracker.KEY_SHOW_BANNER)) { HideBanner(); return; }
         if (_bannerView != null) _bannerView.Destroy();
-        AdSize adaptiveSize = AdSize.GetPortraitAnchoredAdaptiveBannerAdSizeWithWidth(AdSize.FullWidth);
+
+        AdSize adaptiveSize = AdSize.GetCurrentOrientationAnchoredAdaptiveBannerAdSizeWithWidth(AdSize.FullWidth);
         _bannerView = new BannerView(adUnitIdBanner, adaptiveSize, AdPosition.Bottom);
+
         AdRequest request = new AdRequest();
-        long reloadTime = GetConfigLong("time_reload_collap_ad");
+        float reloadTime = AdEventTracker.GetFloat(AdEventTracker.KEY_TIME_RELOAD_COLLAP, 10f);
+
         if (reloadTime > 0)
         {
             request.Extras.Add("collapsible", "bottom");
             if (_bannerReloadCoroutine != null) StopCoroutine(_bannerReloadCoroutine);
-            _bannerReloadCoroutine = StartCoroutine(ReloadBannerAfterTime((float)reloadTime));
+            _bannerReloadCoroutine = StartCoroutine(ReloadBannerAfterTime(reloadTime));
         }
-        _bannerView.OnAdPaid += (adValue) => SendRevenueToAll("BANNER", "admob", adValue);
+
+        _bannerView.OnAdPaid += (adValue) => SendRevenueToAll("BANNER", adValue);
         _bannerView.LoadAd(request);
     }
 
-    private IEnumerator ReloadBannerAfterTime(float seconds) { yield return new WaitForSeconds(seconds); ShowBanner(); }
+    public void HideBanner()
+    {
+        if (_bannerReloadCoroutine != null) { StopCoroutine(_bannerReloadCoroutine); _bannerReloadCoroutine = null; }
+        if (_bannerView != null) { _bannerView.Destroy(); _bannerView = null; }
+    }
+
+    private IEnumerator ReloadBannerAfterTime(float seconds)
+    {
+        yield return new WaitForSeconds(seconds);
+        if (AdEventTracker.GetBool(AdEventTracker.KEY_SHOW_BANNER)) ShowBanner();
+    }
 
     public void ShowMREC(string configKey)
     {
-        if (!GetConfigBool(configKey)) { HideMREC(); return; }
+        if (!AdEventTracker.GetBool(configKey)) { HideMREC(); return; }
         if (_mrecView != null) _mrecView.Destroy();
+
         _mrecView = new BannerView(adUnitIdMREC, AdSize.MediumRectangle, AdPosition.Bottom);
-        _mrecView.OnAdPaid += (adValue) => SendRevenueToAll("MREC", "admob", adValue);
+        _mrecView.OnAdPaid += (adValue) => SendRevenueToAll("MREC", adValue);
         _mrecView.LoadAd(new AdRequest());
     }
 
-    public void HideMREC() { if (_mrecView != null) { _mrecView.Destroy(); _mrecView = null; } }
-
-    private void OnApplicationFocus(bool focus)
+    public void HideMREC()
     {
-        if (focus)
-        {
-            if (_isFirstOpenSession)
-            {
-                _isFirstOpenSession = false;
-                if (!GetConfigBool("show_open_ads_first_open")) return;
-            }
-            if (GetConfigBool("show_resume_ads")) ShowAppOpenAd();
-        }
+        if (_mrecView != null) { _mrecView.Destroy(); _mrecView = null; }
     }
+    #endregion
 
-    public void CheckShowRating() { if (GetConfigBool("rating_popup")) StartCoroutine(RequestReviewProcedure()); }
+    #region RATING (In-App Review)
+    public void CheckShowRating()
+    {
+        if (AdEventTracker.GetBool(AdEventTracker.KEY_RATING_POPUP))
+            StartCoroutine(RequestReviewProcedure());
+    }
 
     private IEnumerator RequestReviewProcedure()
     {
@@ -346,7 +343,7 @@ public class AdsManager : MonoBehaviour
         var reviewManager = new ReviewManager();
         var requestFlowOperation = reviewManager.RequestReviewFlow();
         yield return requestFlowOperation;
-        if (requestFlowOperation.Error != ReviewErrorCode.NoError) yield break;
+        if (requestFlowOperation.Error != Google.Play.Review.ReviewErrorCode.NoError) yield break;
         var reviewInfo = requestFlowOperation.GetResult();
         var launchFlowOperation = reviewManager.LaunchReviewFlow(reviewInfo);
         yield return launchFlowOperation;
