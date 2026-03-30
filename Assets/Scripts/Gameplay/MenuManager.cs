@@ -35,6 +35,7 @@ public class MenuManager : MonoBehaviour
 
     void Start()
     {
+        // Dọn dẹp các tween cũ để tránh xung đột khi load lại scene
         DOTween.KillAll();
 
         if (AudioManager.Instance != null)
@@ -42,6 +43,7 @@ public class MenuManager : MonoBehaviour
             AudioManager.Instance.PlayMusic("background_01");
         }
 
+        // Khởi tạo mảng lưu trữ component UI của các nút menu chính
         buttonImages = new Image[menuButtons.Length];
         buttonTexts = new TextMeshProUGUI[menuButtons.Length];
 
@@ -52,12 +54,14 @@ public class MenuManager : MonoBehaviour
             buttonTexts[i] = menuButtons[i].GetComponentInChildren<TextMeshProUGUI>();
         }
 
+        // Đưa tất cả các panel về trạng thái ẩn ban đầu
         InitPanel(panelMode1);
         InitPanel(panelMode2);
         InitPanel(panelMode3);
         InitPanel(panelAccount);
         InitPanel(panelSetting);
 
+        // Hiển thị Mode 1 (Panel chính) ngay khi bắt đầu
         ShowPanel1();
     }
 
@@ -74,14 +78,16 @@ public class MenuManager : MonoBehaviour
 
     public void ShowPanel1()
     {
+        // Nếu đang ở các popup con của Mode thì phải đóng chúng trước
         if (currentPanel == panelMode2) ClosePanelMode2();
         else if (currentPanel == panelMode3) ClosePanelMode3();
+        else if (currentPanel == panelAccount || currentPanel == panelSetting) CloseExtraPanel();
 
         SwitchToMode(panelMode1, 0, false);
     }
 
     /// <summary>
-    /// Chuyển trực tiếp đến Mode (Dùng cho callback sau khi xem Ads thành công)
+    /// Chuyển trực tiếp đến Mode (Thường gọi sau khi hoàn thành xem Ads Rewarded)
     /// </summary>
     public void DirectSwitchToMode(int index)
     {
@@ -89,11 +95,8 @@ public class MenuManager : MonoBehaviour
         else if (index == 2) SwitchToMode(panelMode3, 2, true);
     }
 
-    // --- Cập nhật logic mở khóa cho các Button trên giao diện ---
-
     public void ShowPanel2WithAvatar(Sprite avatar)
     {
-        // Sử dụng HandleUnlockFlow: Tự động check Remote Config "is_show_rw_challenge"
         if (UnlockSystemManager.Instance != null)
         {
             UnlockSystemManager.Instance.HandleUnlockFlow("Mode2", "is_show_rw_challenge", avatar, () => {
@@ -104,7 +107,6 @@ public class MenuManager : MonoBehaviour
 
     public void ShowPanel3WithAvatar(Sprite avatar)
     {
-        // Sử dụng HandleUnlockFlow: Tự động check Remote Config "is_show_rw_prediction"
         if (UnlockSystemManager.Instance != null)
         {
             UnlockSystemManager.Instance.HandleUnlockFlow("Mode3", "is_show_rw_prediction", avatar, () => {
@@ -155,7 +157,6 @@ public class MenuManager : MonoBehaviour
         PlayerPrefs.SetInt("SelectedMode", mode);
         PlayerPrefs.Save();
 
-        // Tích hợp Interstitial khi bắt đầu game
         if (AdsManager.Instance != null)
         {
             AdsManager.Instance.ShowInterstitial("is_show_inter_p1_choose", () => {
@@ -172,6 +173,7 @@ public class MenuManager : MonoBehaviour
 
     public void HandleButtonAnimationOnly(int index)
     {
+        // Hiệu ứng dịch chuyển ngang cho thanh bar (nếu có logic đặc biệt cho index 1 và 2)
         if (menuButtons.Length > 0 && menuButtons[0] != null)
         {
             if (index == 1) menuButtons[0].DOAnchorPosX(29f, 0.25f);
@@ -244,7 +246,7 @@ public class MenuManager : MonoBehaviour
     {
         if (currentPanel == null || currentPanel == panelMode1) return;
 
-        // Lưu dữ liệu Account trước khi đóng nếu đang ở Panel Account
+        // Lưu thông tin account trước khi quay về menu chính
         if (currentPanel == panelAccount && AccountManager.Instance != null)
         {
             AccountManager.Instance.SaveAndExit();
@@ -265,10 +267,9 @@ public class MenuManager : MonoBehaviour
             panelMode1.gameObject.SetActive(true);
             panelMode1.DOKill();
             panelMode1.transform.localScale = Vector3.one;
-            panelMode1.DOFade(1, fadeDuration).OnComplete(() => {
-                panelMode1.interactable = true;
-                panelMode1.blocksRaycasts = true;
-            });
+            panelMode1.alpha = 1;
+            panelMode1.interactable = true;
+            panelMode1.blocksRaycasts = true;
         });
     }
 

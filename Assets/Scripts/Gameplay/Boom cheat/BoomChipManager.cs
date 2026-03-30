@@ -21,12 +21,12 @@ public class BoomChipManager : MonoBehaviour
     public GameObject panelWin;
     public GameObject panelTransition;
 
-    [Header("--- THÔNG TIN NGƯỜI CHƠI (P1 & P2) ---")]
+    [Header("--- THÔNG TIN NGƯỜI CHƠI (Đã đồng bộ) ---")]
     public TextMeshProUGUI nameTextP1;
     public Image avatarImageP1;
     public TextMeshProUGUI nameTextP2;
     public Image avatarImageP2;
-    public List<Sprite> allAvatars;
+    // Đã loại bỏ List<Sprite> allAvatars vì dùng chung từ AccountManager
 
     [Header("Transition Elements (Strips)")]
     public RectTransform leftStrip;
@@ -112,17 +112,21 @@ public class BoomChipManager : MonoBehaviour
 
     private void UpdatePlayerInfoUI()
     {
-        string nameP1 = PlayerPrefs.GetString("PlayerName_P1", "Player 1");
-        int avatarIndexP1 = PlayerPrefs.GetInt("SelectedAvatarIndex_P1", 0);
-        if (nameTextP1 != null) nameTextP1.text = nameP1;
-        if (avatarImageP1 != null && avatarIndexP1 < allAvatars.Count)
-            avatarImageP1.sprite = allAvatars[avatarIndexP1];
+        // Sử dụng AccountManager.Instance để lấy dữ liệu thay vì PlayerPrefs trực tiếp
+        if (AccountManager.Instance != null)
+        {
+            if (nameTextP1 != null) nameTextP1.text = AccountManager.Instance.GetPlayerName(1);
+            if (avatarImageP1 != null) avatarImageP1.sprite = AccountManager.Instance.GetAvatarSprite(1);
 
-        string nameP2 = PlayerPrefs.GetString("PlayerName_P2", "Player 2");
-        int avatarIndexP2 = PlayerPrefs.GetInt("SelectedAvatarIndex_P2", 1);
-        if (nameTextP2 != null) nameTextP2.text = nameP2;
-        if (avatarImageP2 != null && avatarIndexP2 < allAvatars.Count)
-            avatarImageP2.sprite = allAvatars[avatarIndexP2];
+            if (nameTextP2 != null) nameTextP2.text = AccountManager.Instance.GetPlayerName(2);
+            if (avatarImageP2 != null) avatarImageP2.sprite = AccountManager.Instance.GetAvatarSprite(2);
+        }
+        else
+        {
+            // Fallback nếu không tìm thấy Instance (để tránh lỗi trong Editor)
+            if (nameTextP1 != null) nameTextP1.text = PlayerPrefs.GetString("PlayerName_P1", "P1");
+            if (nameTextP2 != null) nameTextP2.text = PlayerPrefs.GetString("PlayerName_P2", "P2");
+        }
     }
 
     private void SyncDataFromSettings()
@@ -310,9 +314,9 @@ public class BoomChipManager : MonoBehaviour
         panelAnimation.SetActive(true);
         TextMeshProUGUI animText = panelAnimation.GetComponentInChildren<TextMeshProUGUI>();
 
-        string key = (winnerID == 0) ? "PlayerName_P1" : "PlayerName_P2";
-        string defaultName = (winnerID == 0) ? "PLAYER 1" : "PLAYER 2";
-        string winnerName = PlayerPrefs.GetString(key, defaultName);
+        string winnerName = AccountManager.Instance != null
+            ? AccountManager.Instance.GetPlayerName(winnerID == 0 ? 1 : 2)
+            : (winnerID == 0 ? "PLAYER 1" : "PLAYER 2");
 
         if (animText != null) animText.text = winnerName.ToUpper() + " GO FIRST!";
 
@@ -353,7 +357,7 @@ public class BoomChipManager : MonoBehaviour
         tile.SetInteractable(false);
         CheckWinCondition();
 
-        if (!panelWin.activeSelf && currentPhase == GamePhase.Phase3) // Thêm check currentPhase để tránh đổi lượt khi đã thắng
+        if (!panelWin.activeSelf && currentPhase == GamePhase.Phase3)
         {
             isP1Turn = !isP1Turn;
             UpdateBoardVisuals();
@@ -404,19 +408,22 @@ public class BoomChipManager : MonoBehaviour
 
         if (winner != 0)
         {
-            currentPhase = GamePhase.Animation; // Chặn người chơi click tiếp trong lúc chờ delay
+            currentPhase = GamePhase.Animation;
             StartCoroutine(DelayShowWinScreen(winner));
         }
     }
 
     private IEnumerator DelayShowWinScreen(int winnerID)
     {
-        yield return new WaitForSeconds(1.2f); // Delay 1.2s như yêu cầu
+        yield return new WaitForSeconds(1.2f);
         ShowWinScreen(winnerID);
     }
 
     void ShowWinScreen(int winnerID)
     {
+        // Ghi nhận người thắng vào AccountManager để Win Panel hiển thị
+        AccountManager.SetWinResult(winnerID);
+
         panelWin.SetActive(true);
         if (FirebaseManager.Instance != null) FirebaseManager.Instance.LogModeComplete(9);
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX("SFX_Win");

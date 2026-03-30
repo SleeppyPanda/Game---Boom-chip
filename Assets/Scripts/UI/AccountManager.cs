@@ -1,218 +1,132 @@
 ﻿using UnityEngine;
-using UnityEngine.UI;
-using TMPro;
-using System.Collections.Generic;
-using DG.Tweening;
 using System;
-using System.Collections;
+using System.Collections.Generic;
 
 public class AccountManager : MonoBehaviour
 {
     public static AccountManager Instance;
+
+    // Sự kiện để các UnlockButton tự làm mới giao diện khi mở khóa thành công
     public static Action OnAvatarUnlocked;
 
-    [Header("Cấu hình Tên")]
-    public TMP_InputField nameInputField;
-    public Button editButton;
-
-    [Header("Cấu hình Avatar")]
-    public Image avatarDisplayInPanel;
-    public Image mainMenuBarAvatar; // Thường hiển thị Avatar của P1 hoặc người chơi hiện tại
+    [Header("Dữ liệu Avatar (Nguồn duy nhất)")]
     public List<Sprite> allAvatars;
 
-    [Header("Cấu hình 2 Người Chơi")]
-    private int currentPlayerID = 1; // Mặc định là Player 1
-    private int currentTempIndex;
+    [Header("Trạng thái hiện tại")]
+    public int currentPlayerID = 1; // 1 cho P1, 2 cho P2
 
-    // Các Key cơ sở (sẽ được cộng thêm đuôi _P1 hoặc _P2)
+    // Biến static lưu kết quả để các scene khác (Win Panel) truy cập ngay lập tức
+    public static int LastWinnerID = 1;
+
+    // Keys PlayerPrefs (Dùng chung cho toàn game)
     private const string NAME_BASE_KEY = "PlayerName";
     private const string AVATAR_BASE_KEY = "SelectedAvatarIndex";
-    private const string UNLOCK_PREFIX = "Unlock_Avatar_"; // Unlock dùng chung cho cả 2
-
-    // Hàm tiện ích để lấy Key động theo Player hiện tại
-    private string GetCurrentNameKey() => NAME_BASE_KEY + "_P" + currentPlayerID;
-    private string GetCurrentAvatarKey() => AVATAR_BASE_KEY + "_P" + currentPlayerID;
+    private const string UNLOCK_PREFIX = "Unlock_Avatar_";
 
     void Awake()
     {
-        if (Instance == null) { Instance = this; }
-        else { Destroy(gameObject); return; }
+        if (Instance == null)
+        {
+            Instance = this;
+            DontDestroyOnLoad(gameObject);
+            InitializeData();
+        }
+        else
+        {
+            Destroy(gameObject);
+        }
+    }
 
-        // Tự động mở khóa Avatar đầu tiên (index 0) - Dùng chung
+    private void InitializeData()
+    {
+        // Mặc định luôn mở khóa Avatar index 0 cho người chơi mới
         if (PlayerPrefs.GetInt(UNLOCK_PREFIX + "0", 0) == 0)
         {
             PlayerPrefs.SetInt(UNLOCK_PREFIX + "0", 1);
             PlayerPrefs.Save();
         }
-
-        // Load dữ liệu mặc định ban đầu (Player 1)
-        LoadPlayerData(1);
-    }
-
-    void Start()
-    {
-        if (editButton != null) editButton.onClick.AddListener(EnableEditing);
     }
 
     void OnDestroy()
     {
+        // Dọn dẹp sự kiện khi object bị hủy để tránh lỗi rò rỉ bộ nhớ
         OnAvatarUnlocked = null;
     }
 
-    // --- LOGIC MỚI: CHUYỂN ĐỔI NGƯỜI CHƠI ---
+    // --- HÀM TRUY XUẤT DỮ LIỆU ---
+
+    public string GetPlayerName(int id) => PlayerPrefs.GetString(NAME_BASE_KEY + "_P" + id, "Player " + id);
+
+    public int GetAvatarIndex(int id) => PlayerPrefs.GetInt(AVATAR_BASE_KEY + "_P" + id, (id == 1) ? 0 : 0);
+
+    public Sprite GetAvatarSprite(int id)
+    {
+        int index = GetAvatarIndex(id);
+        if (allAvatars != null && index >= 0 && index < allAvatars.Count) return allAvatars[index];
+        return null;
+    }
+
+    public bool IsAvatarUnlocked(int index) => PlayerPrefs.GetInt(UNLOCK_PREFIX + index, 0) == 1;
+
+    // --- HÀM THAY ĐỔI DỮ LIỆU ---
+
+    public void SwitchEditingPlayer(int id) => currentPlayerID = id;
 
     /// <summary>
-    /// Được gọi từ ProfileTabManager khi nhấn nút Tab P1 hoặc P2
+    /// Được gọi bởi UnlockButton khi người dùng nhấn chọn Avatar
     /// </summary>
-    public void SwitchCurrentPlayer(int playerID)
-    {
-        // Lưu dữ liệu của người cũ trước khi chuyển
-        SaveAndExit();
-
-        // Chuyển sang người mới
-        currentPlayerID = playerID;
-        LoadPlayerData(playerID);
-
-        Debug.Log($"Đã chuyển sang chỉnh sửa: Player {playerID}");
-    }
-
-    private void LoadPlayerData(int playerID)
-    {
-        currentTempIndex = PlayerPrefs.GetInt(GetCurrentAvatarKey(), (playerID == 1) ? 0 : 1);
-        string savedName = PlayerPrefs.GetString(GetCurrentNameKey(), "Player " + playerID);
-
-        if (nameInputField != null) nameInputField.text = savedName;
-
-        ApplyAvatarToUI();
-    }
-
-    // --- LOGIC REMOTE CONFIG CHO AVATAR (GIỮ NGUYÊN) ---
-
-    public bool DoesAvatarRequireAd(int index)
-    {
-        return AdEventTracker.IsAvatarInRwList(index);
-    }
-
-    // --- QUẢN LÝ AVATAR ---
-
-    private void ApplyAvatarToUI()
-    {
-        if (allAvatars == null || allAvatars.Count == 0) return;
-        if (currentTempIndex < 0 || currentTempIndex >= allAvatars.Count) currentTempIndex = 0;
-
-        Sprite activeSprite = allAvatars[currentTempIndex];
-
-        if (mainMenuBarAvatar != null) mainMenuBarAvatar.sprite = activeSprite;
-        if (avatarDisplayInPanel != null) avatarDisplayInPanel.sprite = activeSprite;
-    }
-
-    public bool IsAvatarUnlocked(int index)
-    {
-        return PlayerPrefs.GetInt(UNLOCK_PREFIX + index, 0) == 1;
-    }
-
     public void SelectAvatar(int index)
     {
-        if (index < 0 || index >= allAvatars.Count) return;
-
-        if (IsAvatarUnlocked(index) || !DoesAvatarRequireAd(index))
+        // Kiểm tra xem Avatar này đã mở khóa chưa trước khi cho phép chọn
+        if (IsAvatarUnlocked(index))
         {
-            if (!IsAvatarUnlocked(index))
-            {
-                PlayerPrefs.SetInt(UNLOCK_PREFIX + index, 1);
-                PlayerPrefs.Save();
-            }
+            SaveAvatarIndex(currentPlayerID, index);
+            Debug.Log($"<color=cyan>Player {currentPlayerID} changed avatar to index {index}</color>");
 
-            SetAvatar(index);
+            // Nếu bạn có AccountUIHandler, hãy gọi RefreshUI tại đây hoặc qua một Event khác
+            AccountUIHandler uiHandler = FindObjectOfType<AccountUIHandler>();
+            if (uiHandler != null) uiHandler.RefreshUI();
         }
         else
         {
-            Debug.Log($"Avatar {index} yêu cầu xem quảng cáo Reward để mở khóa.");
+            Debug.LogWarning("Avatar này chưa được mở khóa!");
         }
     }
 
-    public void SetAvatar(int index)
+    public void SavePlayerName(int id, string name)
     {
-        currentTempIndex = index;
-
-        if (avatarDisplayInPanel != null)
-        {
-            avatarDisplayInPanel.sprite = allAvatars[index];
-            avatarDisplayInPanel.rectTransform.DOKill(true);
-
-            float targetScale = 0.8f;
-            avatarDisplayInPanel.rectTransform.localScale = new Vector3(targetScale, targetScale, 1f);
-            avatarDisplayInPanel.rectTransform.DOPunchScale(new Vector3(0.1f, 0.1f, 0), 0.3f, 5, 1);
-        }
-
-        // Gắn thêm thông tin player vào tracking nếu cần
-        AdEventTracker.TrackAvatarChoose(index);
-
-        SaveAndRefreshUI();
-
-        OnAvatarUnlocked?.Invoke();
+        if (string.IsNullOrWhiteSpace(name)) return;
+        PlayerPrefs.SetString(NAME_BASE_KEY + "_P" + id, name.Trim());
+        PlayerPrefs.Save();
     }
 
-    private void SaveAndRefreshUI()
+    public void SaveAvatarIndex(int id, int index)
     {
-        PlayerPrefs.SetInt(GetCurrentAvatarKey(), currentTempIndex);
+        PlayerPrefs.SetInt(AVATAR_BASE_KEY + "_P" + id, index);
+        PlayerPrefs.Save();
+    }
+
+    /// <summary>
+    /// Hàm gọi khi UnlockSystemManager xác nhận mở khóa thành công (sau khi xem Ads)
+    /// </summary>
+    public void UnlockAvatar(int index)
+    {
+        PlayerPrefs.SetInt(UNLOCK_PREFIX + index, 1);
         PlayerPrefs.Save();
 
-        if (mainMenuBarAvatar != null) mainMenuBarAvatar.sprite = allAvatars[currentTempIndex];
+        // Kích hoạt sự kiện để các UnlockButton trên màn hình tự ẩn Lock Icon
+        OnAvatarUnlocked?.Invoke();
+
+        Debug.Log($"<color=green>Unlocked Avatar index {index} thành công!</color>");
     }
 
-    // --- QUẢN LÝ TÊN ---
-
-    public void EnableEditing()
-    {
-        if (nameInputField == null) return;
-
-        nameInputField.interactable = true;
-        nameInputField.ActivateInputField();
-        nameInputField.caretPosition = nameInputField.text.Length;
-
-        nameInputField.onEndEdit.RemoveAllListeners();
-        nameInputField.onEndEdit.AddListener(OnEndEditName);
-    }
-
-    private void OnEndEditName(string val)
-    {
-        string cleanName = val.Trim();
-
-        if (!string.IsNullOrEmpty(cleanName))
-        {
-            PlayerPrefs.SetString(GetCurrentNameKey(), cleanName);
-            PlayerPrefs.Save();
-            Debug.Log($"Đã lưu tên mới cho P{currentPlayerID}: " + cleanName);
-        }
-        else
-        {
-            nameInputField.text = PlayerPrefs.GetString(GetCurrentNameKey(), "Player " + currentPlayerID);
-        }
-
-        StartCoroutine(DisableInputFieldRoutine());
-    }
-
-    private IEnumerator DisableInputFieldRoutine()
-    {
-        yield return null;
-        if (nameInputField != null)
-        {
-            nameInputField.interactable = false;
-        }
-    }
-
+    /// <summary>
+    /// Hàm lưu dữ liệu cuối cùng khi thoát Panel (đảm bảo an toàn dữ liệu)
+    /// </summary>
     public void SaveAndExit()
     {
-        if (nameInputField != null)
-        {
-            string cleanName = nameInputField.text.Trim();
-            if (!string.IsNullOrEmpty(cleanName))
-                PlayerPrefs.SetString(GetCurrentNameKey(), cleanName);
-        }
-
-        PlayerPrefs.SetInt(GetCurrentAvatarKey(), currentTempIndex);
         PlayerPrefs.Save();
-        ApplyAvatarToUI();
     }
+
+    public static void SetWinResult(int winnerID) => LastWinnerID = winnerID;
 }
