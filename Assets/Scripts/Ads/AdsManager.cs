@@ -45,6 +45,8 @@ public class AdsManager : MonoBehaviour
     private DateTime _aoaExpireTime;
     private Coroutine _bannerReloadCoroutine;
     private int _bannerHeightDP = 60;
+    private bool _isBannerLoaded = false;
+    private bool _isMrecLoaded = false;
 
     void Awake()
     {
@@ -99,6 +101,8 @@ public class AdsManager : MonoBehaviour
         LoadInterstitialAd();
         LoadRewardedAd();
         LoadAppOpenAd();
+        PreloadBanner();
+        PreloadMREC();
     }
 
     #region NETWORK ERROR POPUP
@@ -364,27 +368,98 @@ public class AdsManager : MonoBehaviour
     #endregion
 
     #region BANNER & MREC
+
+    /// <summary>
+    /// Preload banner khi khởi động — load sẵn và ẩn, chờ ShowBanner() để hiển thị ngay.
+    /// </summary>
+    private void PreloadBanner()
+    {
+        if (_bannerView != null) { _bannerView.Destroy(); _bannerView = null; }
+        _isBannerLoaded = false;
+
+        AdSize adaptiveSize = AdSize.GetCurrentOrientationAnchoredAdaptiveBannerAdSizeWithWidth(AdSize.FullWidth);
+        _bannerHeightDP = adaptiveSize.Height > 0 ? adaptiveSize.Height : 60;
+        _bannerView = new BannerView(adUnitIdBanner, adaptiveSize, AdPosition.Bottom);
+
+        _bannerView.OnAdPaid += (adValue) => SendRevenueToAll("BANNER", adValue);
+        _bannerView.OnBannerAdLoaded += () => { _isBannerLoaded = true; };
+        _bannerView.OnBannerAdLoadFailed += (LoadAdError error) => {
+            _isBannerLoaded = false;
+            if (IsNetworkError(error)) ShowNetworkError(() => PreloadBanner());
+        };
+        _bannerView.LoadAd(CreateAdRequest());
+        _bannerView.Hide();
+    }
+
+    /// <summary>
+    /// Preload MREC khi khởi động — load sẵn và ẩn, chờ ShowMREC() để hiển thị ngay.
+    /// </summary>
+    private void PreloadMREC()
+    {
+        if (_mrecView != null) { _mrecView.Destroy(); _mrecView = null; }
+        _isMrecLoaded = false;
+
+        float density = Screen.dpi / 160f;
+        if (density <= 0) density = 1;
+        float screenWidthDP = Screen.width / density;
+        float screenHeightDP = Screen.height / density;
+        int xPos = (int)((screenWidthDP - 300) / 2);
+        int mrecHeight = 250;
+        int yPos = (int)(screenHeightDP - mrecHeight - _bannerHeightDP);
+
+        _mrecView = new BannerView(adUnitIdMREC, AdSize.MediumRectangle, xPos, yPos);
+
+        _mrecView.OnAdPaid += (adValue) => SendRevenueToAll("MREC", adValue);
+        _mrecView.OnBannerAdLoaded += () => { _isMrecLoaded = true; };
+        _mrecView.OnBannerAdLoadFailed += (LoadAdError error) => {
+            _isMrecLoaded = false;
+            if (IsNetworkError(error)) ShowNetworkError(() => PreloadMREC());
+        };
+        _mrecView.LoadAd(CreateAdRequest());
+        _mrecView.Hide();
+    }
+
     public void ShowBanner()
     {
         if (!AdEventTracker.GetBool(AdEventTracker.KEY_SHOW_BANNER)) { HideBanner(); return; }
-        if (_bannerView != null) _bannerView.Destroy();
+
+        // Nếu banner đã preload sẵn → hiển thị ngay, không cần chờ load
+        if (_isBannerLoaded && _bannerView != null)
+        {
+            _bannerView.Show();
+
+            // Lên lịch reload collapsible banner
+            float reloadTime = AdEventTracker.GetFloat(AdEventTracker.KEY_TIME_RELOAD_COLLAP, 10f);
+            if (reloadTime > 0)
+            {
+                if (_bannerReloadCoroutine != null) StopCoroutine(_bannerReloadCoroutine);
+                _bannerReloadCoroutine = StartCoroutine(ReloadBannerAfterTime(reloadTime));
+            }
+            return;
+        }
+
+        // Chưa có preload → load mới (kèm collapsible)
+        if (_bannerView != null) { _bannerView.Destroy(); _bannerView = null; }
+        _isBannerLoaded = false;
 
         AdSize adaptiveSize = AdSize.GetCurrentOrientationAnchoredAdaptiveBannerAdSizeWithWidth(AdSize.FullWidth);
         _bannerHeightDP = adaptiveSize.Height > 0 ? adaptiveSize.Height : 60;
         _bannerView = new BannerView(adUnitIdBanner, adaptiveSize, AdPosition.Bottom);
 
         AdRequest request = CreateAdRequest();
-        float reloadTime = AdEventTracker.GetFloat(AdEventTracker.KEY_TIME_RELOAD_COLLAP, 10f);
+        float rt = AdEventTracker.GetFloat(AdEventTracker.KEY_TIME_RELOAD_COLLAP, 10f);
 
-        if (reloadTime > 0)
+        if (rt > 0)
         {
             request.Extras.Add("collapsible", "bottom");
             if (_bannerReloadCoroutine != null) StopCoroutine(_bannerReloadCoroutine);
-            _bannerReloadCoroutine = StartCoroutine(ReloadBannerAfterTime(reloadTime));
+            _bannerReloadCoroutine = StartCoroutine(ReloadBannerAfterTime(rt));
         }
 
         _bannerView.OnAdPaid += (adValue) => SendRevenueToAll("BANNER", adValue);
+        _bannerView.OnBannerAdLoaded += () => { _isBannerLoaded = true; };
         _bannerView.OnBannerAdLoadFailed += (LoadAdError error) => {
+            _isBannerLoaded = false;
             if (IsNetworkError(error)) ShowNetworkError(() => ShowBanner());
         };
         _bannerView.LoadAd(request);
@@ -393,13 +468,19 @@ public class AdsManager : MonoBehaviour
     public void HideBanner()
     {
         if (_bannerReloadCoroutine != null) StopCoroutine(_bannerReloadCoroutine);
-        if (_bannerView != null) { _bannerView.Destroy(); _bannerView = null; }
+        if (_bannerView != null) _bannerView.Hide();
     }
 
     private IEnumerator ReloadBannerAfterTime(float seconds)
     {
         yield return new WaitForSeconds(seconds);
-        if (AdEventTracker.GetBool(AdEventTracker.KEY_SHOW_BANNER) && !_isAdShowing) ShowBanner();
+        if (AdEventTracker.GetBool(AdEventTracker.KEY_SHOW_BANNER) && !_isAdShowing)
+        {
+            // Destroy banner cũ để load mới với collapsible format
+            _isBannerLoaded = false;
+            if (_bannerView != null) { _bannerView.Destroy(); _bannerView = null; }
+            ShowBanner();
+        }
     }
 
     public void ShowMREC(string configKey)
@@ -408,7 +489,16 @@ public class AdsManager : MonoBehaviour
 
         ShowBanner();
 
-        if (_mrecView != null) _mrecView.Destroy();
+        // Nếu MREC đã preload sẵn → hiển thị ngay
+        if (_isMrecLoaded && _mrecView != null)
+        {
+            _mrecView.Show();
+            return;
+        }
+
+        // Chưa có preload → load mới
+        if (_mrecView != null) { _mrecView.Destroy(); _mrecView = null; }
+        _isMrecLoaded = false;
 
         float density = Screen.dpi / 160f;
         if (density <= 0) density = 1;
@@ -423,7 +513,9 @@ public class AdsManager : MonoBehaviour
         _mrecView = new BannerView(adUnitIdMREC, AdSize.MediumRectangle, xPos, yPos);
 
         _mrecView.OnAdPaid += (adValue) => SendRevenueToAll("MREC", adValue);
+        _mrecView.OnBannerAdLoaded += () => { _isMrecLoaded = true; };
         _mrecView.OnBannerAdLoadFailed += (LoadAdError error) => {
+            _isMrecLoaded = false;
             if (IsNetworkError(error)) ShowNetworkError(() => ShowMREC(configKey));
         };
         _mrecView.LoadAd(CreateAdRequest());
@@ -431,7 +523,7 @@ public class AdsManager : MonoBehaviour
 
     public void HideMREC()
     {
-        if (_mrecView != null) { _mrecView.Destroy(); _mrecView = null; }
+        if (_mrecView != null) _mrecView.Hide();
     }
     #endregion
 
