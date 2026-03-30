@@ -1,9 +1,7 @@
 ﻿using UnityEngine;
 using GoogleMobileAds.Api;
-using Firebase.RemoteConfig;
 using System;
 using System.Collections.Generic;
-using Firebase.Extensions;
 using System.Collections;
 using AppsFlyerSDK;
 using UnityEngine.SceneManagement;
@@ -93,8 +91,6 @@ public class AdsManager : MonoBehaviour
         {
             StartCoroutine(LoadAdsAfterInit());
         });
-
-        InitializeFirebase();
     }
 
     private IEnumerator LoadAdsAfterInit()
@@ -108,7 +104,10 @@ public class AdsManager : MonoBehaviour
     #region NETWORK ERROR POPUP
     private void ShowNetworkError(Action retryAction)
     {
-        // Gọi sang script UI đã tách
+        Debug.Log($"<color=yellow>[AdsManager] ShowNetworkError called. NetworkErrorUI.Instance = {(NetworkErrorUI.Instance != null ? "OK" : "NULL")}</color>");
+        // Ẩn ads native để không đè lên popup
+        HideBanner();
+        HideMREC();
         if (NetworkErrorUI.Instance != null)
         {
             NetworkErrorUI.Instance.Show(retryAction);
@@ -117,7 +116,14 @@ public class AdsManager : MonoBehaviour
 
     private bool IsNetworkError(LoadAdError error)
     {
-        return error != null && error.GetCode() == ADMOB_ERROR_NETWORK;
+        if (error == null) return false;
+        int code = error.GetCode();
+        string message = error.GetMessage();
+        Debug.Log($"<color=orange>[AdsManager] Ad load failed: code={code}, message={message}</color>");
+        // Code 2 = network error (AdMob xác nhận)
+        // Code 0 = internal error (thường do mất mạng)
+        // Code 1 = invalid request, Code 3 = no fill → KHÔNG phải lỗi network
+        return code == ADMOB_ERROR_NETWORK || code == 0;
     }
     #endregion
 
@@ -126,53 +132,16 @@ public class AdsManager : MonoBehaviour
         return new AdRequest();
     }
 
-    #region FIREBASE REMOTE CONFIG
-    private void InitializeFirebase()
+    #region REMOTE CONFIG CALLBACK
+    /// <summary>
+    /// Được gọi bởi FirebaseManager sau khi Remote Config fetch & activate thành công.
+    /// </summary>
+    public void OnRemoteConfigReady()
     {
-        Firebase.FirebaseApp.CheckAndFixDependenciesAsync().ContinueWithOnMainThread(task => {
-            if (task.Result == Firebase.DependencyStatus.Available)
-                FetchRemoteConfig();
-            else
-                Debug.LogError("AdsManager: Firebase dependencies error: " + task.Result);
-        });
-    }
-
-    private void FetchRemoteConfig()
-    {
-        Dictionary<string, object> defaults = new Dictionary<string, object> {
-            { AdEventTracker.KEY_ADS_INTERVAL, 45 },
-            { AdEventTracker.KEY_RATING_POPUP, false },
-            { AdEventTracker.KEY_SHOW_OPEN_ADS, false },
-            { AdEventTracker.KEY_SHOW_OPEN_ADS_FIRST, false },
-            { AdEventTracker.KEY_SHOW_RESUME_ADS, false },
-            { AdEventTracker.KEY_SHOW_BANNER, false },
-            { AdEventTracker.KEY_TIME_RELOAD_COLLAP, 10 },
-            { AdEventTracker.KEY_INTER_P1_CHOOSE, false },
-            { AdEventTracker.KEY_INTER_P2_CHOOSE, false },
-            { AdEventTracker.KEY_INTER_BACK_HOME, false },
-            { AdEventTracker.KEY_INTER_RETRY, false },
-            { AdEventTracker.KEY_RW_CHALLENGE, false },
-            { AdEventTracker.KEY_RW_PREDICTION, false },
-            { AdEventTracker.KEY_RW_PROFILE, "" },
-            { AdEventTracker.KEY_MREC_P1_CHOOSE, false },
-            { AdEventTracker.KEY_MREC_P2_CHOOSE, false },
-            { AdEventTracker.KEY_MREC_LOADING, false },
-            { AdEventTracker.KEY_MREC_GAMEPLAY, false },
-            { AdEventTracker.KEY_MREC_COMPLETE, false }
-        };
-
-        FirebaseRemoteConfig.DefaultInstance.SetDefaultsAsync(defaults).ContinueWithOnMainThread(t => {
-            FirebaseRemoteConfig.DefaultInstance.FetchAndActivateAsync().ContinueWithOnMainThread(task => {
-                if (task.IsCompleted)
-                {
-                    Debug.Log("AdsManager: Remote Config Synchronized!");
-                    AdEventTracker.LogFirstLoadingComplete();
-                    ShowBanner();
-                    CheckShowRating();
-                    ShowAppOpenAd(false);
-                }
-            });
-        });
+        AdEventTracker.LogFirstLoadingComplete();
+        ShowBanner();
+        CheckShowRating();
+        ShowAppOpenAd(false);
     }
     #endregion
 
@@ -390,6 +359,9 @@ public class AdsManager : MonoBehaviour
         }
 
         _bannerView.OnAdPaid += (adValue) => SendRevenueToAll("BANNER", adValue);
+        _bannerView.OnBannerAdLoadFailed += (LoadAdError error) => {
+            if (IsNetworkError(error)) ShowNetworkError(() => ShowBanner());
+        };
         _bannerView.LoadAd(request);
     }
 
@@ -426,6 +398,9 @@ public class AdsManager : MonoBehaviour
         _mrecView = new BannerView(adUnitIdMREC, AdSize.MediumRectangle, xPos, yPos);
 
         _mrecView.OnAdPaid += (adValue) => SendRevenueToAll("MREC", adValue);
+        _mrecView.OnBannerAdLoadFailed += (LoadAdError error) => {
+            if (IsNetworkError(error)) ShowNetworkError(() => ShowMREC(configKey));
+        };
         _mrecView.LoadAd(CreateAdRequest());
     }
 

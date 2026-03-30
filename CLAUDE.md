@@ -138,6 +138,42 @@ is_show_rw_profile        string   (empty) Avatar IDs cần xem reward để unl
 rating_popup              bool     FALSE   In-App Review popup
 ```
 
+## Xử lý lỗi Network
+
+Quy tắc bắt buộc: **Mọi thao tác cần network đều phải xử lý lỗi network thống nhất qua `NetworkErrorUI`.**
+
+### Nguyên tắc chung
+- Khi **bất kỳ thao tác nào** gọi network thất bại do lỗi mạng (tải Remote Config, tải ads, gọi API Firebase, ...) → **hiển thị popup "No Internet"** thông qua `NetworkErrorUI.Instance.Show(retryAction)`.
+- Nếu lỗi **không phải network** (ví dụ: ad no fill, server error khác) → cho user tiếp tục bình thường, KHÔNG hiện popup.
+- Popup chỉ có nút **Retry** (không có nút Close) → buộc user phải retry.
+- Khi user nhấn **Retry** → thực hiện lại **đúng thao tác vừa bị lỗi** (tải lại Remote Config, tải lại ad, gọi lại API, ...).
+
+### Các điểm cần áp dụng
+| Thao tác | Nơi xử lý | Retry action |
+|----------|------------|--------------|
+| Tải Remote Config | `LoadingManager` / `FirebaseManager` | Gọi lại fetch & activate Remote Config |
+| Tải Interstitial Ad | `AdsManager` | Gọi lại `LoadInterstitialAd()` |
+| Tải Rewarded Ad | `AdsManager` | Gọi lại `LoadRewardedAd()` |
+| Tải App Open Ad | `AdsManager` | Gọi lại `LoadAppOpenAd()` |
+| Tải Banner Ad | `AdsManager` | Gọi lại load banner |
+| Tải MREC Ad | `AdsManager` | Gọi lại load MREC |
+| Các API call Firebase khác (Auth, Database, ...) | Nơi gọi tương ứng | Gọi lại chính API call đó |
+
+### Cách triển khai
+- **`NetworkErrorUI`** (`Assets/Scripts/Ads/NetworkErrorUI.cs`): Singleton với `DontDestroyOnLoad`, quản lý hiển thị/ẩn popup.
+  - `Show(Action retryAction)` — hiển thị popup, lưu callback retry.
+  - `Hide()` — ẩn popup.
+  - `OnRetryClicked()` — ẩn popup rồi gọi callback retry.
+- **Prefab**: `Assets/Resources/No Internet.prefab` — full-screen overlay nền đen mờ + hình "No Internet" + nút Retry.
+- **Pattern sử dụng:**
+  ```csharp
+  // Ví dụ trong callback lỗi:
+  if (IsNetworkError(error))
+  {
+      NetworkErrorUI.Instance.Show(() => RetryTheFailedOperation());
+  }
+  ```
+
 ## Key Dependencies
 
 - **Firebase:** Analytics, Auth, Remote Config, Realtime Database, Crashlytics

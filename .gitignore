@@ -82,3 +82,4 @@ Assets/Firebase/Plugins/x86_64/*.so
 Assets/Firebase/Plugins/x86_64/*.so.meta
 Assets/Firebase/Plugins/x86_64/*.bundle
 Assets/Firebase/Plugins/x86_64/*.bundle.meta
+Assets/Plugins/Android/FirebaseCrashlytics.androidlib/res/values/crashlytics_build_id.xml

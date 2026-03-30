@@ -55,15 +55,22 @@ public class LoadingManager : MonoBehaviour
                 else
                 {
                     Debug.LogError($"Could not resolve Firebase dependencies: {dependencyStatus}");
-                    // Cho phép vào game kể cả khi Firebase lỗi để tránh treo user ở Loading
-                    _isFirebaseReady = true;
+                    // Firebase dependency fail → hiện popup retry
+                    if (NetworkErrorUI.Instance != null)
+                        NetworkErrorUI.Instance.Show(() => InitializeFirebase());
+                    else
+                        _isFirebaseReady = true; // Fallback nếu popup chưa sẵn sàng
                 }
             });
         }
         catch (System.Exception e)
         {
             Debug.LogError("Critical Firebase Error: " + e.Message);
-            _isFirebaseReady = true;
+            // Critical error → hiện popup retry
+            if (NetworkErrorUI.Instance != null)
+                NetworkErrorUI.Instance.Show(() => InitializeFirebase());
+            else
+                _isFirebaseReady = true; // Fallback nếu popup chưa sẵn sàng
         }
 #endif
     }

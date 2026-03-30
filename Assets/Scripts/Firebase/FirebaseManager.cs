@@ -11,6 +11,7 @@ public class FirebaseManager : MonoBehaviour
     public static FirebaseManager Instance;
 
     private bool isFirebaseInitialized = false;
+    private bool _hasNotifiedAdsManager = false;
 
     void Awake()
     {
@@ -78,17 +79,48 @@ public class FirebaseManager : MonoBehaviour
 
     public void FetchRemoteConfig()
     {
-        // FIX LỖI: Bỏ TimeSpan.Zero nếu bản SDK của bạn không hỗ trợ overload này.
-        // Vì đã set MinimumFetchIntervalInMilliseconds = 0 ở trên nên nó sẽ lấy data mới nhất.
-        FirebaseRemoteConfig.DefaultInstance.FetchAndActivateAsync().ContinueWithOnMainThread(task => {
-            if (task.IsCompleted)
-            {
+        // Set defaults tập trung tại đây (single source of truth)
+        Dictionary<string, object> defaults = new Dictionary<string, object> {
+            { AdEventTracker.KEY_ADS_INTERVAL, 45 },
+            { AdEventTracker.KEY_RATING_POPUP, false },
+            { AdEventTracker.KEY_SHOW_OPEN_ADS, false },
+            { AdEventTracker.KEY_SHOW_OPEN_ADS_FIRST, false },
+            { AdEventTracker.KEY_SHOW_RESUME_ADS, false },
+            { AdEventTracker.KEY_SHOW_BANNER, false },
+            { AdEventTracker.KEY_TIME_RELOAD_COLLAP, 10 },
+            { AdEventTracker.KEY_INTER_P1_CHOOSE, false },
+            { AdEventTracker.KEY_INTER_P2_CHOOSE, false },
+            { AdEventTracker.KEY_INTER_BACK_HOME, false },
+            { AdEventTracker.KEY_INTER_RETRY, false },
+            { AdEventTracker.KEY_RW_CHALLENGE, false },
+            { AdEventTracker.KEY_RW_PREDICTION, false },
+            { AdEventTracker.KEY_RW_PROFILE, "" },
+            { AdEventTracker.KEY_MREC_P1_CHOOSE, false },
+            { AdEventTracker.KEY_MREC_P2_CHOOSE, false },
+            { AdEventTracker.KEY_MREC_LOADING, false },
+            { AdEventTracker.KEY_MREC_GAMEPLAY, false },
+            { AdEventTracker.KEY_MREC_COMPLETE, false }
+        };
+
+        FirebaseRemoteConfig.DefaultInstance.SetDefaultsAsync(defaults).ContinueWithOnMainThread(t => {
+            FirebaseRemoteConfig.DefaultInstance.FetchAndActivateAsync().ContinueWithOnMainThread(task => {
+                if (task.IsFaulted)
+                {
+                    // Remote Config fetch fail hầu như chỉ do mất mạng → luôn hiện popup retry
+                    Debug.LogWarning("[Firebase] Remote Config Fetch Failed: " + task.Exception);
+                    if (NetworkErrorUI.Instance != null)
+                        NetworkErrorUI.Instance.Show(() => FetchRemoteConfig());
+                    return;
+                }
                 Debug.Log("<color=green>[Firebase] Remote Config Activated & Updated</color>");
-            }
-            else
-            {
-                Debug.LogWarning("[Firebase] Remote Config Fetch Failed or Throttled");
-            }
+
+                // Chỉ notify AdsManager lần đầu (không notify lại khi resume)
+                if (!_hasNotifiedAdsManager && AdsManager.Instance != null)
+                {
+                    _hasNotifiedAdsManager = true;
+                    AdsManager.Instance.OnRemoteConfigReady();
+                }
+            });
         });
     }
 

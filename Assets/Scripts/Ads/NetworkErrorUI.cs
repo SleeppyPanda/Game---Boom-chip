@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 using UnityEngine.UI;
 using System;
 
@@ -7,10 +7,12 @@ public class NetworkErrorUI : MonoBehaviour
     public static NetworkErrorUI Instance;
 
     [Header("UI Components")]
-    [SerializeField] private GameObject panel;
     [SerializeField] private Button retryButton;
 
+    private CanvasGroup _canvasGroup;
     private Action _onRetryAction;
+    private volatile bool _pendingShow = false;
+    private volatile bool _pendingHide = false;
 
     private void Awake()
     {
@@ -18,10 +20,20 @@ public class NetworkErrorUI : MonoBehaviour
         {
             Instance = this;
             DontDestroyOnLoad(gameObject);
+            Debug.Log("<color=green>[NetworkErrorUI] Instance initialized OK</color>");
         }
-        else { Destroy(gameObject); }
+        else
+        {
+            Destroy(gameObject);
+            return;
+        }
 
-        if (panel != null) panel.SetActive(false);
+        // Dùng CanvasGroup để ẩn/hiện, giữ GameObject luôn active để Update() chạy
+        _canvasGroup = GetComponent<CanvasGroup>();
+        if (_canvasGroup == null)
+            _canvasGroup = gameObject.AddComponent<CanvasGroup>();
+
+        SetVisible(false);
 
         if (retryButton != null)
         {
@@ -32,14 +44,42 @@ public class NetworkErrorUI : MonoBehaviour
 
     public void Show(Action retryAction)
     {
+        Debug.Log("<color=yellow>[NetworkErrorUI] Show() called</color>");
         _onRetryAction = retryAction;
-        if (panel != null) panel.SetActive(true);
+        _pendingShow = true;
     }
 
     public void Hide()
     {
-        if (panel != null) panel.SetActive(false);
+        _pendingHide = true;
         _onRetryAction = null;
+    }
+
+    private void Update()
+    {
+        if (_pendingShow)
+        {
+            _pendingShow = false;
+            _pendingHide = false;
+            SetVisible(true);
+            Debug.Log("<color=green>[NetworkErrorUI] Panel shown on main thread</color>");
+        }
+
+        if (_pendingHide)
+        {
+            _pendingHide = false;
+            SetVisible(false);
+        }
+    }
+
+    private void SetVisible(bool visible)
+    {
+        if (_canvasGroup != null)
+        {
+            _canvasGroup.alpha = visible ? 1f : 0f;
+            _canvasGroup.blocksRaycasts = visible;
+            _canvasGroup.interactable = visible;
+        }
     }
 
     private void OnRetryClicked()
