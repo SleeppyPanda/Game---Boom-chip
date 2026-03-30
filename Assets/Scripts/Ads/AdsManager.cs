@@ -369,7 +369,7 @@ public class AdsManager : MonoBehaviour
 
         int xPos = (int)((screenWidthDP - 300) / 2);
         int distanceFillFromBottom = 350;
-        int yPos = (int)(screenHeightDP - 250 - distanceFillFromBottom);
+        int yPos = (int)(screenHeightDP - -80 - distanceFillFromBottom);
 
         _mrecView = new BannerView(adUnitIdMREC, AdSize.MediumRectangle, xPos, yPos);
 

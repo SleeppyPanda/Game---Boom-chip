@@ -791,30 +791,60 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 05e8059771c8fbf469ce1e4da2533e59, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  txtQuestion: {fileID: 1843183021}
   resultPanel: {fileID: 1701871755}
+  txtQuestion: {fileID: 1843183021}
   txtScore: {fileID: 977801156}
   txtFinalScore: {fileID: 644247170}
   txtComment: {fileID: 339813208}
   database:
-  - themeName: Money
-    question: How much money will you made this year
-    unit: $
-    itemSprite: {fileID: 21300000, guid: 670a560de87a3d84e9ed1e034d92293a, type: 3}
-    circleSprite: {fileID: 21300000, guid: 65ceaa74802b23a41b6e04baa5a38f4b, type: 3}
+  - themeName: "T\xFAi ti\u1EC1n"
+    question: How wealthy will you be in the future?
+    unit: billion
+    itemSprite: {fileID: 21300000, guid: 153be027129ca484bb32b1a5ac9e24b9, type: 3}
+    circleSprite: {fileID: 21300000, guid: bcec0f5f06da5e747b1946a6198d07cb, type: 3}
     gapSize: 2.7
     comments:
-    - Wanna buy a new car?
-    - Give me some :)
-  - themeName: Love
-    question: When will you got love
-    unit: Year
-    itemSprite: {fileID: 21300000, guid: 2c9f5885f64ea8e4382e86b7a2a00ed5, type: 3}
-    circleSprite: {fileID: 21300000, guid: 069f4ed61d33bc141a070742bcd5c100, type: 3}
-    gapSize: 3
+    - Congrats! Your net worth is
+  - themeName: "Tr\xE1i tim m\xE0u \u0111\u1ECF"
+    question: How many girlfriends will you have in the future?
+    unit: girlfriends
+    itemSprite: {fileID: 21300000, guid: 9f75dff8138f16f4e9de209becc6b110, type: 3}
+    circleSprite: {fileID: 21300000, guid: 94dac5073a6df014a9bbfe5fc933d32f, type: 3}
+    gapSize: 2.7
     comments:
-    - I know you can be better
-    - Good luck
+    - 'Wow! You have '
+  - themeName: "Qu\u1EA3 \u0111\u1ECBa c\u1EA7u"
+    question: How many countries will you visit?
+    unit: countries!
+    itemSprite: {fileID: 21300000, guid: 465ab1baa92004d4babc9cd9fbba3f2e, type: 3}
+    circleSprite: {fileID: 21300000, guid: 27b5a68143973f6439cd84ef504e99c5, type: 3}
+    gapSize: 2.7
+    comments:
+    - Pack your bags! You will visit
+  - themeName: "Ng\u1ECDn l\u1EEDa"
+    question: What is your "Hotness" level?
+    unit: '%!'
+    itemSprite: {fileID: 21300000, guid: a0c0259ce05e5b649b94bce8939deff1, type: 3}
+    circleSprite: {fileID: 21300000, guid: 62834bccd7433524da9f94356fd52562, type: 3}
+    gapSize: 2.7
+    comments:
+    - Warning! Your charisma is at
+  - themeName: "\xD4 t\xF4 con"
+    question: How many supercars will you own?
+    unit: 'supercars! '
+    itemSprite: {fileID: 21300000, guid: 7852c96e8b9be044fa623f50748f596e, type: 3}
+    circleSprite: {fileID: 21300000, guid: 3a48f0bc94a3e2e4ca9482a5d02820e2, type: 3}
+    gapSize: 2.7
+    comments:
+    - Your garage currently has
+  - themeName: "nh\u1EABn"
+    question: When are you going to get married?
+    unit: years left
+    itemSprite: {fileID: 21300000, guid: 4f76bc77f852961468fdfb99aa233132, type: 3}
+    circleSprite: {fileID: 21300000, guid: cd74da70e6ff4b04ba7008edce7f45a2, type: 3}
+    gapSize: 2.7
+    comments:
+    - only
   leftCircleRenderer: {fileID: 1001951106}
   rightCircleRenderer: {fileID: 8942574}
   leftHalf: {fileID: 1001951107}
