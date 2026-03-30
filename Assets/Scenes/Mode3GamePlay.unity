@@ -465,7 +465,7 @@ Transform:
   m_GameObject: {fileID: 8942572}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 4.87, y: -2, z: 0}
+  m_LocalPosition: {x: 4.9, y: -2, z: 0}
   m_LocalScale: {x: 0.64684737, y: 0.64684737, z: 0.64684737}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -802,7 +802,7 @@ MonoBehaviour:
     unit: billion
     itemSprite: {fileID: 21300000, guid: 153be027129ca484bb32b1a5ac9e24b9, type: 3}
     circleSprite: {fileID: 21300000, guid: bcec0f5f06da5e747b1946a6198d07cb, type: 3}
-    gapSize: 2.7
+    gapSize: 2.68
     comments:
     - Congrats! Your net worth is
   - themeName: "Tr\xE1i tim m\xE0u \u0111\u1ECF"
@@ -810,15 +810,15 @@ MonoBehaviour:
     unit: girlfriends
     itemSprite: {fileID: 21300000, guid: 9f75dff8138f16f4e9de209becc6b110, type: 3}
     circleSprite: {fileID: 21300000, guid: 94dac5073a6df014a9bbfe5fc933d32f, type: 3}
-    gapSize: 2.7
+    gapSize: 2.68
     comments:
     - 'Wow! You have '
   - themeName: "Qu\u1EA3 \u0111\u1ECBa c\u1EA7u"
     question: How many countries will you visit?
     unit: countries!
     itemSprite: {fileID: 21300000, guid: 465ab1baa92004d4babc9cd9fbba3f2e, type: 3}
-    circleSprite: {fileID: 21300000, guid: 27b5a68143973f6439cd84ef504e99c5, type: 3}
-    gapSize: 2.7
+    circleSprite: {fileID: 21300000, guid: 7c8772691eb267f44bfc7aa6d87eb2bf, type: 3}
+    gapSize: 2.68
     comments:
     - Pack your bags! You will visit
   - themeName: "Ng\u1ECDn l\u1EEDa"
@@ -826,7 +826,7 @@ MonoBehaviour:
     unit: '%!'
     itemSprite: {fileID: 21300000, guid: a0c0259ce05e5b649b94bce8939deff1, type: 3}
     circleSprite: {fileID: 21300000, guid: 62834bccd7433524da9f94356fd52562, type: 3}
-    gapSize: 2.7
+    gapSize: 2.68
     comments:
     - Warning! Your charisma is at
   - themeName: "\xD4 t\xF4 con"
@@ -834,7 +834,7 @@ MonoBehaviour:
     unit: 'supercars! '
     itemSprite: {fileID: 21300000, guid: 7852c96e8b9be044fa623f50748f596e, type: 3}
     circleSprite: {fileID: 21300000, guid: 3a48f0bc94a3e2e4ca9482a5d02820e2, type: 3}
-    gapSize: 2.7
+    gapSize: 2.68
     comments:
     - Your garage currently has
   - themeName: "nh\u1EABn"
@@ -842,7 +842,7 @@ MonoBehaviour:
     unit: years left
     itemSprite: {fileID: 21300000, guid: 4f76bc77f852961468fdfb99aa233132, type: 3}
     circleSprite: {fileID: 21300000, guid: cd74da70e6ff4b04ba7008edce7f45a2, type: 3}
-    gapSize: 2.7
+    gapSize: 2.68
     comments:
     - only
   leftCircleRenderer: {fileID: 1001951106}
@@ -1650,7 +1650,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5766482030724548493, guid: 7db468ac4fffb094b9a404626775d043, type: 3}
       propertyPath: m_IsActive
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     m_RemovedComponents:
     - {fileID: 2255960029028641901, guid: 7db468ac4fffb094b9a404626775d043, type: 3}
@@ -2565,7 +2565,7 @@ Transform:
   m_GameObject: {fileID: 1001951104}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -4.82, y: -2, z: 0}
+  m_LocalPosition: {x: -4.9, y: -2, z: 0}
   m_LocalScale: {x: 0.64684737, y: 0.64684737, z: 0.64684737}
   m_ConstrainProportionsScale: 0
   m_Children: []

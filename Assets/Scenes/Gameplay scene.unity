@@ -154,10 +154,10 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 740397490}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 1}
-  m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 386, y: -56}
-  m_SizeDelta: {x: 100, y: 100}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 0, y: 0}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 1}
 --- !u!114 &7389751
 MonoBehaviour:
@@ -208,7 +208,6 @@ GameObject:
   - component: {fileID: 23009702}
   - component: {fileID: 23009704}
   - component: {fileID: 23009703}
-  - component: {fileID: 23009705}
   m_Layer: 5
   m_Name: Image
   m_TagString: Untagged
@@ -274,31 +273,6 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 23009701}
   m_CullTransparentMesh: 1
---- !u!114 &23009705
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 23009701}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: eab266a2bafd2804cb2c27e97867f514, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  targetPlayer: 0
-  nameText: {fileID: 604056249}
-  avatarImage: {fileID: 0}
-  allAvatars:
-  - {fileID: 21300000, guid: e12f54d3594c66e4695610e129d2281e, type: 3}
-  - {fileID: 21300000, guid: 4bb3533b26ace3a4a904d1be94e5ee33, type: 3}
-  - {fileID: 21300000, guid: c1ec2d3bcce06ec4293f3b613c39eb1a, type: 3}
-  - {fileID: 21300000, guid: 90f998f81d095f74ca0ccd0fc02de9ed, type: 3}
-  - {fileID: 21300000, guid: 1ce330e4cd6ee3b4cbbd4d67ae180bb1, type: 3}
-  - {fileID: 21300000, guid: 94bef641582b3ca4893139356537242c, type: 3}
-  - {fileID: 21300000, guid: f7e6bcfdccd943d42a9a7a031d1e95fd, type: 3}
-  - {fileID: 21300000, guid: 174a1ccad5670f3448999c9702680773, type: 3}
-  - {fileID: 21300000, guid: 2340d673a931e5040873c431cf754604, type: 3}
 --- !u!1 &113689096
 GameObject:
   m_ObjectHideFlags: 0
@@ -433,7 +407,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   tileIndex: 8
-  ownerID: 1
+  ownerID: 2
 --- !u!1 &127661934
 GameObject:
   m_ObjectHideFlags: 0
@@ -586,7 +560,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &129333988
 RectTransform:
   m_ObjectHideFlags: 0
@@ -734,10 +708,10 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 2099773906}
   m_LocalEulerAnglesHint: {x: -180, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 1}
-  m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 362.5, y: -361.5}
-  m_SizeDelta: {x: 200, y: 200}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 0, y: 0}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &161955242
 MonoBehaviour:
@@ -834,7 +808,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   tileIndex: 4
-  ownerID: 2
+  ownerID: 1
 --- !u!1 &166358928 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 1739022220677919370, guid: 7db468ac4fffb094b9a404626775d043, type: 3}
@@ -874,10 +848,10 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 2099773906}
   m_LocalEulerAnglesHint: {x: -180, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 1}
-  m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 587.5, y: -361.5}
-  m_SizeDelta: {x: 200, y: 200}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 0, y: 0}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &179474374
 MonoBehaviour:
@@ -974,7 +948,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   tileIndex: 3
-  ownerID: 2
+  ownerID: 1
 --- !u!1 &187236742
 GameObject:
   m_ObjectHideFlags: 0
@@ -1156,10 +1130,10 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 1250198889}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 1}
-  m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 362.5, y: -586.5}
-  m_SizeDelta: {x: 200, y: 200}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 0, y: 0}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &228854481
 MonoBehaviour:
@@ -1256,7 +1230,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   tileIndex: 7
-  ownerID: 1
+  ownerID: 2
 --- !u!1 &231979720
 GameObject:
   m_ObjectHideFlags: 0
@@ -1391,7 +1365,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   tileIndex: 3
-  ownerID: 1
+  ownerID: 2
 --- !u!114 &255570890 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 1206024840328431401, guid: 7db468ac4fffb094b9a404626775d043, type: 3}
@@ -1658,10 +1632,10 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 520856079}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 1}
-  m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 190, y: -100}
-  m_SizeDelta: {x: 180, y: 180}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 0, y: 0}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 1, y: 0.5}
 --- !u!114 &298230814
 MonoBehaviour:
@@ -1888,7 +1862,6 @@ MonoBehaviour:
   avatarImageP1: {fileID: 0}
   nameTextP2: {fileID: 0}
   avatarImageP2: {fileID: 0}
-  allAvatars: []
   leftStrip: {fileID: 1238627001}
   rightStrip: {fileID: 1983737886}
   leftObj: {fileID: 439460245}
@@ -2379,19 +2352,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: eab266a2bafd2804cb2c27e97867f514, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  targetPlayer: 1
+  targetType: 1
   nameText: {fileID: 1880371253}
   avatarImage: {fileID: 1283725054}
-  allAvatars:
-  - {fileID: 21300000, guid: e12f54d3594c66e4695610e129d2281e, type: 3}
-  - {fileID: 21300000, guid: 4bb3533b26ace3a4a904d1be94e5ee33, type: 3}
-  - {fileID: 21300000, guid: c1ec2d3bcce06ec4293f3b613c39eb1a, type: 3}
-  - {fileID: 21300000, guid: 90f998f81d095f74ca0ccd0fc02de9ed, type: 3}
-  - {fileID: 21300000, guid: 1ce330e4cd6ee3b4cbbd4d67ae180bb1, type: 3}
-  - {fileID: 21300000, guid: 94bef641582b3ca4893139356537242c, type: 3}
-  - {fileID: 21300000, guid: f7e6bcfdccd943d42a9a7a031d1e95fd, type: 3}
-  - {fileID: 21300000, guid: 174a1ccad5670f3448999c9702680773, type: 3}
-  - {fileID: 21300000, guid: 2340d673a931e5040873c431cf754604, type: 3}
 --- !u!1 &451123656
 GameObject:
   m_ObjectHideFlags: 0
@@ -2658,7 +2621,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   tileIndex: 7
-  ownerID: 1
+  ownerID: 2
 --- !u!1 &467525576
 GameObject:
   m_ObjectHideFlags: 0
@@ -2691,10 +2654,10 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 1458438917}
   m_LocalEulerAnglesHint: {x: 180, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 1}
-  m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 236, y: -106}
-  m_SizeDelta: {x: 100, y: 100}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 0, y: 0}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &467525578
 MonoBehaviour:
@@ -2768,10 +2731,10 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 2099773906}
   m_LocalEulerAnglesHint: {x: -180, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 1}
-  m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 587.5, y: -586.5}
-  m_SizeDelta: {x: 200, y: 200}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 0, y: 0}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &480920835
 MonoBehaviour:
@@ -2868,7 +2831,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   tileIndex: 6
-  ownerID: 2
+  ownerID: 1
 --- !u!1 &519420028
 GameObject:
   m_ObjectHideFlags: 0
@@ -3241,7 +3204,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   tileIndex: 3
-  ownerID: 2
+  ownerID: 1
 --- !u!1 &577157331
 GameObject:
   m_ObjectHideFlags: 0
@@ -3332,19 +3295,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: eab266a2bafd2804cb2c27e97867f514, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  targetPlayer: 0
+  targetType: 0
   nameText: {fileID: 127661936}
   avatarImage: {fileID: 228530969}
-  allAvatars:
-  - {fileID: 21300000, guid: e12f54d3594c66e4695610e129d2281e, type: 3}
-  - {fileID: 21300000, guid: 4bb3533b26ace3a4a904d1be94e5ee33, type: 3}
-  - {fileID: 21300000, guid: c1ec2d3bcce06ec4293f3b613c39eb1a, type: 3}
-  - {fileID: 21300000, guid: 90f998f81d095f74ca0ccd0fc02de9ed, type: 3}
-  - {fileID: 21300000, guid: 1ce330e4cd6ee3b4cbbd4d67ae180bb1, type: 3}
-  - {fileID: 21300000, guid: 94bef641582b3ca4893139356537242c, type: 3}
-  - {fileID: 21300000, guid: f7e6bcfdccd943d42a9a7a031d1e95fd, type: 3}
-  - {fileID: 21300000, guid: 174a1ccad5670f3448999c9702680773, type: 3}
-  - {fileID: 21300000, guid: 2340d673a931e5040873c431cf754604, type: 3}
 --- !u!1 &577483454
 GameObject:
   m_ObjectHideFlags: 0
@@ -3379,10 +3332,10 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 2099773906}
   m_LocalEulerAnglesHint: {x: -180, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 1}
-  m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 137.5, y: -136.5}
-  m_SizeDelta: {x: 200, y: 200}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 0, y: 0}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &577483456
 MonoBehaviour:
@@ -3479,7 +3432,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   tileIndex: 2
-  ownerID: 2
+  ownerID: 1
 --- !u!1 &604056247
 GameObject:
   m_ObjectHideFlags: 0
@@ -3650,10 +3603,10 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 1250198889}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 1}
-  m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 137.5, y: -361.5}
-  m_SizeDelta: {x: 200, y: 200}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 0, y: 0}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &612621546
 MonoBehaviour:
@@ -3750,7 +3703,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   tileIndex: 3
-  ownerID: 1
+  ownerID: 2
 --- !u!1 &616162939 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 5766482030724548493, guid: 7db468ac4fffb094b9a404626775d043, type: 3}
@@ -4167,10 +4120,10 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 1250198889}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 1}
-  m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 362.5, y: -136.5}
-  m_SizeDelta: {x: 200, y: 200}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 0, y: 0}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &701133133
 MonoBehaviour:
@@ -4267,7 +4220,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   tileIndex: 1
-  ownerID: 1
+  ownerID: 2
 --- !u!1 &702706204
 GameObject:
   m_ObjectHideFlags: 0
@@ -4402,7 +4355,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   tileIndex: 0
-  ownerID: 1
+  ownerID: 2
 --- !u!1 &704552106 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 5106432659160437737, guid: 7db468ac4fffb094b9a404626775d043, type: 3}
@@ -4440,10 +4393,10 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 1168849345}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 1}
-  m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 10, y: -100}
-  m_SizeDelta: {x: 180, y: 180}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 0, y: 0}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0, y: 0.5}
 --- !u!114 &704917030
 MonoBehaviour:
@@ -4617,7 +4570,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   tileIndex: 2
-  ownerID: 1
+  ownerID: 2
 --- !u!1 &740397489
 GameObject:
   m_ObjectHideFlags: 0
@@ -4953,19 +4906,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: eab266a2bafd2804cb2c27e97867f514, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  targetPlayer: 1
+  targetType: 1
   nameText: {fileID: 0}
   avatarImage: {fileID: 704917030}
-  allAvatars:
-  - {fileID: 21300000, guid: e12f54d3594c66e4695610e129d2281e, type: 3}
-  - {fileID: 21300000, guid: 4bb3533b26ace3a4a904d1be94e5ee33, type: 3}
-  - {fileID: 21300000, guid: c1ec2d3bcce06ec4293f3b613c39eb1a, type: 3}
-  - {fileID: 21300000, guid: 90f998f81d095f74ca0ccd0fc02de9ed, type: 3}
-  - {fileID: 21300000, guid: 1ce330e4cd6ee3b4cbbd4d67ae180bb1, type: 3}
-  - {fileID: 21300000, guid: 94bef641582b3ca4893139356537242c, type: 3}
-  - {fileID: 21300000, guid: f7e6bcfdccd943d42a9a7a031d1e95fd, type: 3}
-  - {fileID: 21300000, guid: 174a1ccad5670f3448999c9702680773, type: 3}
-  - {fileID: 21300000, guid: 2340d673a931e5040873c431cf754604, type: 3}
 --- !u!1 &803078407
 GameObject:
   m_ObjectHideFlags: 0
@@ -5025,19 +4968,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: eab266a2bafd2804cb2c27e97867f514, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  targetPlayer: 0
+  targetType: 0
   nameText: {fileID: 0}
   avatarImage: {fileID: 298230814}
-  allAvatars:
-  - {fileID: 21300000, guid: e12f54d3594c66e4695610e129d2281e, type: 3}
-  - {fileID: 21300000, guid: 4bb3533b26ace3a4a904d1be94e5ee33, type: 3}
-  - {fileID: 21300000, guid: c1ec2d3bcce06ec4293f3b613c39eb1a, type: 3}
-  - {fileID: 21300000, guid: 90f998f81d095f74ca0ccd0fc02de9ed, type: 3}
-  - {fileID: 21300000, guid: 1ce330e4cd6ee3b4cbbd4d67ae180bb1, type: 3}
-  - {fileID: 21300000, guid: 94bef641582b3ca4893139356537242c, type: 3}
-  - {fileID: 21300000, guid: f7e6bcfdccd943d42a9a7a031d1e95fd, type: 3}
-  - {fileID: 21300000, guid: 174a1ccad5670f3448999c9702680773, type: 3}
-  - {fileID: 21300000, guid: 2340d673a931e5040873c431cf754604, type: 3}
 --- !u!1 &808122481
 GameObject:
   m_ObjectHideFlags: 0
@@ -5117,6 +5050,7 @@ GameObject:
   - component: {fileID: 845971493}
   - component: {fileID: 845971495}
   - component: {fileID: 845971494}
+  - component: {fileID: 845971496}
   m_Layer: 5
   m_Name: Phase2
   m_TagString: Untagged
@@ -5185,6 +5119,21 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 845971492}
   m_CullTransparentMesh: 1
+--- !u!114 &845971496
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 845971492}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: eab266a2bafd2804cb2c27e97867f514, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  targetType: 1
+  nameText: {fileID: 1470365973}
+  avatarImage: {fileID: 0}
 --- !u!1 &852432083
 GameObject:
   m_ObjectHideFlags: 0
@@ -5219,10 +5168,10 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 2099773906}
   m_LocalEulerAnglesHint: {x: -180, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 1}
-  m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 137.5, y: -586.5}
-  m_SizeDelta: {x: 200, y: 200}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 0, y: 0}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &852432085
 MonoBehaviour:
@@ -5319,7 +5268,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   tileIndex: 8
-  ownerID: 2
+  ownerID: 1
 --- !u!1 &892514743
 GameObject:
   m_ObjectHideFlags: 0
@@ -5354,10 +5303,10 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 2099773906}
   m_LocalEulerAnglesHint: {x: -180, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 1}
-  m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 587.5, y: -136.5}
-  m_SizeDelta: {x: 200, y: 200}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 0, y: 0}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &892514745
 MonoBehaviour:
@@ -5454,7 +5403,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   tileIndex: 0
-  ownerID: 2
+  ownerID: 1
 --- !u!1 &943476403
 GameObject:
   m_ObjectHideFlags: 0
@@ -5472,7 +5421,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!224 &943476404
 RectTransform:
   m_ObjectHideFlags: 0
@@ -5679,10 +5628,10 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 1250198889}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 1}
-  m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 587.5, y: -361.5}
-  m_SizeDelta: {x: 200, y: 200}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 0, y: 0}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1002022257
 MonoBehaviour:
@@ -5779,7 +5728,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   tileIndex: 5
-  ownerID: 1
+  ownerID: 2
 --- !u!1 &1088130038
 GameObject:
   m_ObjectHideFlags: 0
@@ -5814,10 +5763,10 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 1250198889}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 1}
-  m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 137.5, y: -586.5}
-  m_SizeDelta: {x: 200, y: 200}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 0, y: 0}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1088130040
 MonoBehaviour:
@@ -5914,7 +5863,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   tileIndex: 6
-  ownerID: 1
+  ownerID: 2
 --- !u!114 &1134174884 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 1029938029911580156, guid: 7db468ac4fffb094b9a404626775d043, type: 3}
@@ -6060,7 +6009,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   tileIndex: 7
-  ownerID: 2
+  ownerID: 1
 --- !u!1 &1155019713
 GameObject:
   m_ObjectHideFlags: 0
@@ -6195,7 +6144,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   tileIndex: 4
-  ownerID: 2
+  ownerID: 1
 --- !u!1 &1160334861
 GameObject:
   m_ObjectHideFlags: 0
@@ -6228,10 +6177,10 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 740397490}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 1}
-  m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 536, y: -56}
-  m_SizeDelta: {x: 100, y: 100}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 0, y: 0}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 1}
 --- !u!114 &1160334863
 MonoBehaviour:
@@ -6826,6 +6775,7 @@ GameObject:
   - component: {fileID: 1253909502}
   - component: {fileID: 1253909504}
   - component: {fileID: 1253909503}
+  - component: {fileID: 1253909505}
   m_Layer: 5
   m_Name: Phase1
   m_TagString: Untagged
@@ -6894,6 +6844,21 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1253909501}
   m_CullTransparentMesh: 1
+--- !u!114 &1253909505
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1253909501}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: eab266a2bafd2804cb2c27e97867f514, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  targetType: 0
+  nameText: {fileID: 604056249}
+  avatarImage: {fileID: 0}
 --- !u!1 &1270197233
 GameObject:
   m_ObjectHideFlags: 0
@@ -6926,10 +6891,10 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 1458438917}
   m_LocalEulerAnglesHint: {x: 180, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 1}
-  m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 386, y: -106}
-  m_SizeDelta: {x: 100, y: 100}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 0, y: 0}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1270197235
 MonoBehaviour:
@@ -7003,10 +6968,10 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 1250198889}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 1}
-  m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 587.5, y: -586.5}
-  m_SizeDelta: {x: 200, y: 200}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 0, y: 0}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1280929518
 MonoBehaviour:
@@ -7103,7 +7068,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   tileIndex: 8
-  ownerID: 1
+  ownerID: 2
 --- !u!1 &1283725052
 GameObject:
   m_ObjectHideFlags: 0
@@ -7213,10 +7178,10 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 2099773906}
   m_LocalEulerAnglesHint: {x: -180, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 1}
-  m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 362.5, y: -586.5}
-  m_SizeDelta: {x: 200, y: 200}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 0, y: 0}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1318689665
 MonoBehaviour:
@@ -7313,7 +7278,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   tileIndex: 7
-  ownerID: 2
+  ownerID: 1
 --- !u!1 &1327932150
 GameObject:
   m_ObjectHideFlags: 0
@@ -7448,7 +7413,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   tileIndex: 5
-  ownerID: 1
+  ownerID: 2
 --- !u!114 &1335224768 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 7618261640888829540, guid: 7db468ac4fffb094b9a404626775d043, type: 3}
@@ -7594,7 +7559,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   tileIndex: 1
-  ownerID: 1
+  ownerID: 2
 --- !u!1 &1418033515
 GameObject:
   m_ObjectHideFlags: 0
@@ -7629,10 +7594,10 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 2099773906}
   m_LocalEulerAnglesHint: {x: -180, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 1}
-  m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 362.5, y: -136.5}
-  m_SizeDelta: {x: 200, y: 200}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 0, y: 0}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1418033517
 MonoBehaviour:
@@ -7741,7 +7706,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   tileIndex: 1
-  ownerID: 2
+  ownerID: 1
 --- !u!1 &1458438916
 GameObject:
   m_ObjectHideFlags: 0
@@ -7979,7 +7944,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   tileIndex: 8
-  ownerID: 2
+  ownerID: 1
 --- !u!1 &1470365971
 GameObject:
   m_ObjectHideFlags: 0
@@ -8148,10 +8113,10 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 2099773906}
   m_LocalEulerAnglesHint: {x: -180, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 1}
-  m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 137.5, y: -361.5}
-  m_SizeDelta: {x: 200, y: 200}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 0, y: 0}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1546485331
 MonoBehaviour:
@@ -8248,7 +8213,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   tileIndex: 5
-  ownerID: 2
+  ownerID: 1
 --- !u!1 &1610513247
 GameObject:
   m_ObjectHideFlags: 0
@@ -8473,7 +8438,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   tileIndex: 6
-  ownerID: 1
+  ownerID: 2
 --- !u!1 &1706769582
 GameObject:
   m_ObjectHideFlags: 0
@@ -8660,10 +8625,10 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 1250198889}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 1}
-  m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 137.5, y: -136.5}
-  m_SizeDelta: {x: 200, y: 200}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 0, y: 0}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1753701347
 MonoBehaviour:
@@ -8760,7 +8725,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   tileIndex: 0
-  ownerID: 1
+  ownerID: 2
 --- !u!1 &1764396088
 GameObject:
   m_ObjectHideFlags: 0
@@ -8989,7 +8954,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   tileIndex: 6
-  ownerID: 2
+  ownerID: 1
 --- !u!1 &1867993067
 GameObject:
   m_ObjectHideFlags: 0
@@ -9136,7 +9101,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   tileIndex: 0
-  ownerID: 2
+  ownerID: 1
 --- !u!1 &1880371251
 GameObject:
   m_ObjectHideFlags: 0
@@ -9407,7 +9372,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   tileIndex: 1
-  ownerID: 2
+  ownerID: 1
 --- !u!1 &1921438329
 GameObject:
   m_ObjectHideFlags: 0
@@ -9622,7 +9587,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   tileIndex: 5
-  ownerID: 2
+  ownerID: 1
 --- !u!1 &1973296764
 GameObject:
   m_ObjectHideFlags: 0
@@ -9657,10 +9622,10 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 1250198889}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 1}
-  m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 362.5, y: -361.5}
-  m_SizeDelta: {x: 200, y: 200}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 0, y: 0}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1973296766
 MonoBehaviour:
@@ -9757,7 +9722,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   tileIndex: 4
-  ownerID: 1
+  ownerID: 2
 --- !u!1 &1983737885
 GameObject:
   m_ObjectHideFlags: 0
@@ -9947,10 +9912,10 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 1458438917}
   m_LocalEulerAnglesHint: {x: 180, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 1}
-  m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 536, y: -106}
-  m_SizeDelta: {x: 100, y: 100}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 0, y: 0}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &2044587294
 MonoBehaviour:
@@ -10022,10 +9987,10 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 740397490}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 1}
-  m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 236, y: -56}
-  m_SizeDelta: {x: 100, y: 100}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 0, y: 0}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 1}
 --- !u!114 &2047738296
 MonoBehaviour:
@@ -10199,7 +10164,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   tileIndex: 2
-  ownerID: 2
+  ownerID: 1
 --- !u!1 &2082023295
 GameObject:
   m_ObjectHideFlags: 0
@@ -10418,10 +10383,10 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 1250198889}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 1}
-  m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 587.5, y: -136.5}
-  m_SizeDelta: {x: 200, y: 200}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 0, y: 0}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &2111144522
 MonoBehaviour:
@@ -10518,7 +10483,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   tileIndex: 2
-  ownerID: 1
+  ownerID: 2
 --- !u!1 &2117775890
 GameObject:
   m_ObjectHideFlags: 0
@@ -10728,7 +10693,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   tileIndex: 4
-  ownerID: 1
+  ownerID: 2
 --- !u!1001 &2142848022
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -10871,7 +10836,6 @@ GameObject:
   - component: {fileID: 2144067758}
   - component: {fileID: 2144067760}
   - component: {fileID: 2144067759}
-  - component: {fileID: 2144067761}
   m_Layer: 5
   m_Name: Image
   m_TagString: Untagged
@@ -10937,31 +10901,6 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2144067757}
   m_CullTransparentMesh: 1
---- !u!114 &2144067761
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2144067757}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: eab266a2bafd2804cb2c27e97867f514, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  targetPlayer: 1
-  nameText: {fileID: 1470365973}
-  avatarImage: {fileID: 0}
-  allAvatars:
-  - {fileID: 21300000, guid: e12f54d3594c66e4695610e129d2281e, type: 3}
-  - {fileID: 21300000, guid: 4bb3533b26ace3a4a904d1be94e5ee33, type: 3}
-  - {fileID: 21300000, guid: c1ec2d3bcce06ec4293f3b613c39eb1a, type: 3}
-  - {fileID: 21300000, guid: 90f998f81d095f74ca0ccd0fc02de9ed, type: 3}
-  - {fileID: 21300000, guid: 1ce330e4cd6ee3b4cbbd4d67ae180bb1, type: 3}
-  - {fileID: 21300000, guid: 94bef641582b3ca4893139356537242c, type: 3}
-  - {fileID: 21300000, guid: f7e6bcfdccd943d42a9a7a031d1e95fd, type: 3}
-  - {fileID: 21300000, guid: 174a1ccad5670f3448999c9702680773, type: 3}
-  - {fileID: 21300000, guid: 2340d673a931e5040873c431cf754604, type: 3}
 --- !u!1001 &70913929507207247
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -10970,6 +10909,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 266780292}
     m_Modifications:
+    - target: {fileID: 621848958148685846, guid: 7db468ac4fffb094b9a404626775d043, type: 3}
+      propertyPath: targetType
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 745433346680515497, guid: 7db468ac4fffb094b9a404626775d043, type: 3}
       propertyPath: m_Pivot.x
       value: 0.5
@@ -11064,6 +11007,10 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5766482030724548493, guid: 7db468ac4fffb094b9a404626775d043, type: 3}
       propertyPath: m_IsActive
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6094609215589029831, guid: 7db468ac4fffb094b9a404626775d043, type: 3}
+      propertyPath: targetType
       value: 0
       objectReference: {fileID: 0}
     m_RemovedComponents: []

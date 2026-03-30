@@ -1,46 +1,37 @@
 ﻿using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
-using System.Collections.Generic;
 
 public class PlayerUIBinder : MonoBehaviour
 {
-    public enum PlayerSide { Player1, Player2 }
+    public enum Target { Player1, Player2, Winner }
 
-    [Header("Thiết lập")]
-    public PlayerSide targetPlayer;
+    [Header("Thiết lập hiển thị")]
+    public Target targetType;
 
-    [Header("Liên kết UI (Không bắt buộc, có cái nào gán cái đó)")]
+    [Header("Liên kết Components")]
     public TextMeshProUGUI nameText;
     public Image avatarImage;
 
-    [Header("Dữ liệu Avatar")]
-    public List<Sprite> allAvatars; // Kéo bộ avatar giống bên Profile vào đây
+    void OnEnable() => BindData();
+    void Start() => BindData();
 
-    void Start()
-    {
-        BindData();
-    }
-
-    // Gọi hàm này nếu bạn muốn cập nhật UI ngay lập tức khi có thay đổi
     public void BindData()
     {
-        string suffix = (targetPlayer == PlayerSide.Player1) ? "_P1" : "_P2";
-        string defaultName = (targetPlayer == PlayerSide.Player1) ? "Player 1" : "Player 2";
-        int defaultAvatar = (targetPlayer == PlayerSide.Player1) ? 0 : 1;
+        if (AccountManager.Instance == null) return;
 
-        // Lấy dữ liệu từ PlayerPrefs (giống key bên ProfileTabManager)
-        string savedName = PlayerPrefs.GetString("PlayerName" + suffix, defaultName);
-        int savedAvatarIndex = PlayerPrefs.GetInt("SelectedAvatarIndex" + suffix, defaultAvatar);
-
-        // Đổ dữ liệu vào Text
-        if (nameText != null)
-            nameText.text = savedName;
-
-        // Đổ dữ liệu vào Image
-        if (avatarImage != null && allAvatars != null && savedAvatarIndex < allAvatars.Count)
+        int id = 1;
+        switch (targetType)
         {
-            avatarImage.sprite = allAvatars[savedAvatarIndex];
+            case Target.Player1: id = 1; break;
+            case Target.Player2: id = 2; break;
+            case Target.Winner: id = AccountManager.LastWinnerID; break;
         }
+
+        if (nameText != null)
+            nameText.text = AccountManager.Instance.GetPlayerName(id);
+
+        if (avatarImage != null)
+            avatarImage.sprite = AccountManager.Instance.GetAvatarSprite(id);
     }
 }

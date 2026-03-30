@@ -5,13 +5,13 @@ public partial class TileButton : MonoBehaviour
 {
     public int tileIndex;
     [Header("1 cho bảng P1, 2 cho bảng P2")]
-    public int ownerID; // ID để xác định ô này thuộc về bàn cờ của ai
+    public int ownerID; // ID để xác định ô này thuộc về bàn cờ của ai (PlayerID)
 
     private Button button;
     private Image buttonImage;
     private BoomChipManager manager;
 
-    // QUAN TRỌNG: Lưu lại hình ảnh gốc (hình quả bom) để quay lại khi bỏ chọn
+    // Lưu lại hình ảnh gốc (ví dụ: hình ô gạch chưa lật hoặc hình mặc định)
     private Sprite originalSprite;
 
     void Awake()
@@ -19,7 +19,7 @@ public partial class TileButton : MonoBehaviour
         button = GetComponent<Button>();
         buttonImage = GetComponent<Image>();
 
-        // Lưu lại hình ảnh quả bom bạn đã gán trong Editor/Prefab ngay khi game chạy
+        // Lưu lại hình ảnh mặc định trong Editor/Prefab ngay khi Awake
         if (buttonImage != null)
         {
             originalSprite = buttonImage.sprite;
@@ -36,43 +36,47 @@ public partial class TileButton : MonoBehaviour
 
     void Start()
     {
-        // Giai đoạn ban đầu (Phase 1, 2) có thể không cần ApplyInitialSkin 
-        // vì mặc định tất cả phải là hình quả bom che khuất.
-        // Tuy nhiên, hàm này vẫn giữ để đảm bảo tính linh hoạt.
         ApplyInitialSkin();
     }
 
     private void ApplyInitialSkin()
     {
-        // Nếu bạn muốn lúc bắt đầu game các ô hiện luôn skin (tùy logic game)
-        // Hiện tại logic của chúng ta là hiện hình quả bom (originalSprite)
-        if (buttonImage == null) return;
+        // Đảm bảo lúc bắt đầu ô hiện hình ảnh mặc định (originalSprite)
+        if (buttonImage != null && originalSprite != null)
+        {
+            buttonImage.sprite = originalSprite;
+        }
     }
 
     void OnClicked()
     {
         if (manager == null) return;
 
-        // Logic xử lý click dựa trên Phase hiện tại
+        // --- GIAI ĐOẠN ĐẶT BOM (Phase 1 & 2) ---
         if (manager.currentPhase == GamePhase.Phase1 || manager.currentPhase == GamePhase.Phase2)
         {
-            // Chỉ cho phép click vào bảng của mình trong phase tương ứng để đặt bom
-            int currentPlayer = (manager.currentPhase == GamePhase.Phase1) ? 1 : 2;
-            if (ownerID == currentPlayer)
+            // Chỉ cho phép click vào bảng của chính mình để đặt bom
+            int currentPlayerSettingBombs = (manager.currentPhase == GamePhase.Phase1) ? 1 : 2;
+
+            if (ownerID == currentPlayerSettingBombs)
             {
+                // Gọi manager để xử lý việc chọn/bỏ chọn bom
                 manager.HandleTileClick(tileIndex, this);
             }
         }
+        // --- GIAI ĐOẠN CHIẾN ĐẤU (Phase 3) ---
         else if (manager.currentPhase == GamePhase.Phase3)
         {
-            // Giai đoạn chiến đấu: manager sẽ tự check lượt của ai được bắn bảng nào
+            // Logic tách biệt: 
+            // ownerID đóng vai trò xác định bảng của người chơi bị tác động vật lý.
+            // manager.ExecuteTurn sẽ kiểm tra lượt (isP1Turn) và so khớp với ownerID này.
             manager.ExecuteTurn(tileIndex, this, ownerID);
         }
     }
 
     /// <summary>
-    /// Thay đổi hình ảnh hiển thị. 
-    /// Nếu truyền vào null, ô sẽ tự quay về hình quả bom gốc.
+    /// Thay đổi hình ảnh hiển thị (Skin nhân vật khi trúng bom hoặc hình Miss). 
+    /// Nếu truyền vào null, ô sẽ tự quay về hình ảnh gốc ban đầu.
     /// </summary>
     public void SetVisual(Sprite newSprite)
     {
@@ -80,20 +84,21 @@ public partial class TileButton : MonoBehaviour
 
         if (newSprite == null)
         {
-            buttonImage.sprite = originalSprite; // Quay về hình quả bom mặc định
+            buttonImage.sprite = originalSprite;
         }
         else
         {
-            buttonImage.sprite = newSprite; // Hiển thị skin hoặc hình gạch chéo (miss)
+            buttonImage.sprite = newSprite;
         }
     }
 
     /// <summary>
-    /// Reset ô về trạng thái ban đầu
+    /// Reset ô về trạng thái ban đầu để chơi ván mới hoặc reset phase
     /// </summary>
     public void ResetTile(Sprite defaultSprite = null)
     {
-        SetVisual(defaultSprite); // Sẽ dùng originalSprite nếu defaultSprite là null
+        // Nếu defaultSprite truyền vào là null, SetVisual sẽ tự lấy originalSprite
+        SetVisual(defaultSprite);
         SetInteractable(true);
     }
 

@@ -15,8 +15,15 @@ public class DiceModeManager : MonoBehaviour
 
     [Header("UI Text & Indicators")]
     public TextMeshProUGUI turnStatusText;
-    public CanvasGroup p1CanvasGroup;
-    public CanvasGroup p2CanvasGroup;
+    // THAY ĐỔI: Chuyển sang Image để đổi màu thay vì Alpha
+    public Image p1IndicatorFrame;
+    public Image p2IndicatorFrame; 
+    public Image p1Frame;
+    public Image p2Frame;
+    public Image p1avatar;
+    public Image p2avatar;
+    public Color activeColor = Color.white;
+    public Color inactiveColor = new Color(0.5f, 0.5f, 0.5f, 1f);
 
     [Header("Game Mode Configuration")]
     public bool isBombModeActive = false;
@@ -68,6 +75,9 @@ public class DiceModeManager : MonoBehaviour
     private bool isGameOver = false;
     private List<DiceTile> allBoardTiles = new List<DiceTile>();
 
+    // Hàm bổ trợ để lấy ID mode: Bomb = 9, Thường = 10
+    private int GetCurrentModeID() => isBombModeActive ? 9 : 10;
+
     void Awake()
     {
         Instance = this;
@@ -90,6 +100,9 @@ public class DiceModeManager : MonoBehaviour
     {
         if (panelWin) panelWin.SetActive(false);
         if (panelAnimation) panelAnimation.SetActive(false);
+
+        // FIREBASE: Log bắt đầu game với Mode ID tương ứng
+        if (FirebaseManager.Instance != null) FirebaseManager.Instance.LogModeEnter(GetCurrentModeID());
 
         GenerateBoard();
         SetBoardInteractable(false);
@@ -157,7 +170,7 @@ public class DiceModeManager : MonoBehaviour
 
     private IEnumerator HandleBombExplosionSequence(DiceTile tile)
     {
-        isGameOver = true; // Chặn mọi thao tác click ngay lập tức
+        isGameOver = true;
         SetBoardInteractable(false);
         tile.SetVisual(bombSprite, true);
 
@@ -167,7 +180,6 @@ public class DiceModeManager : MonoBehaviour
             AudioManager.Instance.PlaySFX(BoomChipSettings.hitSFXName);
         }
 
-        // Hiệu ứng rung bàn cờ
         Vector3 originalBoardPos = boardContainer.localPosition;
         float elapsed = 0f; float duration = 0.8f;
         while (elapsed < duration)
@@ -179,7 +191,7 @@ public class DiceModeManager : MonoBehaviour
         }
         boardContainer.localPosition = originalBoardPos;
 
-        yield return new WaitForSeconds(1.2f); // Delay 1.2s trước khi hiện Win
+        yield return new WaitForSeconds(1.2f);
         EndGame(isP1Turn ? 2 : 1);
     }
 
@@ -219,11 +231,12 @@ public class DiceModeManager : MonoBehaviour
     {
         if (flipStatusText != null)
         {
-            string key = (winnerID == 0) ? "PlayerName_P1" : "PlayerName_P2";
-            string defaultName = (winnerID == 0) ? "Player 1" : "Player 2";
-            string winnerName = PlayerPrefs.GetString(key, defaultName);
-
-            flipStatusText.text = $"<color=yellow><b> {winnerName}</b></color> GO FIRST!";
+            string winnerName = "Player";
+            if (AccountManager.Instance != null)
+            {
+                winnerName = AccountManager.Instance.GetPlayerName(winnerID == 0 ? 1 : 2);
+            }
+            flipStatusText.text = $"<color=yellow><b> {winnerName.ToUpper()}</b></color> GO FIRST!";
         }
 
         yield return new WaitForSeconds(1.0f);
@@ -256,10 +269,11 @@ public class DiceModeManager : MonoBehaviour
 
         if (turnStatusText != null)
         {
-            string key = isP1Turn ? "PlayerName_P1" : "PlayerName_P2";
-            string defaultName = isP1Turn ? "PLAYER 1" : "PLAYER 2";
-            string currentPlayerName = PlayerPrefs.GetString(key, defaultName);
-
+            string currentPlayerName = "PLAYER";
+            if (AccountManager.Instance != null)
+            {
+                currentPlayerName = AccountManager.Instance.GetPlayerName(isP1Turn ? 1 : 2);
+            }
             turnStatusText.text = currentPlayerName.ToUpper() + " TURN";
         }
         UpdateTurnIndicators();
@@ -267,8 +281,13 @@ public class DiceModeManager : MonoBehaviour
 
     private void UpdateTurnIndicators()
     {
-        if (p1CanvasGroup != null) p1CanvasGroup.alpha = isP1Turn ? 1f : 0.8f;
-        if (p2CanvasGroup != null) p2CanvasGroup.alpha = isP1Turn ? 0.8f : 1f;
+        // Cập nhật màu sắc thay vì Alpha
+        if (p1IndicatorFrame != null) p1IndicatorFrame.color = isP1Turn ? activeColor : inactiveColor;
+        if (p2IndicatorFrame != null) p2IndicatorFrame.color = isP1Turn ? inactiveColor : activeColor;
+        if (p1Frame != null) p1Frame.color = isP1Turn ? activeColor : inactiveColor;
+        if (p2Frame != null) p2Frame.color = isP1Turn ? inactiveColor : activeColor;
+        if (p1avatar != null) p1avatar.color = isP1Turn ? activeColor : inactiveColor;
+        if (p2avatar != null) p2avatar.color = isP1Turn ? inactiveColor : activeColor;
     }
 
     public void RollDice()
@@ -331,14 +350,14 @@ public class DiceModeManager : MonoBehaviour
         else if (p2ClaimedCells > p1ClaimedCells) winner = 2;
         else winner = 0;
 
-        isGameOver = true; // Chặn click tiếp ngay lập tức
+        isGameOver = true;
         SetBoardInteractable(false);
         StartCoroutine(DelayEndGame(winner));
     }
 
     private IEnumerator DelayEndGame(int winnerID)
     {
-        yield return new WaitForSeconds(1.2f); // Delay 1.2s trước khi hiện bảng Win
+        yield return new WaitForSeconds(1.2f);
         EndGame(winnerID);
     }
 
@@ -347,8 +366,16 @@ public class DiceModeManager : MonoBehaviour
         isGameOver = true;
         SetBoardInteractable(false);
 
-        if (p1CanvasGroup) p1CanvasGroup.alpha = 0.6f;
-        if (p2CanvasGroup) p2CanvasGroup.alpha = 0.6f;
+        if (AccountManager.Instance != null)
+        {
+            AccountManager.SetWinResult(winnerID);
+        }
+
+        // FIREBASE: Log hoàn thành game với Mode ID tương ứng
+        if (FirebaseManager.Instance != null) FirebaseManager.Instance.LogModeComplete(GetCurrentModeID());
+
+        if (p1IndicatorFrame) p1IndicatorFrame.color = inactiveColor;
+        if (p2IndicatorFrame) p2IndicatorFrame.color = inactiveColor;
         if (rollButton) rollButton.interactable = false;
 
         if (panelWin) panelWin.SetActive(true);
