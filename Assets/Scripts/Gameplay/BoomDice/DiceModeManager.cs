@@ -15,6 +15,8 @@ public class DiceModeManager : MonoBehaviour
 
     [Header("UI Text & Indicators")]
     public TextMeshProUGUI turnStatusText;
+    public TextMeshProUGUI p1ScoreText;
+    public TextMeshProUGUI p2ScoreText;
     // THAY ĐỔI: Chuyển sang Image để đổi màu thay vì Alpha
     public Image p1IndicatorFrame;
     public Image p2IndicatorFrame; 
@@ -105,6 +107,7 @@ public class DiceModeManager : MonoBehaviour
         if (FirebaseManager.Instance != null) FirebaseManager.Instance.LogModeEnter(GetCurrentModeID());
 
         GenerateBoard();
+        UpdateScoreUI();
         SetBoardInteractable(false);
 
         if (AdsManager.Instance != null) AdsManager.Instance.HideMREC();
@@ -148,9 +151,13 @@ public class DiceModeManager : MonoBehaviour
 
         tile.SetInteractable(false);
         tile.isClaimed = true;
-        if (isP1Turn) p1ClaimedCells++; else p2ClaimedCells++;
+        if (isP1Turn) p1ClaimedCells++;
+        else p2ClaimedCells++;
+
         totalCellsClaimed++;
         currentMovesLeft--;
+
+        UpdateScoreUI();
 
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX("SFX_Click");
 
@@ -203,6 +210,15 @@ public class DiceModeManager : MonoBehaviour
             if (!canInteract) tile.SetInteractable(false);
             else if (!tile.isClaimed) tile.SetInteractable(true);
         }
+    }
+
+    private void UpdateScoreUI()
+    {
+        if (p1ScoreText != null)
+            p1ScoreText.text = $"Chips: {p1ClaimedCells}";
+
+        if (p2ScoreText != null)
+            p2ScoreText.text = $"Chips: {p2ClaimedCells}";
     }
     #endregion
 
