@@ -7,13 +7,13 @@ public class UnlockButton : MonoBehaviour
 {
     [Header("Cấu hình Loại mở khóa")]
     public UnlockType type;
-    public string unlockKey; // ID định danh (VD: "Avatar_8", "Mode2")
-    public int indexValue;    // Index để dùng khi chọn Avatar hoặc Mode
+    public string unlockKey; // Cho Mode: dùng key như "Challenge", cho Avatar: dùng "Avatar_1"
+    public int indexValue;   // ID của Mode hoặc ID của Avatar
 
     [Header("Giao diện thành phần")]
     public GameObject lockIcon;
     public Image blurOverlay;
-    public Image displayAvatar;   // Ảnh đại diện trong nút (sẽ hiện lên Popup)
+    public Image displayAvatar;
 
     [Header("Kết nối Hệ thống")]
     public MenuManager menuManager;
@@ -31,50 +31,39 @@ public class UnlockButton : MonoBehaviour
 
     public void OnClick()
     {
-        // 1. Kiểm tra trạng thái mở khóa
-        bool isUnlocked = false;
-        if (type == UnlockType.Avatar && AccountManager.Instance != null)
-            isUnlocked = AccountManager.Instance.IsAvatarUnlocked(indexValue);
-        else if (UnlockSystemManager.Instance != null)
-            isUnlocked = UnlockSystemManager.Instance.IsItemUnlocked(unlockKey);
-        else
-            isUnlocked = PlayerPrefs.GetInt("Unlock_" + unlockKey, 0) == 1;
+        // 1. Xác định logicKey từ Remote Config tương ứng với loại nút
+        string logicConfigKey = "";
+        string finalItemID = unlockKey;
 
-        if (isUnlocked)
+        if (type == UnlockType.Mode)
         {
-            ExecuteAction();
+            // Tự động map key dựa trên ID hoặc key nhập vào
+            if (unlockKey.Contains("Challenge")) logicConfigKey = "is_show_rw_challenge";
+            else if (unlockKey.Contains("Prediction")) logicConfigKey = "is_show_rw_prediction";
+            else logicConfigKey = "is_show_rw_challenge"; // Default
+        }
+        else if (type == UnlockType.Avatar)
+        {
+            logicConfigKey = "is_show_rw_profile";
+            finalItemID = "Avatar_" + indexValue; // Đảm bảo ID đồng nhất: Unlock_Avatar_1
+        }
+
+        // 2. Sử dụng HandleUnlockFlow để xử lý toàn bộ quy trình
+        if (UnlockSystemManager.Instance != null)
+        {
+            Sprite spriteToDisplay = (displayAvatar != null) ? displayAvatar.sprite : null;
+
+            UnlockSystemManager.Instance.HandleUnlockFlow(finalItemID, logicConfigKey, spriteToDisplay, () =>
+            {
+                // Hành động khi mở khóa thành công (hoặc đã mở từ trước)
+                UpdateUI();
+                ExecuteAction();
+            });
         }
         else
         {
-            // 2. Xác định hình ảnh sẽ hiển thị trên Popup
-            Sprite spriteToDisplay = null;
-
-            // Nếu nút có thành phần Image displayAvatar, lấy sprite từ đó
-            if (displayAvatar != null)
-            {
-                spriteToDisplay = displayAvatar.sprite;
-            }
-
-            if (UnlockSystemManager.Instance != null)
-            {
-                // Mở Popup với hình ảnh đã được cập nhật theo nút vừa bấm
-                UnlockSystemManager.Instance.OpenUnlockPopup(unlockKey, spriteToDisplay, () => {
-
-                    // Lưu trạng thái mở khóa vào PlayerPrefs
-                    if (type == UnlockType.Avatar)
-                    {
-                        PlayerPrefs.SetInt("Unlock_Avatar_" + indexValue, 1);
-                    }
-                    else
-                    {
-                        PlayerPrefs.SetInt("Unlock_" + unlockKey, 1);
-                    }
-                    PlayerPrefs.Save();
-
-                    UpdateUI();
-                    ExecuteAction();
-                });
-            }
+            // Fallback nếu thiếu Manager
+            ExecuteAction();
         }
     }
 
@@ -82,31 +71,37 @@ public class UnlockButton : MonoBehaviour
     {
         if (type == UnlockType.Mode)
         {
-            if (menuManager == null) return;
-            // Gọi thẳng hàm chuyển Mode, không để MenuManager check quảng cáo lần nữa
-            if (indexValue == 1) menuManager.ShowPanel2WithAvatar(null);
-            else if (indexValue == 2) menuManager.ShowPanel3WithAvatar(null);
+            if (menuManager != null)
+            {
+                menuManager.DirectSwitchToMode(indexValue);
+            }
         }
         else if (type == UnlockType.Avatar)
         {
             if (accountManager != null)
             {
-                // Gọi hàm chọn Avatar trực tiếp
-                // Lưu ý: Phải chắc chắn AccountManager.SelectAvatar không gọi thêm quảng cáo nữa
                 accountManager.SelectAvatar(indexValue);
             }
+            // Nếu bạn dùng AccountManager, hãy đảm bảo nó cũng cập nhật lại UI profile
         }
     }
 
     public void UpdateUI()
     {
         bool isUnlocked = false;
+        string finalItemID = (type == UnlockType.Avatar) ? "Avatar_" + indexValue : unlockKey;
 
+        // Ưu tiên check qua UnlockSystemManager để đồng bộ logic PlayerPrefs
         if (UnlockSystemManager.Instance != null)
-            isUnlocked = UnlockSystemManager.Instance.IsItemUnlocked(unlockKey);
+        {
+            isUnlocked = UnlockSystemManager.Instance.IsItemUnlocked(finalItemID);
+        }
         else
-            isUnlocked = PlayerPrefs.GetInt("Unlock_" + unlockKey, 0) == 1;
+        {
+            isUnlocked = PlayerPrefs.GetInt("Unlock_" + finalItemID, 0) == 1;
+        }
 
+        // Cập nhật giao diện
         if (lockIcon != null) lockIcon.SetActive(!isUnlocked);
         if (blurOverlay != null) blurOverlay.enabled = !isUnlocked;
     }

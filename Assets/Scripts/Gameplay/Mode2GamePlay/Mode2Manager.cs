@@ -4,6 +4,7 @@ using System.Collections;
 using System.Collections.Generic;
 using TMPro;
 using DG.Tweening;
+using UnityEngine.SceneManagement;
 
 [System.Serializable]
 public class BottleData
@@ -17,7 +18,7 @@ public class Mode2Manager : MonoBehaviour
     [Header("UI & Players")]
     public GameObject player1Cover;
     public GameObject player2Cover;
-    public TextMeshProUGUI totalScoreText; // Text hiển thị dạng "Score: X"
+    public TextMeshProUGUI totalScoreText;
     public GameObject winPanel;
     public GameObject settingPanel;
 
@@ -46,10 +47,16 @@ public class Mode2Manager : MonoBehaviour
     private GameObject firstSelected;
     private bool isGameOver = false;
 
-    // Quản lý màu sắc con số
     private Color numberColor = Color.black;
 
-    void Start() { UpdateTurnUI(); StartNewRound(); }
+    void Start()
+    {
+        UpdateTurnUI();
+        StartNewRound();
+
+        // Hiện MREC khi bắt đầu gameplay
+        if (AdsManager.Instance != null) AdsManager.Instance.ShowMREC("is_show_mrec_gameplay");
+    }
 
     public void StartNewRound()
     {
@@ -61,18 +68,19 @@ public class Mode2Manager : MonoBehaviour
 
         currentTotalScore = 0;
         numberColor = Color.black;
-        UpdateScoreText(); // Cập nhật text ban đầu
+        UpdateScoreText();
 
         foreach (Transform t in topShelf) Destroy(t.gameObject);
         foreach (Transform t in bottomShelf) Destroy(t.gameObject);
         bottomImages.Clear(); topBottles.Clear(); targetIndexes.Clear(); isPosCorrect.Clear(); firstSelected = null;
 
-        // ... (Logic khởi tạo giữ nguyên như cũ)
         List<int> availableIDs = new List<int>();
         for (int i = 0; i < masterBottleList.Count; i++) availableIDs.Add(masterBottleList[i].bottleID);
         ShuffleList(availableIDs);
+
         List<int> roundIDs = new List<int>();
         for (int i = 0; i < currentLevelCount; i++) roundIDs.Add(availableIDs[i]);
+
         for (int i = 0; i < currentLevelCount; i++)
         {
             targetIndexes.Add(roundIDs[i]);
@@ -81,8 +89,10 @@ public class Mode2Manager : MonoBehaviour
             bBottom.GetComponent<Image>().sprite = grayBottleSprite;
             bottomImages.Add(bBottom.GetComponent<Image>());
         }
+
         List<int> topIDs = new List<int>(roundIDs);
         EnsureNoMatch(topIDs, roundIDs);
+
         for (int i = 0; i < currentLevelCount; i++)
         {
             GameObject bTop = Instantiate(bottlePrefab, topShelf);
@@ -94,13 +104,13 @@ public class Mode2Manager : MonoBehaviour
         }
     }
 
-    // Hàm cập nhật Text sử dụng Rich Text để chỉ đổi màu con số
     void UpdateScoreText()
     {
         string hexColor = ColorUtility.ToHtmlStringRGB(numberColor);
         totalScoreText.text = $"Score: <color=#{hexColor}>{currentTotalScore}</color>";
     }
 
+    #region BOTTLE LOGIC
     void OnBottleClick(GameObject clickedBottle)
     {
         if (isGameOver) return;
@@ -169,46 +179,90 @@ public class Mode2Manager : MonoBehaviour
             }
         }
 
-        // Xử lý hiệu ứng màu sắc cho con số
         if (scoreChange > 0)
         {
-            // Tăng điểm: Chuyển sang Xanh lục và GIỮ NGUYÊN
-            DOTween.To(() => numberColor, x => numberColor = x, Color.green, 0.2f)
-                .OnUpdate(UpdateScoreText);
+            DOTween.To(() => numberColor, x => numberColor = x, Color.green, 0.2f).OnUpdate(UpdateScoreText);
         }
         else if (scoreChange < 0)
         {
-            // Giảm điểm: Chuyển sang Đỏ rồi mới về Đen dần
             DOTween.To(() => numberColor, x => numberColor = x, Color.red, 0.2f)
                 .OnUpdate(UpdateScoreText)
                 .OnComplete(() => {
-                    DOTween.To(() => numberColor, x => numberColor = x, Color.black, 0.8f)
-                        .OnUpdate(UpdateScoreText);
+                    DOTween.To(() => numberColor, x => numberColor = x, Color.black, 0.8f).OnUpdate(UpdateScoreText);
                 });
         }
-        else
-        {
-            UpdateScoreText();
-        }
+        else { UpdateScoreText(); }
 
         if (!isPosCorrect.Contains(false)) { StartCoroutine(WinSequence()); }
         else if (!changed) { StartCoroutine(WaitAndSwitch()); }
     }
+    #endregion
 
-    // Các hàm phụ giữ nguyên...
+    #region WIN & ADS
     IEnumerator WinSequence()
     {
         isGameOver = true;
         if (fireworkEffect != null) fireworkEffect.Play();
+        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX("SFX_Win");
+
         yield return new WaitForSeconds(delayBeforeWinPanel);
+
+        // Hiển thị Interstitial trước khi mở Win Panel (Dùng key p1_choose cho logic hoàn thành màn chơi)
+        if (AdsManager.Instance != null)
+        {
+            AdsManager.Instance.ShowInterstitial("is_show_inter_p1_choose", () => {
+                ShowWinPanel();
+            });
+        }
+        else
+        {
+            ShowWinPanel();
+        }
+    }
+
+    private void ShowWinPanel()
+    {
         winPanel.SetActive(true);
+        // Hiện MREC màn hoàn thành game
+        if (AdsManager.Instance != null) AdsManager.Instance.ShowMREC("is_show_mrec_complete_game");
+
         if (currentTurn == 1) { player1Crown.SetActive(true); player2Crown.SetActive(false); }
         else { player1Crown.SetActive(false); player2Crown.SetActive(true); }
     }
 
-    public void OnNextLevelClick() { currentLevelCount = Mathf.Min(currentLevelCount + 1, 7); StartNewRound(); }
-    public void OnBackToMode1Click() { UnityEngine.SceneManagement.SceneManager.LoadScene("SelectScene"); }
+    public void OnNextLevelClick()
+    {
+        if (AdsManager.Instance != null)
+        {
+            // Reset MREC về trạng thái gameplay khi bắt đầu màn mới
+            AdsManager.Instance.HideMREC();
+            AdsManager.Instance.ShowInterstitial("is_show_inter_retry", () => {
+                currentLevelCount = Mathf.Min(currentLevelCount + 1, 7);
+                StartNewRound();
+                AdsManager.Instance.ShowMREC("is_show_mrec_gameplay");
+            });
+        }
+        else
+        {
+            currentLevelCount = Mathf.Min(currentLevelCount + 1, 7);
+            StartNewRound();
+        }
+    }
 
+    public void OnBackToMode1Click()
+    {
+        if (AdsManager.Instance != null)
+        {
+            AdsManager.Instance.HideMREC();
+            AdsManager.Instance.ShowInterstitial("is_show_inter_back_home", () => {
+                SceneManager.LoadScene("SelectScene");
+            });
+        }
+        else SceneManager.LoadScene("SelectScene");
+    }
+    #endregion
+
+    #region UTILS
     void EnsureNoMatch(List<int> list, List<int> reference)
     {
         int safety = 0;
@@ -243,31 +297,25 @@ public class Mode2Manager : MonoBehaviour
         player1Cover.SetActive(currentTurn != 1);
         player2Cover.SetActive(currentTurn != 2);
     }
+
     public void OnSettingClick()
     {
         if (settingPanel != null)
         {
-            // Bật panel setting
             settingPanel.SetActive(true);
-
-            // Nếu muốn dùng hiệu ứng Tween cho đẹp (Scale từ 0 lên 1)
             settingPanel.transform.localScale = Vector3.zero;
             settingPanel.transform.DOScale(Vector3.one, 0.3f).SetEase(Ease.OutBack);
-
-            // (Tùy chọn) Tạm dừng game nếu cần
-            // Time.timeScale = 0; 
         }
     }
 
-    // Hàm để đóng setting (gắn vào nút X bên trong Setting Panel)
     public void OnCloseSettingClick()
     {
         if (settingPanel != null)
         {
             settingPanel.transform.DOScale(Vector3.zero, 0.2f).OnComplete(() => {
                 settingPanel.SetActive(false);
-                // Time.timeScale = 1;
             });
         }
     }
+    #endregion
 }
