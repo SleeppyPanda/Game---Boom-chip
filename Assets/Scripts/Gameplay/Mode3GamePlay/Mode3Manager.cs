@@ -4,6 +4,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine.SceneManagement;
 using UnityEngine.EventSystems;
+using DG.Tweening; // Đảm bảo bạn đã có DoTween để đồng bộ hiệu ứng nếu cần
 
 public class Mode3Manager : MonoBehaviour
 {
@@ -37,6 +38,9 @@ public class Mode3Manager : MonoBehaviour
     private bool canPlay = true;
     private bool isGameOver = false;
 
+    // ID cố định cho Mode 3 là 12
+    private const int MODE_ID = 12;
+
     [System.Serializable]
     public class Mode3Data
     {
@@ -56,6 +60,10 @@ public class Mode3Manager : MonoBehaviour
 
     void Start()
     {
+        // FIREBASE: Log bắt đầu game Mode 12
+        Debug.Log($"<color=cyan>[ANALYTIC]</color> Enter Mode: {MODE_ID}");
+        if (FirebaseManager.Instance != null) FirebaseManager.Instance.LogModeEnter(MODE_ID);
+
         if (AdsManager.Instance != null) AdsManager.Instance.HideMREC();
         SetupNewTurn();
     }
@@ -93,7 +101,6 @@ public class Mode3Manager : MonoBehaviour
 
     void Update()
     {
-        // Luôn xoay vòng tròn kể cả khi game over (hiệu ứng nền)
         if (leftHalf != null) leftHalf.Rotate(0, 0, rotateSpeed * Time.deltaTime);
         if (rightHalf != null) rightHalf.Rotate(0, 0, rotateSpeed * Time.deltaTime);
 
@@ -137,12 +144,10 @@ public class Mode3Manager : MonoBehaviour
     private bool IsPointerOverUI()
     {
         if (EventSystem.current.IsPointerOverGameObject()) return true;
-
         if (Input.touchCount > 0 && Input.touches[0].phase == TouchPhase.Began)
         {
             if (EventSystem.current.IsPointerOverGameObject(Input.touches[0].fingerId)) return true;
         }
-
         return false;
     }
 
@@ -165,7 +170,6 @@ public class Mode3Manager : MonoBehaviour
         StartCoroutine(ScreenShake(0.05f, 0.03f));
     }
 
-    // Đã chuyển thành Coroutine để hỗ trợ Delay
     public void FinishGame()
     {
         if (isGameOver) return;
@@ -175,10 +179,29 @@ public class Mode3Manager : MonoBehaviour
 
     private IEnumerator HandleFinishSequence()
     {
-        // Đợi 1.2s sau khi vật rơi/thua để người chơi nhìn kết quả
+        // ĐỒNG BỘ ACCOUNT: Lưu kết quả thắng (Giả định mode này là 1 người chơi thắng/vượt qua thử thách)
+        Debug.Log($"<color=green>[ANALYTIC]</color> Mode Complete: {MODE_ID}");
+        if (AccountManager.Instance != null)
+        {
+            // Nếu mode này tính thắng cho Player 1 mặc định (hoặc người đang chơi)
+            AccountManager.SetWinResult(1);
+        }
+
+        // FIREBASE: Log hoàn thành mode
+        if (FirebaseManager.Instance != null) FirebaseManager.Instance.LogModeComplete(MODE_ID);
+
         yield return new WaitForSeconds(1.2f);
 
-        ShowResultUI();
+        if (AdsManager.Instance != null)
+        {
+            AdsManager.Instance.ShowInterstitialWithDelay("is_show_inter_complete_game", () => {
+                ShowResultUI();
+            }, 0.2f);
+        }
+        else
+        {
+            ShowResultUI();
+        }
     }
 
     private void ShowResultUI()
@@ -194,6 +217,7 @@ public class Mode3Manager : MonoBehaviour
         {
             txtFinalScore.text = scoreFinalText;
             txtFinalScore.color = Color.yellow;
+            txtFinalScore.transform.DOPunchScale(Vector3.one * 0.1f, 0.5f);
         }
 
         if (currentData.comments.Count > 0)

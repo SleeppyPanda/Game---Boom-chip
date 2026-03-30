@@ -29,7 +29,6 @@ public class Mode2Manager : MonoBehaviour
     public GameObject player1Crown;
     public GameObject player2Crown;
     public ParticleSystem fireworkEffect;
-    // Đã đổi mặc định thành 1.2s theo yêu cầu mới nhất của bạn
     public float delayBeforeWinPanel = 1.2f;
 
     [Header("Dữ liệu chai")]
@@ -50,8 +49,12 @@ public class Mode2Manager : MonoBehaviour
     private List<bool> isPosCorrect = new List<bool>();
     private GameObject firstSelected;
     private bool isGameOver = false;
+    private bool isProcessingTurn = false; // Chặn click khi đang đổi lượt hoặc chạy animation
 
     private Color numberColor = Color.black;
+
+    // ID cố định cho Mode 2 là 11
+    private const int MODE_ID = 11;
 
     void Awake()
     {
@@ -60,6 +63,10 @@ public class Mode2Manager : MonoBehaviour
 
     void Start()
     {
+        // Debug kiểm tra việc bắn Analytics khi bắt đầu
+        Debug.Log($"<color=cyan>[Analytics]</color> Calling LogModeEnter for Mode: {MODE_ID}");
+        if (FirebaseManager.Instance != null) FirebaseManager.Instance.LogModeEnter(MODE_ID);
+
         UpdateTurnUI();
         StartNewRound();
 
@@ -69,6 +76,7 @@ public class Mode2Manager : MonoBehaviour
     public void StartNewRound()
     {
         isGameOver = false;
+        isProcessingTurn = false;
         winPanel.SetActive(false);
         player1Crown.SetActive(false);
         player2Crown.SetActive(false);
@@ -80,7 +88,12 @@ public class Mode2Manager : MonoBehaviour
 
         foreach (Transform t in topShelf) Destroy(t.gameObject);
         foreach (Transform t in bottomShelf) Destroy(t.gameObject);
-        bottomImages.Clear(); topBottles.Clear(); targetIndexes.Clear(); isPosCorrect.Clear(); firstSelected = null;
+
+        bottomImages.Clear();
+        topBottles.Clear();
+        targetIndexes.Clear();
+        isPosCorrect.Clear();
+        firstSelected = null;
 
         List<int> availableIDs = new List<int>();
         for (int i = 0; i < masterBottleList.Count; i++) availableIDs.Add(masterBottleList[i].bottleID);
@@ -121,7 +134,8 @@ public class Mode2Manager : MonoBehaviour
     #region BOTTLE LOGIC
     void OnBottleClick(GameObject clickedBottle)
     {
-        if (isGameOver) return;
+        if (isGameOver || isProcessingTurn) return;
+
         if (firstSelected == null)
         {
             firstSelected = clickedBottle;
@@ -137,6 +151,7 @@ public class Mode2Manager : MonoBehaviour
 
     void SwapBottles(GameObject a, GameObject b)
     {
+        isProcessingTurn = true; // Khóa tương tác khi đang swap
         int indexA = topBottles.IndexOf(a);
         int indexB = topBottles.IndexOf(b);
         a.GetComponent<Button>().interactable = false;
@@ -152,6 +167,7 @@ public class Mode2Manager : MonoBehaviour
             b.transform.localPosition = Vector3.zero;
             a.GetComponent<Button>().interactable = true;
             b.GetComponent<Button>().interactable = true;
+
             CheckAllPositionsAfterSwap();
             firstSelected = null;
         });
@@ -160,7 +176,7 @@ public class Mode2Manager : MonoBehaviour
     void CheckAllPositionsAfterSwap()
     {
         int scoreChange = 0;
-        bool changed = false;
+        bool changedCorrectness = false;
 
         for (int i = 0; i < topBottles.Count; i++)
         {
@@ -174,7 +190,7 @@ public class Mode2Manager : MonoBehaviour
                 bottomImages[i].transform.DOPunchScale(Vector3.one * 0.2f, 0.3f);
                 currentTotalScore--;
                 scoreChange--;
-                changed = true;
+                changedCorrectness = true;
             }
             else if (!isPosCorrect[i] && currentTopID == correctID)
             {
@@ -183,7 +199,7 @@ public class Mode2Manager : MonoBehaviour
                 bottomImages[i].transform.DOPunchScale(Vector3.one * 0.2f, 0.3f);
                 currentTotalScore++;
                 scoreChange++;
-                changed = true;
+                changedCorrectness = true;
             }
         }
 
@@ -203,13 +219,13 @@ public class Mode2Manager : MonoBehaviour
         }
         else { UpdateScoreText(); }
 
-        // Kiểm tra điều kiện thắng
         if (!isPosCorrect.Contains(false))
         {
             StartCoroutine(WinSequence());
         }
-        else if (!changed)
+        else
         {
+            // Luôn chuyển lượt sau mỗi lần swap (dù đúng thêm hay sai đi) để tránh kẹt lượt người 1
             StartCoroutine(WaitAndSwitch());
         }
     }
@@ -218,25 +234,34 @@ public class Mode2Manager : MonoBehaviour
     #region WIN & ADS
     IEnumerator WinSequence()
     {
-        isGameOver = true; // Chặn tương tác ngay lập tức
+        isGameOver = true;
+        isProcessingTurn = true;
         if (fireworkEffect != null) fireworkEffect.Play();
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX("SFX_Win");
 
-        // Đợi 1.2s trước khi hiện Win Panel
+        // FIREBASE & ACCOUNT: Cập nhật kết quả và Log
+        Debug.Log($"<color=green>[Analytics]</color> Calling LogModeComplete for Mode: {MODE_ID}");
+        if (AccountManager.Instance != null) AccountManager.SetWinResult(currentTurn);
+        if (FirebaseManager.Instance != null) FirebaseManager.Instance.LogModeComplete(MODE_ID);
+
         yield return new WaitForSeconds(delayBeforeWinPanel);
 
-        ShowWinPanel();
+        if (AdsManager.Instance != null)
+        {
+            AdsManager.Instance.ShowInterstitialWithDelay("is_show_inter_p1_choose", () => {
+                ShowWinPanel();
+            }, 0.2f);
+        }
+        else ShowWinPanel();
     }
 
     private void ShowWinPanel()
     {
         winPanel.SetActive(true);
+        if (AdsManager.Instance != null) AdsManager.Instance.ShowMREC("is_show_mrec_complete_game");
 
-        if (AdsManager.Instance != null)
-            AdsManager.Instance.ShowMREC("is_show_mrec_complete_game");
-
-        if (currentTurn == 1) { player1Crown.SetActive(true); player2Crown.SetActive(false); }
-        else { player1Crown.SetActive(false); player2Crown.SetActive(true); }
+        player1Crown.SetActive(currentTurn == 1);
+        player2Crown.SetActive(currentTurn == 2);
     }
 
     public void OnNextLevelClick()
@@ -294,9 +319,10 @@ public class Mode2Manager : MonoBehaviour
 
     IEnumerator WaitAndSwitch()
     {
-        yield return new WaitForSeconds(0.4f);
+        yield return new WaitForSeconds(0.5f);
         currentTurn = (currentTurn == 1) ? 2 : 1;
         UpdateTurnUI();
+        isProcessingTurn = false; // Mở khóa cho người chơi tiếp theo thao tác
     }
 
     void UpdateTurnUI()
@@ -306,12 +332,20 @@ public class Mode2Manager : MonoBehaviour
 
         if (turnNotificationText != null)
         {
-            string key = (currentTurn == 1) ? "PlayerName_P1" : "PlayerName_P2";
-            string defaultName = (currentTurn == 1) ? "PLAYER 1" : "PLAYER 2";
-            string pName = PlayerPrefs.GetString(key, defaultName);
+            string pName = "PLAYER";
+            if (AccountManager.Instance != null)
+            {
+                pName = AccountManager.Instance.GetPlayerName(currentTurn);
+            }
+            else
+            {
+                string key = (currentTurn == 1) ? "PlayerName_P1" : "PlayerName_P2";
+                string defaultName = (currentTurn == 1) ? "PLAYER 1" : "PLAYER 2";
+                pName = PlayerPrefs.GetString(key, defaultName);
+            }
 
             turnNotificationText.text = pName.ToUpper() + "'S TURN";
-            turnNotificationText.transform.DOPunchScale(Vector3.one * 0.1f, 0.3f);
+            turnNotificationText.transform.DOPunchScale(Vector3.one * 0.15f, 0.3f);
         }
     }
 
@@ -320,7 +354,6 @@ public class Mode2Manager : MonoBehaviour
         if (settingPanel != null)
         {
             if (AdsManager.Instance != null) AdsManager.Instance.HideMREC();
-
             settingPanel.SetActive(true);
             settingPanel.transform.localScale = Vector3.zero;
             settingPanel.transform.DOScale(Vector3.one, 0.3f).SetEase(Ease.OutBack);
