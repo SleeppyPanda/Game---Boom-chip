@@ -6,6 +6,7 @@ public class UnlockButton : MonoBehaviour
 {
     [Header("Cài đặt định danh")]
     public string unlockKey;
+    public Sprite buttonAvatar;
 
     [Header("Giao diện")]
     public GameObject lockIcon;
@@ -22,22 +23,19 @@ public class UnlockButton : MonoBehaviour
 
     public void OnClick()
     {
-        // BƯỚC 1: Luôn chạy hiệu ứng hình ảnh của Button (Scale, PosY, Color)
-        // để người chơi thấy nút vẫn hoạt động mượt mà.
         if (menuManager != null)
         {
-            // Chúng ta gọi hàm xử lý hiệu ứng hình ảnh nhưng CHƯA hiện Panel
             menuManager.HandleButtonAnimationOnly(buttonIndex);
         }
 
-        // BƯỚC 2: Kiểm tra khóa
         if (PlayerPrefs.GetInt(unlockKey, 0) == 1)
         {
             onUnlockSuccess?.Invoke();
         }
         else
         {
-            UnlockSystemManager.Instance.OpenUnlockPopup(unlockKey, () => {
+            // TRUYỀN THÊM: buttonAvatar vào hàm gọi Popup
+            UnlockSystemManager.Instance.OpenUnlockPopup(unlockKey, buttonAvatar, () => {
                 UpdateUI();
                 onUnlockSuccess?.Invoke();
             });

@@ -1,6 +1,6 @@
 ﻿using UnityEngine;
-using UnityEngine.UI;
-using System;
+using UnityEngine.UI; // Cần thiết cho Button, Image
+using System;         // Cần thiết cho Action
 
 public class UnlockSystemManager : MonoBehaviour
 {
@@ -9,8 +9,9 @@ public class UnlockSystemManager : MonoBehaviour
     [Header("Giao diện Popup Duy Nhất")]
     public GameObject simpleAdPanel;
     public Button watchAdButton;
+    public Image displayAvatar; // Chỗ để hiển thị hình ảnh item/nhân vật
 
-    private Action _onSuccessCallback; // Lưu lại hành động của nút đang gọi
+    private Action _onSuccessCallback;
 
     void Awake()
     {
@@ -18,25 +19,30 @@ public class UnlockSystemManager : MonoBehaviour
         if (simpleAdPanel != null) simpleAdPanel.SetActive(false);
     }
 
-    // Hàm này được gọi bởi bất kỳ nút nào muốn mở khóa
-    public void OpenUnlockPopup(string unlockKey, Action onSuccess)
+    public void OpenUnlockPopup(string unlockKey, Sprite itemSprite, Action onSuccess)
     {
         _onSuccessCallback = onSuccess;
+
+        // Cập nhật hình ảnh hiển thị trong Popup
+        if (displayAvatar != null && itemSprite != null)
+        {
+            displayAvatar.sprite = itemSprite;
+        }
 
         simpleAdPanel.SetActive(true);
 
         watchAdButton.onClick.RemoveAllListeners();
         watchAdButton.onClick.AddListener(() => {
+            // Lưu ý: Đảm bảo AdsManager của bạn cũng đã sẵn sàng
             AdsManager.Instance.ShowRewardedAd(() => {
-                // Lưu trạng thái mở khóa
                 PlayerPrefs.SetInt(unlockKey, 1);
                 PlayerPrefs.Save();
 
                 simpleAdPanel.SetActive(false);
-                _onSuccessCallback?.Invoke(); // Chạy chức năng tương ứng của nút đó
+                if (_onSuccessCallback != null) _onSuccessCallback.Invoke();
             });
         });
     }
-
+    
     public void ClosePopup() => simpleAdPanel.SetActive(false);
 }
