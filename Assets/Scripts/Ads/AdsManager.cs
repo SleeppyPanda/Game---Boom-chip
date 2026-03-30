@@ -1,19 +1,24 @@
-﻿using GoogleMobileAds.Api;
-using UnityEngine;
+﻿using Firebase.Extensions;
+using Firebase.RemoteConfig;
+using GoogleMobileAds.Api;
 using System;
+using System.Threading.Tasks;
+using UnityEngine;
 
 public class AdsManager : MonoBehaviour
 {
     public static AdsManager Instance;
 
-    [Header("CÀI ĐẶT CHUNG")]
+    [Header("CÀI ĐẶT CHUNG (Mặc định)")]
     public bool isTestMode = true;
     public float timeBetweenInterAds = 120f;
     public float afkThreshold = 60f;
+    public bool showAppOpenOnStart = true;
 
     private float _lastInterTime;
     private float _afkTimer;
     private bool _isRemovedAds = false;
+    private bool _isFirebaseInitialized = false;
 
     // --- ID QUẢNG CÁO THẬT (ANDROID) ---
     private string _appOpenIdReal = "ca-app-pub-1765309369619783/4381064565";
@@ -30,7 +35,7 @@ public class AdsManager : MonoBehaviour
     private AppOpenAd _appOpenAd;
     private RewardedAd _rewardedAd;
     private InterstitialAd _interstitialAd;
-    private NativeOverlayAd _nativeOverlayAd; // Khai báo đúng theo thư viện
+    private NativeOverlayAd _nativeOverlayAd;
 
     void Awake()
     {
@@ -40,17 +45,75 @@ public class AdsManager : MonoBehaviour
 
     void Start()
     {
-        // Kiểm tra trạng thái mua "Remove Ads"
         _isRemovedAds = PlayerPrefs.GetInt("RemoveAds", 0) == 1;
+        _lastInterTime = -timeBetweenInterAds;
 
+        // Bắt đầu khởi tạo Firebase trước khi load Ads
+        InitializeFirebase();
+    }
+
+    // --- FIREBASE REMOTE CONFIG LOGIC ---
+    private void InitializeFirebase()
+    {
+        Firebase.FirebaseApp.CheckAndFixDependenciesAsync().ContinueWithOnMainThread(task => {
+            var dependencyStatus = task.Result;
+            if (dependencyStatus == Firebase.DependencyStatus.Available)
+            {
+                _isFirebaseInitialized = true;
+                FetchRemoteConfig();
+            }
+            else
+            {
+                Debug.LogError($"Firebase Error: {dependencyStatus}");
+                InitializeAds(); // Nếu lỗi vẫn khởi tạo Ads với cấu hình mặc định
+            }
+        });
+    }
+
+    private void FetchRemoteConfig()
+    {
+        // Thiết lập giá trị mặc định cho Remote Config
+        var defaults = new System.Collections.Generic.Dictionary<string, object> {
+            { "is_test_mode", isTestMode },
+            { "inter_interval", timeBetweenInterAds },
+            { "afk_threshold", afkThreshold },
+            { "show_app_open_start", showAppOpenOnStart }
+        };
+
+        FirebaseRemoteConfig.DefaultInstance.SetDefaultsAsync(defaults).ContinueWithOnMainThread(task => {
+            return FirebaseRemoteConfig.DefaultInstance.FetchAndActivateAsync();
+        }).Unwrap().ContinueWithOnMainThread(task => {
+            if (task.IsCompleted)
+            {
+                ApplyRemoteConfig();
+            }
+            InitializeAds();
+        });
+    }
+
+    private void ApplyRemoteConfig()
+    {
+        isTestMode = FirebaseRemoteConfig.DefaultInstance.GetValue("is_test_mode").BooleanValue;
+        timeBetweenInterAds = (float)FirebaseRemoteConfig.DefaultInstance.GetValue("inter_interval").DoubleValue;
+        afkThreshold = (float)FirebaseRemoteConfig.DefaultInstance.GetValue("afk_threshold").DoubleValue;
+        showAppOpenOnStart = FirebaseRemoteConfig.DefaultInstance.GetValue("show_app_open_start").BooleanValue;
+        Debug.Log("Remote Config đã được áp dụng!");
+    }
+
+    private void InitializeAds()
+    {
         MobileAds.Initialize(s => {
             if (_isRemovedAds) return;
-            LoadAppOpenAd();
-            LoadRewardedAd();
+
             LoadInterstitialAd();
+            LoadRewardedAd();
             LoadNativeOverlayAd();
+
+            if (showAppOpenOnStart)
+            {
+                LoadAppOpenAd();
+            }
         });
-        _lastInterTime = -timeBetweenInterAds;
     }
 
     void Update()
@@ -77,10 +140,8 @@ public class AdsManager : MonoBehaviour
     public void LoadNativeOverlayAd(AdPosition pos = AdPosition.Bottom)
     {
         if (_isRemovedAds) return;
+        if (_nativeOverlayAd != null) _nativeOverlayAd.Destroy();
 
-        if (_nativeOverlayAd != null) _nativeOverlayAd.Destroy(); // Dùng hàm Destroy() có sẵn
-
-        // Dùng đúng class NativeAdOptions theo hình ảnh thư viện
         NativeAdOptions options = new NativeAdOptions();
 
         NativeOverlayAd.Load(GetNativeId(), new AdRequest(), options, (ad, error) =>
@@ -91,20 +152,20 @@ public class AdsManager : MonoBehaviour
                 return;
             }
             _nativeOverlayAd = ad;
-
-            // Đặt vị trí quảng cáo
             _nativeOverlayAd.SetTemplatePosition(pos);
-            _nativeOverlayAd.Show(); // Hiện quảng cáo
+            _nativeOverlayAd.Show();
         });
     }
 
-    public void HideNativeOverlay() { if (_nativeOverlayAd != null) _nativeOverlayAd.Hide(); } //
+    public void HideNativeOverlay() { if (_nativeOverlayAd != null) _nativeOverlayAd.Hide(); }
     public void ShowNativeOverlay() { if (!_isRemovedAds && _nativeOverlayAd != null) _nativeOverlayAd.Show(); }
 
-    // --- 2. REWARDED ADS (Vẫn load để lấy thưởng mở Mode) ---
+    // --- 2. REWARDED ADS ---
     public void LoadRewardedAd()
     {
-        RewardedAd.Load(GetRewardedId(), new AdRequest(), (ad, error) => { if (error == null) _rewardedAd = ad; });
+        RewardedAd.Load(GetRewardedId(), new AdRequest(), (ad, error) => {
+            if (error == null) _rewardedAd = ad;
+        });
     }
 
     public void ShowRewardedAd(Action onSuccess)
@@ -123,7 +184,9 @@ public class AdsManager : MonoBehaviour
     public void LoadInterstitialAd()
     {
         if (_isRemovedAds) return;
-        InterstitialAd.Load(GetInterId(), new AdRequest(), (ad, error) => { if (error == null) _interstitialAd = ad; });
+        InterstitialAd.Load(GetInterId(), new AdRequest(), (ad, error) => {
+            if (error == null) _interstitialAd = ad;
+        });
     }
 
     public void ShowInterstitialImmediate()
@@ -131,10 +194,14 @@ public class AdsManager : MonoBehaviour
         if (_isRemovedAds) return;
         if (_interstitialAd != null && _interstitialAd.CanShowAd())
         {
-            _interstitialAd.Show();
-            _lastInterTime = Time.time;
-            LoadInterstitialAd();
+            if (Time.time - _lastInterTime >= timeBetweenInterAds)
+            {
+                _interstitialAd.Show();
+                _lastInterTime = Time.time;
+                LoadInterstitialAd();
+            }
         }
+        else LoadInterstitialAd();
     }
 
     // --- 4. APP OPEN ADS ---
@@ -142,12 +209,11 @@ public class AdsManager : MonoBehaviour
     {
         if (_isRemovedAds) return;
         AppOpenAd.Load(GetAppOpenId(), new AdRequest(), (ad, error) => {
-            if (error == null) { _appOpenAd = ad; ShowAppOpenAd(); }
+            if (error == null)
+            {
+                _appOpenAd = ad;
+                _appOpenAd.Show();
+            }
         });
-    }
-
-    public void ShowAppOpenAd()
-    {
-        if (!_isRemovedAds && _appOpenAd != null) _appOpenAd.Show();
     }
 }
