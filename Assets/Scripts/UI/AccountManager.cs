@@ -3,13 +3,12 @@ using UnityEngine.UI;
 using TMPro;
 using System.Collections.Generic;
 using DG.Tweening;
-using System; // Cần thiết để dùng Action
+using System;
+using System.Collections;
 
 public class AccountManager : MonoBehaviour
 {
     public static AccountManager Instance;
-
-    // Sự kiện để các nút Avatar cập nhật giao diện (mất icon khóa) đồng loạt
     public static Action OnAvatarUnlocked;
 
     [Header("Cấu hình Tên")]
@@ -28,16 +27,16 @@ public class AccountManager : MonoBehaviour
 
     void Awake()
     {
-        if (Instance == null) Instance = this;
+        if (Instance == null) { Instance = this; }
+        else { Destroy(gameObject); return; }
 
-        // 1. Mặc định mở khóa Avatar đầu tiên (Index 0)
+        // Tự động mở khóa Avatar đầu tiên (index 0)
         if (PlayerPrefs.GetInt(UNLOCK_PREFIX + "0", 0) == 0)
         {
             PlayerPrefs.SetInt(UNLOCK_PREFIX + "0", 1);
             PlayerPrefs.Save();
         }
 
-        // 2. Load dữ liệu người dùng
         currentTempIndex = PlayerPrefs.GetInt(AVATAR_KEY, 0);
         string savedName = PlayerPrefs.GetString(NAME_KEY, "Player 1");
 
@@ -49,8 +48,25 @@ public class AccountManager : MonoBehaviour
     void Start()
     {
         if (editButton != null) editButton.onClick.AddListener(EnableEditing);
-        ApplyAvatarToUI();
     }
+
+    void OnDestroy()
+    {
+        OnAvatarUnlocked = null;
+    }
+
+    // --- LOGIC REMOTE CONFIG CHO AVATAR ---
+
+    /// <summary>
+    /// Kiểm tra xem Avatar index này có bắt người dùng xem Ads để mở không.
+    /// Sử dụng hàm tiện ích từ AdEventTracker (đã xử lý chuỗi "1,2,3" từ Firebase)
+    /// </summary>
+    public bool DoesAvatarRequireAd(int index)
+    {
+        return AdEventTracker.IsAvatarInRwList(index);
+    }
+
+    // --- QUẢN LÝ AVATAR ---
 
     private void ApplyAvatarToUI()
     {
@@ -63,48 +79,44 @@ public class AccountManager : MonoBehaviour
         if (avatarDisplayInPanel != null) avatarDisplayInPanel.sprite = activeSprite;
     }
 
-    public void EnableEditing()
-    {
-        if (nameInputField == null) return;
-
-        nameInputField.interactable = true;
-        nameInputField.ActivateInputField();
-        nameInputField.onEndEdit.RemoveAllListeners();
-        nameInputField.onEndEdit.AddListener(delegate {
-            nameInputField.interactable = false;
-            PlayerPrefs.SetString(NAME_KEY, nameInputField.text);
-            PlayerPrefs.Save();
-        });
-    }
-
-    // --- KIỂM TRA TRẠNG THÁI UNLOCK ---
     public bool IsAvatarUnlocked(int index)
     {
         return PlayerPrefs.GetInt(UNLOCK_PREFIX + index, 0) == 1;
     }
 
-    // --- HÀM CHỌN AVATAR (CHỈ LÀM NHIỆM VỤ THỰC THI) ---
+    /// <summary>
+    /// Được gọi từ UnlockButton hoặc UI chọn Avatar
+    /// </summary>
     public void SelectAvatar(int index)
     {
         if (index < 0 || index >= allAvatars.Count) return;
 
-        // Kiểm tra xem index này đã được mở khóa chưa
-        // (Lưu ý: Việc mở khóa thực sự đã được thực hiện bởi UnlockButton trước khi gọi hàm này)
-        if (IsAvatarUnlocked(index))
+        // Nếu đã mở khóa hoặc KHÔNG nằm trong danh sách bắt xem Ads của Firebase
+        if (IsAvatarUnlocked(index) || !DoesAvatarRequireAd(index))
         {
+            // Mở khóa luôn nếu nó không yêu cầu Ads
+            if (!IsAvatarUnlocked(index))
+            {
+                PlayerPrefs.SetInt(UNLOCK_PREFIX + index, 1);
+                PlayerPrefs.Save();
+            }
+
             SetAvatar(index);
         }
         else
         {
-            Debug.LogWarning("Avatar index " + index + " chưa được mở khóa. Hãy xem Ads!");
+            Debug.Log($"Avatar {index} yêu cầu xem quảng cáo Reward để mở khóa.");
+            // Logic ShowRewardedAd thường được gọi trực tiếp tại script của Button mở khóa
         }
     }
 
-    private void SetAvatar(int index)
+    /// <summary>
+    /// Cập nhật Avatar hiện tại, chạy hiệu ứng và bắn event Firebase
+    /// </summary>
+    public void SetAvatar(int index)
     {
         currentTempIndex = index;
 
-        // 1. Hiệu ứng đổi hình ảnh
         if (avatarDisplayInPanel != null)
         {
             avatarDisplayInPanel.sprite = allAvatars[index];
@@ -113,15 +125,12 @@ public class AccountManager : MonoBehaviour
             avatarDisplayInPanel.rectTransform.DOPunchScale(new Vector3(0.15f, 0.15f, 0), 0.3f, 5, 1);
         }
 
-        // 2. Bắn sự kiện Firebase: Ghi nhận user chọn avatar (xx là index)
-        if (FirebaseManager.Instance != null)
-        {
-            FirebaseManager.Instance.LogCountAvatar(index);
-        }
+        // --- FIREBASE TRACKING: count_avatar_xx ---
+        AdEventTracker.TrackAvatarChoose(index);
 
         SaveAndRefreshUI();
 
-        // 3. Phát lệnh cho tất cả các nút cùng Update lại (để ẩn ổ khóa nếu cần)
+        // Thông báo cho các UI/UnlockButton khác cập nhật trạng thái (nếu có)
         OnAvatarUnlocked?.Invoke();
     }
 
@@ -130,13 +139,63 @@ public class AccountManager : MonoBehaviour
         PlayerPrefs.SetInt(AVATAR_KEY, currentTempIndex);
         PlayerPrefs.Save();
 
-        // Cập nhật Avatar ở thanh menu chính
         if (mainMenuBarAvatar != null) mainMenuBarAvatar.sprite = allAvatars[currentTempIndex];
+    }
+
+    // --- QUẢN LÝ TÊN ---
+
+    public void EnableEditing()
+    {
+        if (nameInputField == null) return;
+
+        nameInputField.interactable = true;
+        nameInputField.ActivateInputField();
+
+        // Di chuyển con trỏ về cuối dòng
+        nameInputField.caretPosition = nameInputField.text.Length;
+
+        nameInputField.onEndEdit.RemoveAllListeners();
+        nameInputField.onEndEdit.AddListener(OnEndEditName);
+    }
+
+    private void OnEndEditName(string val)
+    {
+        string cleanName = val.Trim();
+
+        if (!string.IsNullOrEmpty(cleanName))
+        {
+            PlayerPrefs.SetString(NAME_KEY, cleanName);
+            PlayerPrefs.Save();
+            Debug.Log("Đã lưu tên mới: " + cleanName);
+        }
+        else
+        {
+            // Nếu rỗng, trả về tên cũ đã lưu
+            nameInputField.text = PlayerPrefs.GetString(NAME_KEY, "Player 1");
+        }
+
+        StartCoroutine(DisableInputFieldRoutine());
+    }
+
+    private IEnumerator DisableInputFieldRoutine()
+    {
+        // Chờ 1 frame để tránh lỗi focus của Unity UI khi bấm Enter/Thoát
+        yield return null;
+        if (nameInputField != null)
+        {
+            nameInputField.interactable = false;
+        }
     }
 
     public void SaveAndExit()
     {
-        if (nameInputField != null) PlayerPrefs.SetString(NAME_KEY, nameInputField.text);
+        if (nameInputField != null)
+        {
+            string cleanName = nameInputField.text.Trim();
+            if (!string.IsNullOrEmpty(cleanName))
+                PlayerPrefs.SetString(NAME_KEY, cleanName);
+        }
+
         PlayerPrefs.SetInt(AVATAR_KEY, currentTempIndex);
         PlayerPrefs.Save();
         ApplyAvatarToUI();

@@ -1,46 +1,80 @@
 ﻿using UnityEngine;
-using TMPro; // Bắt buộc phải có để điều khiển TextMeshPro
+using TMPro;
 using UnityEngine.UI;
 
 public class NameManager : MonoBehaviour
 {
     [Header("Giao diện")]
-    public TMP_InputField nameInputField; // Kéo InputField vào đây
-    public TextMeshProUGUI displayNameText; // (Tùy chọn) Nếu bạn muốn hiển thị tên ở các màn hình khác
+    public TMP_InputField nameInputField;
+    public TextMeshProUGUI displayNameText;
 
+    // Sử dụng chung Key với AccountManager để đồng bộ dữ liệu
     private const string NAME_KEY = "PlayerName";
 
     void Start()
     {
-        // Load tên đã lưu khi vừa vào game, nếu chưa có thì mặc định là "Alex"
-        string savedName = PlayerPrefs.GetString(NAME_KEY, "Alex");
-        nameInputField.text = savedName;
+        LoadAndDisplay();
 
-        if (displayNameText != null)
-            displayNameText.text = savedName;
+        if (nameInputField != null)
+        {
+            nameInputField.onEndEdit.RemoveAllListeners();
+            nameInputField.onEndEdit.AddListener(SaveName);
+            // Mặc định tắt để tránh hiện bàn phím sai lúc
+            nameInputField.interactable = false;
+        }
+    }
 
-        // Lắng nghe sự kiện khi người dùng nhập xong và nhấn Enter hoặc thoát Focus
-        nameInputField.onEndEdit.AddListener(SaveName);
+    private void OnEnable()
+    {
+        // Cập nhật lại mỗi khi Panel được bật lên
+        LoadAndDisplay();
+    }
+
+    private void LoadAndDisplay()
+    {
+        string savedName = PlayerPrefs.GetString(NAME_KEY, "Player 1");
+
+        if (nameInputField != null) nameInputField.text = savedName;
+        if (displayNameText != null) displayNameText.text = savedName;
     }
 
     public void SaveName(string newName)
     {
-        // Kiểm tra nếu tên không trống mới lưu
-        if (!string.IsNullOrEmpty(newName))
+        // Loại bỏ khoảng trắng thừa
+        string cleanName = newName.Trim();
+
+        if (!string.IsNullOrEmpty(cleanName))
         {
-            PlayerPrefs.SetString(NAME_KEY, newName);
+            PlayerPrefs.SetString(NAME_KEY, cleanName);
             PlayerPrefs.Save();
 
             if (displayNameText != null)
-                displayNameText.text = newName;
+            {
+                displayNameText.text = cleanName;
+            }
 
-            Debug.Log("Đã lưu tên mới: " + newName);
+            Debug.Log("Đã lưu tên mới: " + cleanName);
         }
+        else
+        {
+            // Nếu người dùng xóa hết tên, trả về tên cũ đã lưu
+            if (nameInputField != null)
+                nameInputField.text = PlayerPrefs.GetString(NAME_KEY, "Player 1");
+        }
+
+        // Khóa input sau khi chỉnh sửa xong
+        if (nameInputField != null) nameInputField.interactable = false;
     }
 
-    // Hàm gọi khi bấm vào nút cái bút để tập trung vào ô nhập (Focus)
     public void ClickRenameButton()
     {
-        nameInputField.ActivateInputField();
+        if (nameInputField != null)
+        {
+            nameInputField.interactable = true;
+            nameInputField.ActivateInputField();
+
+            // Di chuyển con trỏ về cuối dòng cho tiện chỉnh sửa
+            nameInputField.caretPosition = nameInputField.text.Length;
+        }
     }
 }
