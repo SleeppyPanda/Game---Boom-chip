@@ -20,8 +20,16 @@ public class DiceTile : MonoBehaviour
             btn.onClick.RemoveAllListeners();
             btn.onClick.AddListener(OnClick);
         }
+
+        // Mặc định tắt Animator khi bắt đầu để tránh tiêu tốn hiệu năng
+        if (anim != null) anim.enabled = false;
     }
 
+    /// <summary>
+    /// Thiết lập hiển thị cho ô (Visual)
+    /// </summary>
+    /// <param name="sp">Sprite của người chơi hoặc sprite quả bom</param>
+    /// <param name="isBomb">Ô này có phải là bom không</param>
     public void SetVisual(Sprite sp, bool isBomb)
     {
         if (img == null) img = GetComponent<Image>();
@@ -29,43 +37,62 @@ public class DiceTile : MonoBehaviour
 
         if (isBomb)
         {
-            // Ô BOM: 
-            // 1. Giải phóng override để Animator chạy Sprite trong Clip Explosion
+            // --- TRƯỜNG HỢP Ô BOMB ---
+            isClaimed = true;
+
+            // 1. Xóa override để Animator có thể điều khiển Sprite trong Clip nổ (nếu có)
             img.overrideSprite = null;
 
-            // 2. Kích hoạt Animator và chạy clip nổ
+            // 2. Gán sprite gốc là hình quả bom để sau khi nổ xong nó hiện đúng hình bom
+            img.sprite = sp;
+
+            // 3. Kích hoạt Animator và chạy state "Explosion"
             if (anim != null)
             {
                 anim.enabled = true;
                 anim.Play("Explosion", 0, 0f);
             }
 
-            // 3. Tự hủy sau 1 khoảng thời gian (ví dụ 1 giây để kịp chạy xong animation)
-            Destroy(gameObject, 1.0f);
+            // GHI CHÚ: Đã loại bỏ Destroy(gameObject) để không làm hỏng GridLayoutGroup.
+            // Ô bom sẽ đứng yên tại vị trí cũ sau khi nổ xong.
         }
         else
         {
-            // Ô THƯỜNG:
-            // 1. Tắt Animator để nó không chạy linh tinh (chặn lỗi ô thường cũng nổ)
+            // --- TRƯỜNG HỢP Ô THƯỜNG ---
+            isClaimed = true;
+
+            // 1. Đảm bảo Animator tắt để không chạy nhầm hiệu ứng nổ
             if (anim != null) anim.enabled = false;
 
-            // 2. Ép hình Player lên bằng override
-            img.overrideSprite = sp;
+            // 2. Reset Scale về 1 (phòng trường hợp Animator trước đó làm lệch scale)
+            transform.localScale = Vector3.one;
+
+            // 3. Gán hình ảnh của Player (Màu sắc/Chip)
             img.sprite = sp;
+            img.overrideSprite = sp;
         }
 
+        // Đảm bảo màu sắc hiển thị rõ ràng
         img.color = Color.white;
         img.SetAllDirty();
     }
 
+    /// <summary>
+    /// Bật/Tắt khả năng tương tác của nút
+    /// </summary>
     public void SetInteractable(bool state)
     {
         if (btn != null) btn.interactable = state;
     }
 
+    /// <summary>
+    /// Xử lý khi người dùng click vào ô
+    /// </summary>
     private void OnClick()
     {
-        if (DiceModeManager.Instance != null)
+        if (DiceModeManager.Instance != null && !isClaimed)
+        {
             DiceModeManager.Instance.OnTileClicked(tileIndex, this);
+        }
     }
 }
