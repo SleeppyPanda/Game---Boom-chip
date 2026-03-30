@@ -797,22 +797,24 @@ MonoBehaviour:
   txtFinalScore: {fileID: 644247170}
   txtComment: {fileID: 339813208}
   database:
-  - themeName: TienBac
-    question: "N\u0103m nay b\u1EA1n ki\u1EBFm \u0111\u01B0\u1EE3c bao nhi\xEAu ti\u1EC1n?"
-    unit: "T\u1EF7 \u0111\u1ED3ng"
+  - themeName: Money
+    question: How much money will you made this year
+    unit: $
     itemSprite: {fileID: 21300000, guid: 670a560de87a3d84e9ed1e034d92293a, type: 3}
     circleSprite: {fileID: 21300000, guid: 65ceaa74802b23a41b6e04baa5a38f4b, type: 3}
     gapSize: 2.7
     comments:
-    - "Gi\xE0u th\u1EBF n\xE0y bao nu\xF4i t\xF4i nh\xE9!"
-  - themeName: tinhyeu
-    question: "bao gi\u1EDD b\u1EA1n c\xF3 ng\u01B0\u1EDDi y\xEAu"
-    unit: "N\u0103m"
+    - Wanna buy a new car?
+    - Give me some :)
+  - themeName: Love
+    question: When will you got love
+    unit: Year
     itemSprite: {fileID: 21300000, guid: 2c9f5885f64ea8e4382e86b7a2a00ed5, type: 3}
     circleSprite: {fileID: 21300000, guid: 069f4ed61d33bc141a070742bcd5c100, type: 3}
     gapSize: 3
     comments:
-    - "c\u1ED1 l\xEAn b\u1EA1n"
+    - I know you can be better
+    - Good luck
   leftCircleRenderer: {fileID: 1001951106}
   rightCircleRenderer: {fileID: 8942574}
   leftHalf: {fileID: 1001951107}

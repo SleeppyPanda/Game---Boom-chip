@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using Firebase.Extensions;
 using System.Collections;
 using AppsFlyerSDK;
+using UnityEngine.SceneManagement;
 
 #if UNITY_ANDROID
 using Google.Play.Review; 
@@ -40,10 +41,29 @@ public class AdsManager : MonoBehaviour
 
     void Awake()
     {
-        if (Instance == null) { Instance = this; DontDestroyOnLoad(gameObject); }
+        if (Instance == null)
+        {
+            Instance = this;
+            DontDestroyOnLoad(gameObject);
+            // Đăng ký sự kiện tự động ẩn MREC khi đổi Scene
+            SceneManager.sceneLoaded += OnSceneLoaded;
+        }
         else { Destroy(gameObject); }
 
         _isFirstTimeTruly = PlayerPrefs.GetInt("Truly_First_Open_Completed", 0) == 0;
+    }
+
+    private void OnDestroy()
+    {
+        // Hủy đăng ký để tránh lỗi bộ nhớ
+        SceneManager.sceneLoaded -= OnSceneLoaded;
+    }
+
+    private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+    {
+        // Mỗi khi sang Scene mới, mặc định ẩn MREC. 
+        // Scene nào cần hiện (như BoomChip) sẽ chủ động gọi ShowMREC trong Start() của nó.
+        HideMREC();
     }
 
     void Start()
@@ -55,7 +75,6 @@ public class AdsManager : MonoBehaviour
         // 2. Khởi tạo AdMob
         MobileAds.Initialize((InitializationStatus initStatus) =>
         {
-            // Dùng Coroutine thay cho MobileAdsEventExecutor để an toàn 100%
             StartCoroutine(LoadAdsAfterInit());
         });
 
@@ -64,14 +83,12 @@ public class AdsManager : MonoBehaviour
 
     private IEnumerator LoadAdsAfterInit()
     {
-        // Đợi một chút để đảm bảo SDK đã sẵn sàng trên Android
         yield return new WaitForSeconds(0.5f);
         LoadInterstitialAd();
         LoadRewardedAd();
         LoadAppOpenAd();
     }
 
-    // Cách tạo Request đơn giản nhất để tránh lỗi Builder trên bản 11.x
     private AdRequest CreateAdRequest()
     {
         return new AdRequest();
@@ -304,17 +321,81 @@ public class AdsManager : MonoBehaviour
         if (AdEventTracker.GetBool(AdEventTracker.KEY_SHOW_BANNER)) ShowBanner();
     }
 
+    //public void ShowMREC(string configKey)
+    //{
+    //    if (!AdEventTracker.GetBool(configKey)) { HideMREC(); return; }
+    //    if (_mrecView != null) _mrecView.Destroy();
+
+    //    // Chuyển MREC lên vị trí TOP để không bị Banner (Bottom) đè lên
+    //    _mrecView = new BannerView(adUnitIdMREC, AdSize.MediumRectangle, AdPosition.Top);
+    //    _mrecView.OnAdPaid += (adValue) => SendRevenueToAll("MREC", adValue);
+    //    _mrecView.LoadAd(CreateAdRequest());
+    //}
+
+    //public void ShowMREC(string configKey)
+    //{
+    //    if (!AdEventTracker.GetBool(configKey)) { HideMREC(); return; }
+    //    if (_mrecView != null) _mrecView.Destroy();
+
+    //    int xOffset = 0;
+    //    int yOffset = 60;
+
+
+    //    _mrecView = new BannerView(adUnitIdMREC, AdSize.MediumRectangle, AdPosition.Bottom);
+
+    //    _mrecView.OnAdPaid += (adValue) => SendRevenueToAll("MREC", adValue);
+    //    _mrecView.LoadAd(CreateAdRequest());
+    //}
+
     public void ShowMREC(string configKey)
     {
         if (!AdEventTracker.GetBool(configKey)) { HideMREC(); return; }
         if (_mrecView != null) _mrecView.Destroy();
 
-        _mrecView = new BannerView(adUnitIdMREC, AdSize.MediumRectangle, AdPosition.Bottom);
+        // 1. Lấy tỷ lệ scale màn hình ( density)
+        float density = Screen.dpi / 160f;
+        if (density == 0) density = 1;
+
+        // Chiều rộng và chiều cao màn hình tính theo đơn vị DP (AdMob dùng đơn vị này)
+        float screenWidthDP = Screen.width / density;
+        float screenHeightDP = Screen.height / density;
+
+        // 2. Kích thước chuẩn của MREC (300x250)
+        int mrecWidth = 300;
+        int mrecHeight = 250;
+
+        // ---------------------------------------------------------
+        // 3. TÙY CHỈNH TỌA ĐỘ Ở ĐÂY (ANCHOR: BOTTOM-CENTER)
+        // ---------------------------------------------------------
+
+        // xPos: (Chiều rộng màn hình / 2) - (Chiều rộng MREC / 2) => Luôn nằm giữa ngang
+        int xPos = (int)((screenWidthDP - mrecWidth) / 2);
+
+        // yPos: (Chiều cao màn hình) - (Chiều cao MREC) - (Khoảng cách đẩy lên từ đáy)
+        // Bạn chỉ cần thay đổi số 70 dưới đây để đẩy lên/xuống tùy ý
+        int distanceFillFromBottom = 350;
+        int yPos = (int)(screenHeightDP - mrecHeight - distanceFillFromBottom);
+
+        // Lưu ý: Nếu muốn chỉnh x, y thủ công hoàn toàn, bạn có thể ghi đè trực tiếp:
+        // xPos = 100; 
+        // yPos = 500;
+        // ---------------------------------------------------------
+
+        // 4. Khởi tạo MREC với tọa độ x, y đã tính
+        _mrecView = new BannerView(adUnitIdMREC, AdSize.MediumRectangle, xPos, yPos);
+
         _mrecView.OnAdPaid += (adValue) => SendRevenueToAll("MREC", adValue);
         _mrecView.LoadAd(CreateAdRequest());
     }
 
-    public void HideMREC() { if (_mrecView != null) _mrecView.Destroy(); }
+    public void HideMREC()
+    {
+        if (_mrecView != null)
+        {
+            _mrecView.Destroy();
+            _mrecView = null; // Gán null để đảm bảo không gọi nhầm object đã hủy
+        }
+    }
     #endregion
 
     #region RATING

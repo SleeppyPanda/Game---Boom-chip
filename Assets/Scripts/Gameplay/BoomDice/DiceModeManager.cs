@@ -71,7 +71,7 @@ public class DiceModeManager : MonoBehaviour
     void Awake()
     {
         Instance = this;
-        // Sync data từ Settings
+
         if (BoomChipSettings.player1Sprite != null) p1Color = BoomChipSettings.player1Sprite;
         if (BoomChipSettings.player2Sprite != null) p2Color = BoomChipSettings.player2Sprite;
         isBombModeActive = BoomChipSettings.isBombModeActive;
@@ -94,8 +94,8 @@ public class DiceModeManager : MonoBehaviour
         GenerateBoard();
         SetBoardInteractable(false);
 
-        // Khởi chạy transition và hiện MREC ban đầu
-        if (AdsManager.Instance != null) AdsManager.Instance.ShowMREC("is_show_mrec_loading_game");
+        // TẮT MREC khi bắt đầu vào game (theo yêu cầu chỉ hiện ở Win Panel)
+        if (AdsManager.Instance != null) AdsManager.Instance.HideMREC();
 
         if (panelTransition != null) StartCoroutine(RunStartTransition());
         else StartCoinFlipSequence();
@@ -218,11 +218,16 @@ public class DiceModeManager : MonoBehaviour
     private IEnumerator HandleCoinFlipDelay(int winnerID)
     {
         if (flipStatusText != null)
-            flipStatusText.text = (winnerID == 0) ? "<color=yellow><b> Player 1</b></color> GO FIRST!" : "<color=yellow><b> Player 2</b></color> GO FIRST!";
+        {
+            string key = (winnerID == 0) ? "PlayerName_P1" : "PlayerName_P2";
+            string defaultName = (winnerID == 0) ? "Player 1" : "Player 2";
+            string winnerName = PlayerPrefs.GetString(key, defaultName);
+
+            flipStatusText.text = $"<color=yellow><b> {winnerName}</b></color> GO FIRST!";
+        }
 
         yield return new WaitForSeconds(1.0f);
 
-        // Ads Interstitial sau khi xác định người đi trước
         string adKey = (winnerID == 0) ? "is_show_inter_p1_choose" : "is_show_inter_p2_choose";
         if (AdsManager.Instance != null)
         {
@@ -241,8 +246,8 @@ public class DiceModeManager : MonoBehaviour
         if (panelAnimation) panelAnimation.SetActive(false);
         isP1Turn = (winnerID == 0);
 
-        // Hiện MREC Gameplay
-        if (AdsManager.Instance != null) AdsManager.Instance.ShowMREC("is_show_mrec_gameplay");
+        // Đảm bảo MREC vẫn ẩn khi bắt đầu Gameplay
+        if (AdsManager.Instance != null) AdsManager.Instance.HideMREC();
 
         PrepareNewTurn();
     }
@@ -263,8 +268,11 @@ public class DiceModeManager : MonoBehaviour
 
         if (turnStatusText != null)
         {
-            turnStatusText.text = isP1Turn ? "PLAYER 1 TURN" : "PLAYER 2 TURN";
-            turnStatusText.color = isP1Turn ? Color.blue : Color.red;
+            string key = isP1Turn ? "PlayerName_P1" : "PlayerName_P2";
+            string defaultName = isP1Turn ? "PLAYER 1" : "PLAYER 2";
+            string currentPlayerName = PlayerPrefs.GetString(key, defaultName);
+
+            turnStatusText.text = currentPlayerName.ToUpper() + " TURN";
         }
         UpdateTurnIndicators();
     }
@@ -347,7 +355,7 @@ public class DiceModeManager : MonoBehaviour
         if (panelWin) panelWin.SetActive(true);
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX("SFX_Win");
 
-        // Hiện MREC màn kết thúc
+        // CHỈ HIỆN MREC Ở ĐÂY (WIN PANEL)
         if (AdsManager.Instance != null) AdsManager.Instance.ShowMREC("is_show_mrec_complete_game");
 
         if (p1ResultScore) p1ResultScore.text = "x " + p1ClaimedCells;
@@ -383,7 +391,27 @@ public class DiceModeManager : MonoBehaviour
         else SceneManager.LoadScene("SelectScene");
     }
 
-    public void OpenSetting() { if (panelSetting != null) panelSetting.SetActive(true); }
-    public void CloseSetting() { if (panelSetting != null) panelSetting.SetActive(false); }
+    public void OpenSetting()
+    {
+        if (panelSetting != null)
+        {
+            panelSetting.SetActive(true);
+            // Ẩn MREC khi mở setting để không bị đè UI
+            if (AdsManager.Instance != null) AdsManager.Instance.HideMREC();
+        }
+    }
+
+    public void CloseSetting()
+    {
+        if (panelSetting != null)
+        {
+            panelSetting.SetActive(false);
+            // Hiện lại MREC sau khi đóng Setting NẾU game đã kết thúc (đang ở Win Panel)
+            if (isGameOver && panelWin.activeSelf && AdsManager.Instance != null)
+            {
+                AdsManager.Instance.ShowMREC("is_show_mrec_complete_game");
+            }
+        }
+    }
     #endregion
 }

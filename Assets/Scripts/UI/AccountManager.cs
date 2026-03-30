@@ -17,32 +17,36 @@ public class AccountManager : MonoBehaviour
 
     [Header("Cấu hình Avatar")]
     public Image avatarDisplayInPanel;
-    public Image mainMenuBarAvatar;
+    public Image mainMenuBarAvatar; // Thường hiển thị Avatar của P1 hoặc người chơi hiện tại
     public List<Sprite> allAvatars;
 
+    [Header("Cấu hình 2 Người Chơi")]
+    private int currentPlayerID = 1; // Mặc định là Player 1
     private int currentTempIndex;
-    private const string NAME_KEY = "PlayerName";
-    private const string AVATAR_KEY = "SelectedAvatarIndex";
-    private const string UNLOCK_PREFIX = "Unlock_Avatar_";
+
+    // Các Key cơ sở (sẽ được cộng thêm đuôi _P1 hoặc _P2)
+    private const string NAME_BASE_KEY = "PlayerName";
+    private const string AVATAR_BASE_KEY = "SelectedAvatarIndex";
+    private const string UNLOCK_PREFIX = "Unlock_Avatar_"; // Unlock dùng chung cho cả 2
+
+    // Hàm tiện ích để lấy Key động theo Player hiện tại
+    private string GetCurrentNameKey() => NAME_BASE_KEY + "_P" + currentPlayerID;
+    private string GetCurrentAvatarKey() => AVATAR_BASE_KEY + "_P" + currentPlayerID;
 
     void Awake()
     {
         if (Instance == null) { Instance = this; }
         else { Destroy(gameObject); return; }
 
-        // Tự động mở khóa Avatar đầu tiên (index 0)
+        // Tự động mở khóa Avatar đầu tiên (index 0) - Dùng chung
         if (PlayerPrefs.GetInt(UNLOCK_PREFIX + "0", 0) == 0)
         {
             PlayerPrefs.SetInt(UNLOCK_PREFIX + "0", 1);
             PlayerPrefs.Save();
         }
 
-        currentTempIndex = PlayerPrefs.GetInt(AVATAR_KEY, 0);
-        string savedName = PlayerPrefs.GetString(NAME_KEY, "Player 1");
-
-        if (nameInputField != null) nameInputField.text = savedName;
-
-        ApplyAvatarToUI();
+        // Load dữ liệu mặc định ban đầu (Player 1)
+        LoadPlayerData(1);
     }
 
     void Start()
@@ -55,12 +59,35 @@ public class AccountManager : MonoBehaviour
         OnAvatarUnlocked = null;
     }
 
-    // --- LOGIC REMOTE CONFIG CHO AVATAR ---
+    // --- LOGIC MỚI: CHUYỂN ĐỔI NGƯỜI CHƠI ---
 
     /// <summary>
-    /// Kiểm tra xem Avatar index này có bắt người dùng xem Ads để mở không.
-    /// Sử dụng hàm tiện ích từ AdEventTracker (đã xử lý chuỗi "1,2,3" từ Firebase)
+    /// Được gọi từ ProfileTabManager khi nhấn nút Tab P1 hoặc P2
     /// </summary>
+    public void SwitchCurrentPlayer(int playerID)
+    {
+        // Lưu dữ liệu của người cũ trước khi chuyển
+        SaveAndExit();
+
+        // Chuyển sang người mới
+        currentPlayerID = playerID;
+        LoadPlayerData(playerID);
+
+        Debug.Log($"Đã chuyển sang chỉnh sửa: Player {playerID}");
+    }
+
+    private void LoadPlayerData(int playerID)
+    {
+        currentTempIndex = PlayerPrefs.GetInt(GetCurrentAvatarKey(), (playerID == 1) ? 0 : 1);
+        string savedName = PlayerPrefs.GetString(GetCurrentNameKey(), "Player " + playerID);
+
+        if (nameInputField != null) nameInputField.text = savedName;
+
+        ApplyAvatarToUI();
+    }
+
+    // --- LOGIC REMOTE CONFIG CHO AVATAR (GIỮ NGUYÊN) ---
+
     public bool DoesAvatarRequireAd(int index)
     {
         return AdEventTracker.IsAvatarInRwList(index);
@@ -84,17 +111,12 @@ public class AccountManager : MonoBehaviour
         return PlayerPrefs.GetInt(UNLOCK_PREFIX + index, 0) == 1;
     }
 
-    /// <summary>
-    /// Được gọi từ UnlockButton hoặc UI chọn Avatar
-    /// </summary>
     public void SelectAvatar(int index)
     {
         if (index < 0 || index >= allAvatars.Count) return;
 
-        // Nếu đã mở khóa hoặc KHÔNG nằm trong danh sách bắt xem Ads của Firebase
         if (IsAvatarUnlocked(index) || !DoesAvatarRequireAd(index))
         {
-            // Mở khóa luôn nếu nó không yêu cầu Ads
             if (!IsAvatarUnlocked(index))
             {
                 PlayerPrefs.SetInt(UNLOCK_PREFIX + index, 1);
@@ -106,11 +128,9 @@ public class AccountManager : MonoBehaviour
         else
         {
             Debug.Log($"Avatar {index} yêu cầu xem quảng cáo Reward để mở khóa.");
-            // Logic ShowRewardedAd thường được gọi trực tiếp tại script của Button mở khóa
         }
     }
 
-   
     public void SetAvatar(int index)
     {
         currentTempIndex = index;
@@ -118,31 +138,24 @@ public class AccountManager : MonoBehaviour
         if (avatarDisplayInPanel != null)
         {
             avatarDisplayInPanel.sprite = allAvatars[index];
-
-            // Dừng các tween cũ để tránh xung đột
             avatarDisplayInPanel.rectTransform.DOKill(true);
 
-            // --- THAY ĐỔI TẠI ĐÂY: Thiết lập scale mặc định là 0.7116897f ---
-            float targetScale = 0.7116897f;
+            float targetScale = 0.8f;
             avatarDisplayInPanel.rectTransform.localScale = new Vector3(targetScale, targetScale, 1f);
-
-            // Hiệu ứng PunchScale sẽ nẩy dựa trên scale hiện tại (0.7116897)
-            // Nếu bạn muốn hiệu ứng mạnh hơn hoặc nhẹ hơn, có thể chỉnh thông số 0.1f ở dưới
             avatarDisplayInPanel.rectTransform.DOPunchScale(new Vector3(0.1f, 0.1f, 0), 0.3f, 5, 1);
         }
 
-        // --- FIREBASE TRACKING: count_avatar_xx ---
+        // Gắn thêm thông tin player vào tracking nếu cần
         AdEventTracker.TrackAvatarChoose(index);
 
         SaveAndRefreshUI();
 
-        // Thông báo cho các UI/UnlockButton khác cập nhật trạng thái (nếu có)
         OnAvatarUnlocked?.Invoke();
     }
 
     private void SaveAndRefreshUI()
     {
-        PlayerPrefs.SetInt(AVATAR_KEY, currentTempIndex);
+        PlayerPrefs.SetInt(GetCurrentAvatarKey(), currentTempIndex);
         PlayerPrefs.Save();
 
         if (mainMenuBarAvatar != null) mainMenuBarAvatar.sprite = allAvatars[currentTempIndex];
@@ -156,8 +169,6 @@ public class AccountManager : MonoBehaviour
 
         nameInputField.interactable = true;
         nameInputField.ActivateInputField();
-
-        // Di chuyển con trỏ về cuối dòng
         nameInputField.caretPosition = nameInputField.text.Length;
 
         nameInputField.onEndEdit.RemoveAllListeners();
@@ -170,14 +181,13 @@ public class AccountManager : MonoBehaviour
 
         if (!string.IsNullOrEmpty(cleanName))
         {
-            PlayerPrefs.SetString(NAME_KEY, cleanName);
+            PlayerPrefs.SetString(GetCurrentNameKey(), cleanName);
             PlayerPrefs.Save();
-            Debug.Log("Đã lưu tên mới: " + cleanName);
+            Debug.Log($"Đã lưu tên mới cho P{currentPlayerID}: " + cleanName);
         }
         else
         {
-            // Nếu rỗng, trả về tên cũ đã lưu
-            nameInputField.text = PlayerPrefs.GetString(NAME_KEY, "Player 1");
+            nameInputField.text = PlayerPrefs.GetString(GetCurrentNameKey(), "Player " + currentPlayerID);
         }
 
         StartCoroutine(DisableInputFieldRoutine());
@@ -185,7 +195,6 @@ public class AccountManager : MonoBehaviour
 
     private IEnumerator DisableInputFieldRoutine()
     {
-        // Chờ 1 frame để tránh lỗi focus của Unity UI khi bấm Enter/Thoát
         yield return null;
         if (nameInputField != null)
         {
@@ -199,10 +208,10 @@ public class AccountManager : MonoBehaviour
         {
             string cleanName = nameInputField.text.Trim();
             if (!string.IsNullOrEmpty(cleanName))
-                PlayerPrefs.SetString(NAME_KEY, cleanName);
+                PlayerPrefs.SetString(GetCurrentNameKey(), cleanName);
         }
 
-        PlayerPrefs.SetInt(AVATAR_KEY, currentTempIndex);
+        PlayerPrefs.SetInt(GetCurrentAvatarKey(), currentTempIndex);
         PlayerPrefs.Save();
         ApplyAvatarToUI();
     }

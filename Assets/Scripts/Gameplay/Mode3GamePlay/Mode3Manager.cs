@@ -3,7 +3,7 @@ using TMPro;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine.SceneManagement;
-using UnityEngine.EventSystems; // Bắt buộc phải có
+using UnityEngine.EventSystems;
 
 public class Mode3Manager : MonoBehaviour
 {
@@ -53,11 +53,20 @@ public class Mode3Manager : MonoBehaviour
         if (Instance == null) Instance = this;
     }
 
-    void Start() => SetupNewTurn();
+    void Start()
+    {
+        // ẨN MREC KHI BẮT ĐẦU VÀO MODE 3
+        if (AdsManager.Instance != null) AdsManager.Instance.HideMREC();
+        SetupNewTurn();
+    }
 
     public void SetupNewTurn()
     {
         resultPanel.SetActive(false);
+
+        // ẨN MREC KHI CHƠI LẠI TURN MỚI
+        if (AdsManager.Instance != null) AdsManager.Instance.HideMREC();
+
         bounceCount = 0;
         canPlay = true;
         isDragging = false;
@@ -94,27 +103,22 @@ public class Mode3Manager : MonoBehaviour
 
     void HandleDragInput()
     {
-        // 1. Nhấn chuột/ngón tay xuống
         if (Input.GetMouseButtonDown(0))
         {
-            // CHỈ BẮT ĐẦU KÉO NẾU KHÔNG CHẠM VÀO UI
             if (!IsPointerOverUI())
             {
                 isDragging = true;
             }
         }
 
-        // 2. Di chuyển Item (chỉ khi isDragging = true)
         if (isDragging && currentItem != null)
         {
             Vector3 mousePos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
             currentItem.transform.position = new Vector3(mousePos.x, spawnPoint.position.y, 0);
         }
 
-        // 3. Thả chuột/ngón tay
         if (Input.GetMouseButtonUp(0))
         {
-            // Nếu trước đó có kéo thì mới cho rơi
             if (isDragging)
             {
                 isDragging = false;
@@ -129,13 +133,10 @@ public class Mode3Manager : MonoBehaviour
         }
     }
 
-    // HÀM KIỂM TRA CHẠM UI CHÍNH XÁC NHẤT
     private bool IsPointerOverUI()
     {
-        // Kiểm tra cho Chuột (Editor)
         if (EventSystem.current.IsPointerOverGameObject()) return true;
 
-        // Kiểm tra cho Cảm ứng (Mobile)
         if (Input.touchCount > 0 && Input.touches[0].phase == TouchPhase.Began)
         {
             if (EventSystem.current.IsPointerOverGameObject(Input.touches[0].fingerId)) return true;
@@ -165,6 +166,10 @@ public class Mode3Manager : MonoBehaviour
     public void FinishGame()
     {
         resultPanel.SetActive(true);
+
+        // CHỈ HIỆN MREC TẠI ĐÂY (KHI HIỆN BẢNG KẾT QUẢ)
+        if (AdsManager.Instance != null) AdsManager.Instance.ShowMREC("is_show_mrec_complete_game");
+
         string scoreFinalText = (bounceCount * 10).ToString() + " " + currentData.unit;
 
         if (txtFinalScore != null)
@@ -183,6 +188,8 @@ public class Mode3Manager : MonoBehaviour
 
     public void Btn_BackToHome()
     {
+        // ẨN MREC TRƯỚC KHI VỀ HOME
+        if (AdsManager.Instance != null) AdsManager.Instance.HideMREC();
         SceneManager.LoadScene("SelectScene");
     }
 

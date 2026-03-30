@@ -15,10 +15,13 @@ public class BottleData
 
 public class Mode2Manager : MonoBehaviour
 {
+    public static Mode2Manager Instance;
+
     [Header("UI & Players")]
     public GameObject player1Cover;
     public GameObject player2Cover;
     public TextMeshProUGUI totalScoreText;
+    public TextMeshProUGUI turnNotificationText;
     public GameObject winPanel;
     public GameObject settingPanel;
 
@@ -49,13 +52,18 @@ public class Mode2Manager : MonoBehaviour
 
     private Color numberColor = Color.black;
 
+    void Awake()
+    {
+        Instance = this;
+    }
+
     void Start()
     {
         UpdateTurnUI();
         StartNewRound();
 
-        // Hiện MREC khi bắt đầu gameplay
-        if (AdsManager.Instance != null) AdsManager.Instance.ShowMREC("is_show_mrec_gameplay");
+        // ĐẢM BẢO ẨN MREC KHI BẮT ĐẦU (Theo yêu cầu chỉ hiện ở Win Panel)
+        if (AdsManager.Instance != null) AdsManager.Instance.HideMREC();
     }
 
     public void StartNewRound()
@@ -182,6 +190,7 @@ public class Mode2Manager : MonoBehaviour
         if (scoreChange > 0)
         {
             DOTween.To(() => numberColor, x => numberColor = x, Color.green, 0.2f).OnUpdate(UpdateScoreText);
+            if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX("SFX_Correct");
         }
         else if (scoreChange < 0)
         {
@@ -190,6 +199,7 @@ public class Mode2Manager : MonoBehaviour
                 .OnComplete(() => {
                     DOTween.To(() => numberColor, x => numberColor = x, Color.black, 0.8f).OnUpdate(UpdateScoreText);
                 });
+            if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX("SFX_Wrong");
         }
         else { UpdateScoreText(); }
 
@@ -207,7 +217,6 @@ public class Mode2Manager : MonoBehaviour
 
         yield return new WaitForSeconds(delayBeforeWinPanel);
 
-        // Hiển thị Interstitial trước khi mở Win Panel (Dùng key p1_choose cho logic hoàn thành màn chơi)
         if (AdsManager.Instance != null)
         {
             AdsManager.Instance.ShowInterstitial("is_show_inter_p1_choose", () => {
@@ -223,7 +232,8 @@ public class Mode2Manager : MonoBehaviour
     private void ShowWinPanel()
     {
         winPanel.SetActive(true);
-        // Hiện MREC màn hoàn thành game
+
+        // CHỈ HIỆN MREC KHI WIN PANEL XUẤT HIỆN
         if (AdsManager.Instance != null) AdsManager.Instance.ShowMREC("is_show_mrec_complete_game");
 
         if (currentTurn == 1) { player1Crown.SetActive(true); player2Crown.SetActive(false); }
@@ -234,12 +244,12 @@ public class Mode2Manager : MonoBehaviour
     {
         if (AdsManager.Instance != null)
         {
-            // Reset MREC về trạng thái gameplay khi bắt đầu màn mới
+            // ẨN MREC KHI NHẤN CHUYỂN LEVEL
             AdsManager.Instance.HideMREC();
+
             AdsManager.Instance.ShowInterstitial("is_show_inter_retry", () => {
                 currentLevelCount = Mathf.Min(currentLevelCount + 1, 7);
                 StartNewRound();
-                AdsManager.Instance.ShowMREC("is_show_mrec_gameplay");
             });
         }
         else
@@ -281,13 +291,13 @@ public class Mode2Manager : MonoBehaviour
         for (int i = 0; i < list.Count; i++)
         {
             int temp = list[i]; int rnd = Random.Range(i, list.Count);
-            list[i] = list[rnd]; list[rnd] = temp;
+            list[list.IndexOf(temp)] = list[rnd]; list[rnd] = temp;
         }
     }
 
     IEnumerator WaitAndSwitch()
     {
-        yield return new WaitForSeconds(0.2f);
+        yield return new WaitForSeconds(0.4f);
         currentTurn = (currentTurn == 1) ? 2 : 1;
         UpdateTurnUI();
     }
@@ -296,12 +306,25 @@ public class Mode2Manager : MonoBehaviour
     {
         player1Cover.SetActive(currentTurn != 1);
         player2Cover.SetActive(currentTurn != 2);
+
+        if (turnNotificationText != null)
+        {
+            string key = (currentTurn == 1) ? "PlayerName_P1" : "PlayerName_P2";
+            string defaultName = (currentTurn == 1) ? "PLAYER 1" : "PLAYER 2";
+            string pName = PlayerPrefs.GetString(key, defaultName);
+
+            turnNotificationText.text = pName.ToUpper() + "'S TURN";
+            turnNotificationText.transform.DOPunchScale(Vector3.one * 0.1f, 0.3f);
+        }
     }
 
     public void OnSettingClick()
     {
         if (settingPanel != null)
         {
+            // ẨN MREC KHI MỞ SETTING
+            if (AdsManager.Instance != null) AdsManager.Instance.HideMREC();
+
             settingPanel.SetActive(true);
             settingPanel.transform.localScale = Vector3.zero;
             settingPanel.transform.DOScale(Vector3.one, 0.3f).SetEase(Ease.OutBack);
@@ -314,6 +337,12 @@ public class Mode2Manager : MonoBehaviour
         {
             settingPanel.transform.DOScale(Vector3.zero, 0.2f).OnComplete(() => {
                 settingPanel.SetActive(false);
+
+                // HIỆN LẠI MREC NẾU ĐANG Ở MÀN HÌNH WIN
+                if (isGameOver && winPanel.activeSelf && AdsManager.Instance != null)
+                {
+                    AdsManager.Instance.ShowMREC("is_show_mrec_complete_game");
+                }
             });
         }
     }

@@ -244,6 +244,12 @@ public class MenuManager : MonoBehaviour
     {
         if (currentPanel == null || currentPanel == panelMode1) return;
 
+        // Lưu dữ liệu Account trước khi đóng nếu đang ở Panel Account
+        if (currentPanel == panelAccount && AccountManager.Instance != null)
+        {
+            AccountManager.Instance.SaveAndExit();
+        }
+
         CanvasGroup closingPanel = currentPanel;
         closingPanel.DOKill();
         closingPanel.interactable = false;

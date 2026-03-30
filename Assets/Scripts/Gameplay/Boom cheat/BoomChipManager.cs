@@ -21,6 +21,13 @@ public class BoomChipManager : MonoBehaviour
     public GameObject panelWin;
     public GameObject panelTransition;
 
+    [Header("--- THÔNG TIN NGƯỜI CHƠI (P1 & P2) ---")]
+    public TextMeshProUGUI nameTextP1;
+    public Image avatarImageP1;
+    public TextMeshProUGUI nameTextP2;
+    public Image avatarImageP2;
+    public List<Sprite> allAvatars;
+
     [Header("Transition Elements (Strips)")]
     public RectTransform leftStrip;
     public RectTransform rightStrip;
@@ -86,6 +93,7 @@ public class BoomChipManager : MonoBehaviour
         if (rightObj != null) _rightObjOrig = rightObj.anchoredPosition;
 
         SyncDataFromSettings();
+        UpdatePlayerInfoUI();
 
         if (p1WinBombImage != null) SetupWinImage(p1WinBombImage, p1SkinSprite);
         if (p2WinBombImage != null) SetupWinImage(p2WinBombImage, p2SkinSprite);
@@ -100,6 +108,21 @@ public class BoomChipManager : MonoBehaviour
 
         InitializeHearts();
         RotatePlayer2TileVisuals();
+    }
+
+    private void UpdatePlayerInfoUI()
+    {
+        string nameP1 = PlayerPrefs.GetString("PlayerName_P1", "Player 1");
+        int avatarIndexP1 = PlayerPrefs.GetInt("SelectedAvatarIndex_P1", 0);
+        if (nameTextP1 != null) nameTextP1.text = nameP1;
+        if (avatarImageP1 != null && avatarIndexP1 < allAvatars.Count)
+            avatarImageP1.sprite = allAvatars[avatarIndexP1];
+
+        string nameP2 = PlayerPrefs.GetString("PlayerName_P2", "Player 2");
+        int avatarIndexP2 = PlayerPrefs.GetInt("SelectedAvatarIndex_P2", 1);
+        if (nameTextP2 != null) nameTextP2.text = nameP2;
+        if (avatarImageP2 != null && avatarIndexP2 < allAvatars.Count)
+            avatarImageP2.sprite = allAvatars[avatarIndexP2];
     }
 
     private void SyncDataFromSettings()
@@ -119,7 +142,7 @@ public class BoomChipManager : MonoBehaviour
         if (FirebaseManager.Instance != null) FirebaseManager.Instance.LogModeEnter(9);
         if (AudioManager.Instance != null) AudioManager.Instance.PlayMusic(gameplayMusicName);
 
-        // Hiện MREC cho màn hình Player 1 chọn đầu tiên
+        // Khởi đầu hiện MREC cho Phase 1
         ShowMRECByPhase();
     }
 
@@ -139,7 +162,6 @@ public class BoomChipManager : MonoBehaviour
 
         if (currentPhase == GamePhase.Phase1)
         {
-            // Interstitial khi P1 chọn xong
             if (AdsManager.Instance != null)
                 AdsManager.Instance.ShowInterstitial("is_show_inter_p1_choose", () => ExecutePhase2Transition());
             else
@@ -147,7 +169,6 @@ public class BoomChipManager : MonoBehaviour
         }
         else if (currentPhase == GamePhase.Phase2)
         {
-            // Interstitial khi P2 chọn xong trước khi vào Gameplay
             if (AdsManager.Instance != null)
                 AdsManager.Instance.ShowInterstitial("is_show_inter_p2_choose", () => StartCoroutine(TransitionSequence()));
             else
@@ -160,17 +181,29 @@ public class BoomChipManager : MonoBehaviour
         currentPhase = GamePhase.Phase2;
         panelPhase1.SetActive(false);
         panelPhase2.SetActive(true);
-        ShowMRECByPhase();
+        ShowMRECByPhase(); // Cập nhật MREC cho Phase 2
     }
 
     private void ShowMRECByPhase()
     {
         if (AdsManager.Instance == null) return;
+
+        // Theo yêu cầu: Chỉ Phase 1, Phase 2 và WinPanel mới có MREC
         switch (currentPhase)
         {
-            case GamePhase.Phase1: AdsManager.Instance.ShowMREC("is_show_mrec_p1_choose"); break;
-            case GamePhase.Phase2: AdsManager.Instance.ShowMREC("is_show_mrec_p2_choose"); break;
-            case GamePhase.Phase3: AdsManager.Instance.ShowMREC("is_show_mrec_gameplay"); break;
+            case GamePhase.Phase1:
+                AdsManager.Instance.ShowMREC("is_show_mrec_p1_choose");
+                break;
+            case GamePhase.Phase2:
+                AdsManager.Instance.ShowMREC("is_show_mrec_p2_choose");
+                break;
+            case GamePhase.Phase3:
+                // Phase 3 là gameplay, ẩn MREC đi
+                AdsManager.Instance.HideMREC();
+                break;
+            default:
+                AdsManager.Instance.HideMREC();
+                break;
         }
     }
     #endregion
@@ -178,6 +211,9 @@ public class BoomChipManager : MonoBehaviour
     #region TRANSITION LOGIC
     private IEnumerator TransitionSequence()
     {
+        // Khi bắt đầu transition, ẩn ngay MREC để nhìn hiệu ứng đẹp hơn
+        if (AdsManager.Instance != null) AdsManager.Instance.HideMREC();
+
         if (panelTransition == null)
         {
             SwitchToPhase3State();
@@ -214,7 +250,9 @@ public class BoomChipManager : MonoBehaviour
         panelPhase2.SetActive(false);
         panelPhase3.SetActive(true);
         panelAnimation.SetActive(true);
-        ShowMRECByPhase();
+
+        currentPhase = GamePhase.Phase3;
+        ShowMRECByPhase(); // Sẽ gọi HideMREC() vì là Phase 3
     }
 
     private void SetStripsPos(float t)
@@ -275,7 +313,12 @@ public class BoomChipManager : MonoBehaviour
     {
         panelAnimation.SetActive(true);
         TextMeshProUGUI animText = panelAnimation.GetComponentInChildren<TextMeshProUGUI>();
-        if (animText != null) animText.text = (winnerID == 0 ? "PLAYER 1" : "PLAYER 2") + " GO FIRST!";
+
+        string key = (winnerID == 0) ? "PlayerName_P1" : "PlayerName_P2";
+        string defaultName = (winnerID == 0) ? "PLAYER 1" : "PLAYER 2";
+        string winnerName = PlayerPrefs.GetString(key, defaultName);
+
+        if (animText != null) animText.text = winnerName.ToUpper() + " GO FIRST!";
 
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX("SFX_StartTurn");
 
@@ -369,11 +412,12 @@ public class BoomChipManager : MonoBehaviour
         if (FirebaseManager.Instance != null) FirebaseManager.Instance.LogModeComplete(9);
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX("SFX_Win");
 
-        // Hiện MREC màn hình kết thúc
+        // HIỆN MREC khi kết thúc game (Win Panel)
         if (AdsManager.Instance != null) AdsManager.Instance.ShowMREC("is_show_mrec_complete_game");
 
         if (p1Crown != null) p1Crown.SetActive(winnerID == 1);
         if (p2Crown != null) p2Crown.SetActive(winnerID == 2);
+
         if (p1HitCounterText != null) p1HitCounterText.text = "x " + p1HitCount;
         if (p2HitCounterText != null) p2HitCounterText.text = "x " + p2HitCount;
     }
@@ -449,7 +493,28 @@ public class BoomChipManager : MonoBehaviour
         else SceneManager.LoadScene("SelectScene");
     }
 
-    public void OpenSetting() { if (panelSetting != null) panelSetting.SetActive(true); }
-    public void CloseSetting() { if (panelSetting != null) panelSetting.SetActive(false); }
+    public void OpenSetting()
+    {
+        if (panelSetting != null)
+        {
+            panelSetting.SetActive(true);
+            if (AdsManager.Instance != null) AdsManager.Instance.HideMREC(); // Tạm ẩn khi mở Setting
+        }
+    }
+
+    public void CloseSetting()
+    {
+        if (panelSetting != null)
+        {
+            panelSetting.SetActive(false);
+            // Hiện lại nếu đang ở Phase 1 hoặc Phase 2, hoặc WinPanel
+            if (currentPhase == GamePhase.Phase1 || currentPhase == GamePhase.Phase2 || panelWin.activeSelf)
+            {
+                ShowMRECByPhase();
+                if (panelWin.activeSelf && AdsManager.Instance != null)
+                    AdsManager.Instance.ShowMREC("is_show_mrec_complete_game");
+            }
+        }
+    }
     #endregion
 }
