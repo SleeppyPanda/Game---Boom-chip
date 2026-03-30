@@ -37,7 +37,6 @@ public class AdsManager : MonoBehaviour
     [Header("Network Error Popup (gán trong Editor)")]
     public GameObject networkErrorPanel;
     public UnityEngine.UI.Button networkRetryButton;
-    public UnityEngine.UI.Button networkCloseButton;
 
     private const int ADMOB_ERROR_NETWORK = 2;
     private Action _networkRetryAction;
@@ -101,8 +100,6 @@ public class AdsManager : MonoBehaviour
                 HideNetworkError();
                 retry?.Invoke();
             });
-        if (networkCloseButton != null)
-            networkCloseButton.onClick.AddListener(HideNetworkError);
 
         // 1. Khởi tạo AppsFlyer
         AppsFlyer.initSDK(appsFlyerDevKey, appId);

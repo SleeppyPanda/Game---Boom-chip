@@ -3,7 +3,9 @@ guid: ff8033401d2a4e245bada60a144cc447
 MonoImporter:
   externalObjects: {}
   serializedVersion: 2
-  defaultReferences: []
+  defaultReferences:
+  - networkErrorPanel: {fileID: 8636539164337732840, guid: b4675231cd3db3d47991c42c2d015b50, type: 3}
+  - networkRetryButton: {instanceID: 0}
   executionOrder: 0
   icon: {instanceID: 0}
   userData: 

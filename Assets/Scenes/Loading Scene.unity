@@ -702,6 +702,7 @@ MonoBehaviour:
   loadingScreen: {fileID: 1127331190}
   fillImage: {fileID: 855462021}
   sceneToLoad: SelectScene
+  loadSpeedMultiplier: 0.5
 --- !u!4 &1285503133
 Transform:
   m_ObjectHideFlags: 0
@@ -736,6 +737,8 @@ MonoBehaviour:
   adUnitIdRewarded: ca-app-pub-3940256099942544/5224354917
   adUnitIdAOA: ca-app-pub-3940256099942544/3419835294
   adUnitIdMREC: ca-app-pub-3940256099942544/6300978111
+  networkErrorPanel: {fileID: 0}
+  networkRetryButton: {fileID: 0}
 --- !u!1 &1879569193
 GameObject:
   m_ObjectHideFlags: 0
