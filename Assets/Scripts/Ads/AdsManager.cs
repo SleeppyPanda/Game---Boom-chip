@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 using GoogleMobileAds.Api;
 using System;
 using System.Collections.Generic;
@@ -7,7 +7,7 @@ using AppsFlyerSDK;
 using UnityEngine.SceneManagement;
 
 #if UNITY_ANDROID
-using Google.Play.Review; 
+using Google.Play.Review;
 #endif
 
 public class AdsManager : MonoBehaviour
@@ -22,13 +22,13 @@ public class AdsManager : MonoBehaviour
     public string adUnitIdBanner = "ca-app-pub-3940256099942544/6300978111";
     public string adUnitIdInter = "ca-app-pub-3940256099942544/1033173712";
     public string adUnitIdRewarded = "ca-app-pub-3940256099942544/5224354917";
-    public string adUnitIdAOA = "ca-app-pub-3940256099942544/3419835294";
+    public string adUnitIdAOA = "ca-app-pub-3940256099942544/9257395921";
     public string adUnitIdMREC = "ca-app-pub-3940256099942544/6300978111";
 
     private const string TEST_BANNER = "ca-app-pub-3940256099942544/6300978111";
     private const string TEST_INTER = "ca-app-pub-3940256099942544/1033173712";
     private const string TEST_REWARDED = "ca-app-pub-3940256099942544/5224354917";
-    private const string TEST_AOA = "ca-app-pub-3940256099942544/3419835294";
+    private const string TEST_AOA = "ca-app-pub-3940256099942544/9257395921";
     private const string TEST_MREC = "ca-app-pub-3940256099942544/6300978111";
 
     private const int ADMOB_ERROR_NETWORK = 2;
@@ -47,6 +47,9 @@ public class AdsManager : MonoBehaviour
     private int _bannerHeightDP = 60;
     private bool _isBannerLoaded = false;
     private bool _isMrecLoaded = false;
+    private bool _isAdMobInitialized = false;
+    private bool _isRemoteConfigReady = false;
+    private bool _hasPreloadedAds = false;
 
     void Awake()
     {
@@ -67,7 +70,6 @@ public class AdsManager : MonoBehaviour
             adUnitIdRewarded = TEST_REWARDED;
             adUnitIdAOA = TEST_AOA;
             adUnitIdMREC = TEST_MREC;
-            Debug.Log("<color=yellow>[AdsManager] Debug build detected → using TEST ad unit IDs</color>");
         }
     }
 
@@ -84,32 +86,38 @@ public class AdsManager : MonoBehaviour
 
     void Start()
     {
-        // 1. Khởi tạo AppsFlyer
         AppsFlyer.initSDK(appsFlyerDevKey, appId);
         AppsFlyer.startSDK();
 
-        // 2. Khởi tạo AdMob
+        // Khởi tạo AdMob sớm (song song với Firebase/RC)
+        // Chỉ preload ads khi CẢ AdMob init + RC đều sẵn sàng
         MobileAds.Initialize((InitializationStatus initStatus) =>
         {
-            StartCoroutine(LoadAdsAfterInit());
+            Debug.Log("<color=green>[AdsManager] AdMob Initialized</color>");
+            _isAdMobInitialized = true;
+            TryPreloadAllAds();
         });
     }
 
-    private IEnumerator LoadAdsAfterInit()
+    /// <summary>
+    /// Chỉ preload khi CẢ AdMob init VÀ Remote Config đều sẵn sàng.
+    /// </summary>
+    private void TryPreloadAllAds()
     {
-        yield return new WaitForSeconds(0.5f);
+        if (!_isAdMobInitialized || !_isRemoteConfigReady || _hasPreloadedAds) return;
+        _hasPreloadedAds = true;
+
+        Debug.Log("<color=green>[AdsManager] Both AdMob + RC ready → Preloading all ads</color>");
         LoadInterstitialAd();
         LoadRewardedAd();
-        LoadAppOpenAd();
-        PreloadBanner();
+        LoadAppOpenAd(() => ShowAppOpenAd(false));
+        PreloadBanner(() => ShowBanner());
         PreloadMREC();
     }
 
     #region NETWORK ERROR POPUP
     private void ShowNetworkError(Action retryAction)
     {
-        Debug.Log($"<color=yellow>[AdsManager] ShowNetworkError called. NetworkErrorUI.Instance = {(NetworkErrorUI.Instance != null ? "OK" : "NULL")}</color>");
-        // Ẩn ads native để không đè lên popup
         HideBanner();
         HideMREC();
         if (NetworkErrorUI.Instance != null)
@@ -122,10 +130,8 @@ public class AdsManager : MonoBehaviour
     {
         if (error == null) return false;
         int code = error.GetCode();
-        string message = error.GetMessage();
-        Debug.Log($"<color=orange>[AdsManager] Ad load failed: code={code}, message={message}</color>");
-        // Code 2 = network error (AdMob xác nhận)
-        // Code 0 = internal error (thường do mất mạng)
+        Debug.Log($"<color=orange>[AdsManager] Ad load failed: code={code}, message={error.GetMessage()}</color>");
+        // Code 2 = network error, Code 0 = internal error (thường do mất mạng)
         // Code 1 = invalid request, Code 3 = no fill → KHÔNG phải lỗi network
         return code == ADMOB_ERROR_NETWORK || code == 0;
     }
@@ -138,14 +144,14 @@ public class AdsManager : MonoBehaviour
 
     #region REMOTE CONFIG CALLBACK
     /// <summary>
-    /// Được gọi bởi FirebaseManager sau khi Remote Config fetch & activate thành công.
+    /// Được gọi bởi LoadingManager sau khi Remote Config fetch & activate thành công.
     /// </summary>
     public void OnRemoteConfigReady()
     {
+        _isRemoteConfigReady = true;
         AdEventTracker.LogFirstLoadingComplete();
-        ShowBanner();
         CheckShowRating();
-        ShowAppOpenAd(false);
+        TryPreloadAllAds();
     }
     #endregion
 
@@ -181,7 +187,7 @@ public class AdsManager : MonoBehaviour
     }
     #endregion
 
-    #region INTERSTITIAL (FIXED CRASH & DELAY)
+    #region INTERSTITIAL
     public void LoadInterstitialAd()
     {
         if (_interstitialAd != null) { _interstitialAd.Destroy(); _interstitialAd = null; }
@@ -292,18 +298,19 @@ public class AdsManager : MonoBehaviour
     #endregion
 
     #region APP OPEN ADS (AOA)
-    public void LoadAppOpenAd()
+    public void LoadAppOpenAd(Action onLoaded = null)
     {
         if (_appOpenAd != null) { _appOpenAd.Destroy(); _appOpenAd = null; }
         AppOpenAd.Load(adUnitIdAOA, CreateAdRequest(), (ad, error) => {
             if (error != null || ad == null)
             {
-                if (IsNetworkError(error)) ShowNetworkError(() => LoadAppOpenAd());
+                if (IsNetworkError(error)) ShowNetworkError(() => LoadAppOpenAd(onLoaded));
                 return;
             }
             _appOpenAd = ad;
             _aoaExpireTime = DateTime.Now.AddHours(4);
             _appOpenAd.OnAdPaid += (adValue) => SendRevenueToAll("AOA", adValue);
+            onLoaded?.Invoke();
         });
     }
 
@@ -313,22 +320,16 @@ public class AdsManager : MonoBehaviour
 
         if (isResume)
         {
-            // KỊCH BẢN RESUME: Kiểm tra show_resume_ads
             if (!AdEventTracker.GetBool(AdEventTracker.KEY_SHOW_RESUME_ADS)) return;
         }
         else
         {
-            // KỊCH BẢN MỞ APP (AOA): Kiểm tra tổng show_open_ads
             if (!AdEventTracker.GetBool(AdEventTracker.KEY_SHOW_OPEN_ADS)) return;
 
-            // KIỂM TRA LẦN ĐẦU (Kịch bản: Không show lần đầu tiên khi vào ứng dụng)
             if (_isFirstTimeTruly)
             {
-                // Kiểm tra xem config có cho phép show ở lần đầu không (thường là false theo yêu cầu của bạn)
                 if (!AdEventTracker.GetBool(AdEventTracker.KEY_SHOW_OPEN_ADS_FIRST))
                 {
-                    Debug.Log("<color=cyan>[AOA] First time open detected - Skipping ad per config.</color>");
-                    // Đánh dấu đã qua lần đầu và LƯU LẠI ngay
                     PlayerPrefs.SetInt("Truly_First_Open_Completed", 1);
                     PlayerPrefs.Save();
                     _isFirstTimeTruly = false;
@@ -341,7 +342,6 @@ public class AdsManager : MonoBehaviour
         {
             _appOpenAd.OnAdFullScreenContentOpened += () => {
                 _isAdShowing = true;
-                // Ẩn Banner/MREC để tránh lỗi hiển thị đè
                 HideBanner();
                 HideMREC();
             };
@@ -349,7 +349,6 @@ public class AdsManager : MonoBehaviour
             _appOpenAd.OnAdFullScreenContentClosed += () => {
                 _isAdShowing = false;
                 LoadAppOpenAd();
-                // Show lại banner sau khi đóng AOA
                 ShowBanner();
             };
 
@@ -369,10 +368,7 @@ public class AdsManager : MonoBehaviour
 
     #region BANNER & MREC
 
-    /// <summary>
-    /// Preload banner khi khởi động — load sẵn và ẩn, chờ ShowBanner() để hiển thị ngay.
-    /// </summary>
-    private void PreloadBanner()
+    private void PreloadBanner(Action onLoaded = null)
     {
         if (_bannerView != null) { _bannerView.Destroy(); _bannerView = null; }
         _isBannerLoaded = false;
@@ -382,18 +378,18 @@ public class AdsManager : MonoBehaviour
         _bannerView = new BannerView(adUnitIdBanner, adaptiveSize, AdPosition.Bottom);
 
         _bannerView.OnAdPaid += (adValue) => SendRevenueToAll("BANNER", adValue);
-        _bannerView.OnBannerAdLoaded += () => { _isBannerLoaded = true; };
+        _bannerView.OnBannerAdLoaded += () => {
+            _isBannerLoaded = true;
+            onLoaded?.Invoke();
+        };
         _bannerView.OnBannerAdLoadFailed += (LoadAdError error) => {
             _isBannerLoaded = false;
-            if (IsNetworkError(error)) ShowNetworkError(() => PreloadBanner());
+            if (IsNetworkError(error)) ShowNetworkError(() => PreloadBanner(onLoaded));
         };
         _bannerView.LoadAd(CreateAdRequest());
         _bannerView.Hide();
     }
 
-    /// <summary>
-    /// Preload MREC khi khởi động — load sẵn và ẩn, chờ ShowMREC() để hiển thị ngay.
-    /// </summary>
     private void PreloadMREC()
     {
         if (_mrecView != null) { _mrecView.Destroy(); _mrecView = null; }
@@ -423,12 +419,10 @@ public class AdsManager : MonoBehaviour
     {
         if (!AdEventTracker.GetBool(AdEventTracker.KEY_SHOW_BANNER)) { HideBanner(); return; }
 
-        // Nếu banner đã preload sẵn → hiển thị ngay, không cần chờ load
         if (_isBannerLoaded && _bannerView != null)
         {
             _bannerView.Show();
 
-            // Lên lịch reload collapsible banner
             float reloadTime = AdEventTracker.GetFloat(AdEventTracker.KEY_TIME_RELOAD_COLLAP, 10f);
             if (reloadTime > 0)
             {
@@ -476,7 +470,6 @@ public class AdsManager : MonoBehaviour
         yield return new WaitForSeconds(seconds);
         if (AdEventTracker.GetBool(AdEventTracker.KEY_SHOW_BANNER) && !_isAdShowing)
         {
-            // Destroy banner cũ để load mới với collapsible format
             _isBannerLoaded = false;
             if (_bannerView != null) { _bannerView.Destroy(); _bannerView = null; }
             ShowBanner();
@@ -489,7 +482,6 @@ public class AdsManager : MonoBehaviour
 
         ShowBanner();
 
-        // Nếu MREC đã preload sẵn → hiển thị ngay
         if (_isMrecLoaded && _mrecView != null)
         {
             _mrecView.Show();
