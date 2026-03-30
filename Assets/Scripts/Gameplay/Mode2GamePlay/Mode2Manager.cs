@@ -19,6 +19,7 @@ public class Mode2Manager : MonoBehaviour
     public GameObject player2Cover;
     public TextMeshProUGUI totalScoreText; // Text hiển thị dạng "Score: X"
     public GameObject winPanel;
+    public GameObject settingPanel;
 
     [Header("Win Effects & Objects")]
     public GameObject player1Crown;
@@ -206,7 +207,7 @@ public class Mode2Manager : MonoBehaviour
     }
 
     public void OnNextLevelClick() { currentLevelCount = Mathf.Min(currentLevelCount + 1, 7); StartNewRound(); }
-    public void OnBackToMode1Click() { UnityEngine.SceneManagement.SceneManager.LoadScene("Mode1SceneName"); }
+    public void OnBackToMode1Click() { UnityEngine.SceneManagement.SceneManager.LoadScene("SelectScene"); }
 
     void EnsureNoMatch(List<int> list, List<int> reference)
     {
@@ -241,5 +242,32 @@ public class Mode2Manager : MonoBehaviour
     {
         player1Cover.SetActive(currentTurn != 1);
         player2Cover.SetActive(currentTurn != 2);
+    }
+    public void OnSettingClick()
+    {
+        if (settingPanel != null)
+        {
+            // Bật panel setting
+            settingPanel.SetActive(true);
+
+            // Nếu muốn dùng hiệu ứng Tween cho đẹp (Scale từ 0 lên 1)
+            settingPanel.transform.localScale = Vector3.zero;
+            settingPanel.transform.DOScale(Vector3.one, 0.3f).SetEase(Ease.OutBack);
+
+            // (Tùy chọn) Tạm dừng game nếu cần
+            // Time.timeScale = 0; 
+        }
+    }
+
+    // Hàm để đóng setting (gắn vào nút X bên trong Setting Panel)
+    public void OnCloseSettingClick()
+    {
+        if (settingPanel != null)
+        {
+            settingPanel.transform.DOScale(Vector3.zero, 0.2f).OnComplete(() => {
+                settingPanel.SetActive(false);
+                // Time.timeScale = 1;
+            });
+        }
     }
 }

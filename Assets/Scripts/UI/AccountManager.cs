@@ -69,12 +69,30 @@ public class AccountManager : MonoBehaviour
 
         nameInputField.interactable = true;
         nameInputField.ActivateInputField();
+
+        // Xóa các listener cũ để tránh trùng lặp
         nameInputField.onEndEdit.RemoveAllListeners();
-        nameInputField.onEndEdit.AddListener(delegate {
-            nameInputField.interactable = false;
-            PlayerPrefs.SetString(NAME_KEY, nameInputField.text);
+
+        // Thêm listener mới
+        nameInputField.onEndEdit.AddListener((val) => {
+            // Thực hiện lưu dữ liệu ngay lập tức
+            PlayerPrefs.SetString(NAME_KEY, val);
             PlayerPrefs.Save();
+            Debug.Log("Đã lưu tên mới: " + val);
+
+            // Sử dụng một mẹo nhỏ: Tắt interactable ở frame tiếp theo để tránh lỗi Selectable
+            StartCoroutine(DisableInputFieldRoutine());
         });
+    }
+
+    // Coroutine hỗ trợ tắt InputField an toàn
+    private System.Collections.IEnumerator DisableInputFieldRoutine()
+    {
+        yield return null; // Chờ 1 frame để EventSystem hoàn tất Deselect
+        if (nameInputField != null)
+        {
+            nameInputField.interactable = false;
+        }
     }
 
     // --- KIỂM TRA TRẠNG THÁI UNLOCK ---
