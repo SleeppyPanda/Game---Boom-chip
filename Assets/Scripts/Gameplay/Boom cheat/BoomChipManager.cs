@@ -26,7 +26,7 @@ public class BoomChipManager : MonoBehaviour
     public GameObject tutorialP1;
     public GameObject tutorialP2;
     public GameObject tutorialP3;
-    public GameObject handPointer; // Dùng chung 1 cái hoặc mỗi Group 1 cái tùy bạn
+    public GameObject handPointer;
 
 
     [Header("--- THÔNG TIN NGƯỜI CHƠI (Đã đồng bộ) ---")]
@@ -70,6 +70,8 @@ public class BoomChipManager : MonoBehaviour
     public TextMeshProUGUI p2HitCounterText;
     public Image p1WinBombImage;
     public Image p2WinBombImage;
+    public GameObject panelFirework; // Thêm: Panel chứa hiệu ứng pháo hoa
+    public string winClapSFX = "SFX_Clap"; // Thêm: Tên file âm thanh vỗ tay
 
     [Header("Settings & Sprites")]
     public GameObject panelSetting;
@@ -84,7 +86,6 @@ public class BoomChipManager : MonoBehaviour
     public string p2HitSFX;
     public string globalMissSFX;
 
-    // Dữ liệu bom đã được đảo để phục vụ Phase 3
     private List<int> board1TargetBombs = new List<int>();
     private List<int> board2TargetBombs = new List<int>();
     private int p1HitCount = 0;
@@ -115,6 +116,8 @@ public class BoomChipManager : MonoBehaviour
         panelPhase3.SetActive(false);
         panelAnimation.SetActive(false);
         panelWin.SetActive(false);
+        if (panelFirework != null) panelFirework.SetActive(false); // Đảm bảo pháo hoa tắt lúc đầu
+
         if (panelSetting != null) panelSetting.SetActive(false);
         if (panelTransition != null)
         {
@@ -244,12 +247,10 @@ public class BoomChipManager : MonoBehaviour
 
         panelTransition.SetActive(true);
 
-        // ĐẢM BẢO RESET VỀ 0 TRƯỚC KHI BAY VÀO
         SetStripsPos(0);
         SetObjectsPos(0);
         if (centerLogo != null) { centerLogo.transform.localScale = Vector3.zero; centerLogo.alpha = 0; }
 
-        // Logic bay vào che màn hình
         yield return StartCoroutine(AnimateStrips(0, 1, 0.5f));
         yield return StartCoroutine(AnimateSideElements(0, 1, 0.5f));
 
@@ -258,7 +259,6 @@ public class BoomChipManager : MonoBehaviour
         SwitchToPhase3State();
         yield return new WaitForSeconds(1.0f);
 
-        // Logic bay ra (giữ nguyên như cũ của bạn)
         StartCoroutine(AnimateSideElements(1, 0, 0.5f));
         if (centerLogo != null) { centerLogo.transform.localScale = Vector3.zero; centerLogo.alpha = 0; }
 
@@ -324,10 +324,8 @@ public class BoomChipManager : MonoBehaviour
 
     private IEnumerator InitialOpenSequence()
     {
-        // Đợi 1-2 giây tùy ý để người chơi kịp nhìn thấy logo/màn hình chờ
         yield return new WaitForSeconds(1.5f);
 
-        // Tái sử dụng logic bay ra của bạn (từ 1 về 0)
         StartCoroutine(AnimateSideElements(1, 0, 0.5f));
         if (centerLogo != null) { centerLogo.transform.localScale = Vector3.zero; centerLogo.alpha = 0; }
 
@@ -345,7 +343,6 @@ public class BoomChipManager : MonoBehaviour
         currentPhase = GamePhase.Phase3;
         isP1Turn = (winnerID == 0);
 
-        // ĐẢO BOM: Bảng 1 chứa bom P2 đặt, Bảng 2 chứa bom P1 đặt
         board1TargetBombs = new List<int>(selectionLogic.p2SelectedTiles);
         board2TargetBombs = new List<int>(selectionLogic.p1SelectedTiles);
 
@@ -376,20 +373,16 @@ public class BoomChipManager : MonoBehaviour
     {
         if (currentPhase != GamePhase.Phase3 || panelWin.activeSelf) return;
 
-        // Bảng của ai người nấy mới được click (P1 click bảng P1, P2 click bảng P2)
         if (isP1Turn && boardOwnerID != 1) return;
         if (!isP1Turn && boardOwnerID != 2) return;
 
-        // Lấy danh sách bom dựa trên boardID (vị trí bảng)
         List<int> targetList = (boardID == 1) ? board1TargetBombs : board2TargetBombs;
 
         if (targetList.Contains(tileIndex))
         {
-            // VISUAL: Sân của ai hiện skin người đó (Chủ nhà)
             Sprite ownerSkin = (boardOwnerID == 1) ? p1SkinSprite : p2SkinSprite;
             tile.SetVisual(ownerSkin);
 
-            // Cộng điểm cho chủ sân (vì họ "tìm thấy" bom trên sân mình)
             if (boardOwnerID == 1) p1HitCount++; else p2HitCount++;
             UpdateHeartsUI(boardOwnerID);
 
@@ -457,14 +450,21 @@ public class BoomChipManager : MonoBehaviour
 
         if (winner != 0)
         {
+            // 1. Chuyển Phase để chặn click tiếp
             currentPhase = GamePhase.Animation;
+
+            // 2. CHẠY NGAY LẬP TỨC: Hiệu ứng pháo hoa
+            if (panelFirework != null) panelFirework.SetActive(true);
+
+            // 3. Gọi Coroutine để hiện Win Panel sau 1 giây
             StartCoroutine(DelayShowWinScreen(winner));
         }
     }
 
     private IEnumerator DelayShowWinScreen(int winnerID)
     {
-        yield return new WaitForSeconds(1.2f);
+        // Đợi đúng 1 giây sau khi pháo hoa nổ
+        yield return new WaitForSeconds(1.0f);
         ShowWinScreen(winnerID);
     }
 
@@ -472,12 +472,15 @@ public class BoomChipManager : MonoBehaviour
     {
         AccountManager.SetWinResult(winnerID);
 
+        // Kích hoạt bảng kết quả
         panelWin.SetActive(true);
+
         if (FirebaseManager.Instance != null) FirebaseManager.Instance.LogModeComplete(9);
-        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX("SFX_Win");
+        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX("Win");
 
         if (AdsManager.Instance != null) AdsManager.Instance.ShowMREC("is_show_mrec_complete_game");
 
+        // Cập nhật UI thắng cuộc
         if (p1Crown != null) p1Crown.SetActive(winnerID == 1);
         if (p2Crown != null) p2Crown.SetActive(winnerID == 2);
 
@@ -526,7 +529,6 @@ public class BoomChipManager : MonoBehaviour
         }
         else if (currentPhase == GamePhase.Phase3)
         {
-            // Ở Phase 3, dùng boardOwnerID và boardID để xử lý turn
             ExecuteTurn(tileIndex, tile, tile.ownerID, tile.boardID);
         }
     }
@@ -542,6 +544,8 @@ public class BoomChipManager : MonoBehaviour
 
     public void Rematch()
     {
+        if (panelFirework != null) panelFirework.SetActive(false); // Đảm bảo tắt pháo hoa khi rematch
+
         if (AdsManager.Instance != null)
         {
             AdsManager.Instance.HideMREC();
@@ -554,6 +558,8 @@ public class BoomChipManager : MonoBehaviour
 
     public void GoToSelection()
     {
+        if (panelFirework != null) panelFirework.SetActive(false); // Đảm bảo tắt pháo hoa khi thoát
+
         if (AdsManager.Instance != null)
         {
             AdsManager.Instance.HideMREC();
@@ -610,7 +616,6 @@ public class BoomChipManager : MonoBehaviour
             currentActiveTutorial = targetTutorial;
             isShowingTutorial = true;
 
-            // CHỈ CHẠY BÀN TAY NẾU KHÔNG PHẢI PHASE 3
             if (phaseNumber != 3)
             {
                 Transform hand = targetTutorial.transform.Find("HandPointer");
@@ -623,7 +628,6 @@ public class BoomChipManager : MonoBehaviour
             }
             else
             {
-                // Nếu là Phase 3, đảm bảo ẩn bàn tay đi nếu lỡ tay để trong Prefab
                 Transform hand = targetTutorial.transform.Find("HandPointer");
                 if (hand != null) hand.gameObject.SetActive(false);
             }
@@ -632,7 +636,6 @@ public class BoomChipManager : MonoBehaviour
 
     void Update()
     {
-        // Chỉ cần đang hiện tutorial và người chơi chạm màn hình là tắt ngay
         if (isShowingTutorial && Input.GetMouseButtonDown(0))
         {
             CloseCurrentTutorial();
@@ -643,7 +646,6 @@ public class BoomChipManager : MonoBehaviour
     {
         if (currentActiveTutorial != null)
         {
-            // Lưu lại là đã xem Phase này
             string key = "FirstTime_Boom_Phase" + (currentActiveTutorial == tutorialP1 ? 1 : (currentActiveTutorial == tutorialP2 ? 2 : 3));
             PlayerPrefs.SetInt(key, 1);
             PlayerPrefs.Save();
@@ -654,25 +656,21 @@ public class BoomChipManager : MonoBehaviour
         }
     }
 
-    // Hàm này để gán vào Sự kiện OnClick của nút "?" trên màn hình
     public void ReplayTutorial()
     {
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX("SFX_Click");
 
-        int phaseToShow = 1; // Mặc định là Phase 1
+        int phaseToShow = 1;
 
-        // Kiểm tra xem người chơi đang thực sự ở Phase nào
         if (currentPhase == GamePhase.Phase1) phaseToShow = 1;
         else if (currentPhase == GamePhase.Phase2) phaseToShow = 2;
         else if (currentPhase == GamePhase.Phase3) phaseToShow = 3;
 
-        // Gọi hàm hiện Tutorial nhưng bỏ qua kiểm tra PlayerPrefs
         ForceShowTutorial(phaseToShow);
     }
 
     private void ForceShowTutorial(int phaseNumber)
     {
-        // Tắt các cái cũ đang hiện (nếu có)
         if (tutorialP1) tutorialP1.SetActive(false);
         if (tutorialP2) tutorialP2.SetActive(false);
         if (tutorialP3) tutorialP3.SetActive(false);
@@ -688,7 +686,6 @@ public class BoomChipManager : MonoBehaviour
             currentActiveTutorial = targetTutorial;
             isShowingTutorial = true;
 
-            // Chạy lại hiệu ứng bàn tay (trừ Phase 3 như bạn muốn)
             if (phaseNumber != 3)
             {
                 Transform hand = targetTutorial.transform.Find("HandPointer");

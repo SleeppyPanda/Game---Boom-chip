@@ -26,6 +26,11 @@ public class Mode2Manager : MonoBehaviour
     public GameObject winPanel;
     public GameObject settingPanel;
 
+    [Header("Transition Strips (New)")]
+    public Transform mainCanvas;
+    public GameObject transitionPrefab; // Kéo Prefab Transition vào đây trong Inspector
+    private GameObject currentTransitionObj;
+
     [Header("Tutorial System")]
     public GameObject tutorialStep1;
     public GameObject tutorialStep2;
@@ -36,7 +41,7 @@ public class Mode2Manager : MonoBehaviour
     public GameObject player1Crown;
     public GameObject player2Crown;
     public ParticleSystem fireworkEffect;
-    public float delayBeforeWinPanel = 1.2f;
+    public float delayBeforeWinPanel = 2.0f;
 
     [Header("Dữ liệu chai")]
     public List<BottleData> masterBottleList;
@@ -70,25 +75,18 @@ public class Mode2Manager : MonoBehaviour
     private GameObject firstSelected;
     private bool isGameOver = false;
     private bool isProcessingTurn = false;
-
     private Color numberColor = Color.black;
 
-    void Awake() => Instance = this;
+    void Awake()
+    {
+        Instance = this;
+    }
 
     void Start()
     {
         UpdateTurnUI();
         isTutorialActive = (PlayerPrefs.GetInt("Mode2TutorialDone", 0) == 0);
-
-        // Nếu đã xong tutorial, random số lượng chai ngay từ đầu
-        if (!isTutorialActive)
-        {
-            currentLevelCount = Random.Range(4, 10); // Random từ 3 đến 6 chai
-        }
-        else
-        {
-            currentLevelCount = 3; // Mặc định 3 chai cho tutorial
-        }
+        currentLevelCount = isTutorialActive ? 3 : Random.Range(4, 10);
 
         StartNewRound();
     }
@@ -96,7 +94,6 @@ public class Mode2Manager : MonoBehaviour
     public void StartNewRound()
     {
         StopAllCoroutines();
-        DOTween.KillAll();
         isGameOver = false;
         isProcessingTurn = true;
         winPanel.SetActive(false);
@@ -116,8 +113,48 @@ public class Mode2Manager : MonoBehaviour
         isPosCorrect.Clear();
         firstSelected = null;
 
+        if (transitionPrefab != null)
+        {
+            // SỬA LẠI DÒNG DƯỚI ĐÂY: Thay transform.parent thành mainCanvas
+            currentTransitionObj = Instantiate(transitionPrefab, mainCanvas);
+            currentTransitionObj.transform.SetAsLastSibling(); // Ép lên trên cùng layer
+        }
+
         StartCoroutine(MainGameFlow());
     }
+
+    #region TRANSITION LOGIC (Updated to use CoreUiTransition script)
+    private IEnumerator RunStartTransition()
+    {
+        if (currentTransitionObj == null) yield break;
+
+        CanvasGroup cg = currentTransitionObj.GetComponent<CanvasGroup>();
+        if (cg != null) { cg.blocksRaycasts = true; }
+
+        // Prefab khi sinh ra đã tự động gọi PlayInAnimation() nhờ biến playOnStart trong CoreUiTransition.
+        // Chờ 2 giây để người chơi nhìn thấy UI (Bao gồm thời gian bay vào và thời gian đứng im hiển thị)
+        yield return new WaitForSeconds(2.0f);
+
+        // Lấy script CoreUiTransition từ object để gọi lệnh bay ra
+        CoreUiTransition transScript = currentTransitionObj.GetComponent<CoreUiTransition>();
+
+        if (transScript != null)
+        {
+            // Gọi hàm bay ra. Khi bay xong, script kia sẽ tự động gọi Destroy(gameObject)
+            transScript.PlayOutAnimation();
+        }
+        else
+        {
+            // Đề phòng trường hợp bạn quên gắn script vào prefab
+            Destroy(currentTransitionObj);
+        }
+
+        // QUAN TRỌNG: Chờ cho đến khi object bị Destroy hoàn toàn thì mới cho game chạy tiếp
+        yield return new WaitUntil(() => currentTransitionObj == null);
+
+        Debug.Log("<color=green>[Mode2Manager]</color> Transition đã mở xong, bắt đầu chơi!");
+    }
+    #endregion
 
     IEnumerator MainGameFlow()
     {
@@ -130,8 +167,17 @@ public class Mode2Manager : MonoBehaviour
         yield return new WaitForEndOfFrame();
         SyncTopShelfSize();
 
+        if (currentTransitionObj != null)
+        {
+            // Phải dùng yield return để TOÀN BỘ luồng game phía sau dừng lại
+            yield return StartCoroutine(RunStartTransition());
+        }
+        // -------------------
+
+        // Chỉ khi Transition ĐÃ MỞ XONG và BỊ HỦY, code phía dưới mới chạy
         if (curtainRect != null)
         {
+            curtainRect.gameObject.SetActive(true);
             curtainRect.sizeDelta = new Vector2(targetWidth, curtainRect.sizeDelta.y);
             curtainRect.gameObject.SetActive(true);
             curtainRect.anchoredPosition = new Vector2(0f, curtainRect.anchoredPosition.y);
@@ -141,15 +187,12 @@ public class Mode2Manager : MonoBehaviour
         ShuffleList(availableIDs);
         List<int> selectedIDs = availableIDs.Take(currentLevelCount).ToList();
 
-        // Bước 1: Khởi tạo - Cả trên và dưới đều hiện ảnh có màu để người chơi ghi nhớ
         for (int i = 0; i < currentLevelCount; i++)
         {
             int bID = selectedIDs[i];
             var bottleData = masterBottleList.Find(x => x.bottleID == bID);
-
             isPosCorrect.Add(false);
 
-            // Khởi tạo chai dưới (Ảnh màu)
             GameObject bBottom = Instantiate(bottleBottomPrefab, bottomShelf);
             bBottom.GetComponent<Image>().sprite = bottleData.bottleSprite;
             BottleItem bottomItem = bBottom.GetComponent<BottleItem>() ?? bBottom.AddComponent<BottleItem>();
@@ -157,7 +200,6 @@ public class Mode2Manager : MonoBehaviour
             bottomBottles.Add(bBottom);
             SetupBottleRect(bBottom.GetComponent<RectTransform>());
 
-            // Khởi tạo chai trên (Ảnh màu)
             GameObject bTop = Instantiate(bottleTopPrefab, topShelf);
             bTop.GetComponent<Image>().sprite = bottleData.bottleSprite;
             BottleItem topItem = bTop.GetComponent<BottleItem>() ?? bTop.AddComponent<BottleItem>();
@@ -177,7 +219,6 @@ public class Mode2Manager : MonoBehaviour
 
         ToggleLayouts(false);
 
-        // Bước 2: Shuffle kệ dưới và CHUYỂN SANG ẢNH XÁM
         yield return StartCoroutine(FastShuffleRoutine(bottomBottles));
         foreach (var b in bottomBottles)
         {
@@ -186,7 +227,6 @@ public class Mode2Manager : MonoBehaviour
         }
         bottomBottles = bottomBottles.OrderBy(go => go.transform.localPosition.x).ToList();
 
-        // Bước 3: Shuffle kệ trên
         yield return StartCoroutine(FastShuffleRoutine(topBottles));
         foreach (var b in topBottles) b.GetComponent<BottleController>()?.InactiveUpperLand();
         topBottles = topBottles.OrderBy(go => go.transform.localPosition.x).ToList();
@@ -204,18 +244,6 @@ public class Mode2Manager : MonoBehaviour
         topBottles.ForEach(b => b.GetComponent<Button>().interactable = true);
         isProcessingTurn = false;
 
-        if (curtainRect != null)
-        {
-            float canvasWidth = curtainRect.GetComponentInParent<Canvas>().GetComponent<RectTransform>().rect.width;
-            float endX = -((canvasWidth / 2) + (curtainRect.sizeDelta.x / 2) + 200f);
-            yield return curtainRect.DOAnchorPosX(endX, curtainMoveDuration).SetEase(Ease.InQuad).WaitForCompletion();
-            curtainRect.gameObject.SetActive(false);
-        }
-
-        topBottles.ForEach(b => b.GetComponent<Button>().interactable = true);
-        isProcessingTurn = false;
-
-        // --- THÊM LOGIC TUTORIAL VÀO ĐÂY ---
         if (isTutorialActive && tutorialStep1 != null)
         {
             tutorialStep1.SetActive(true);
@@ -258,7 +286,6 @@ public class Mode2Manager : MonoBehaviour
 
             bool currentlyCorrect = (topID == bottomID);
 
-            // Logic thay đổi ảnh: Đúng hiện màu, sai hiện xám
             if (isPosCorrect[i] != currentlyCorrect)
             {
                 isPosCorrect[i] = currentlyCorrect;
@@ -266,7 +293,6 @@ public class Mode2Manager : MonoBehaviour
 
                 if (currentlyCorrect)
                 {
-                    // Lấy lại ảnh màu từ master data dựa trên ID
                     var data = masterBottleList.Find(x => x.bottleID == topID);
                     targetSprite = data != null ? data.bottleSprite : grayBottleSprite;
                     hasCorrected = true;
@@ -277,7 +303,6 @@ public class Mode2Manager : MonoBehaviour
                     targetSprite = grayBottleSprite;
                 }
 
-                // Cập nhật hiệu ứng và sprite
                 bottomBottles[i].GetComponent<BottleController>()?.PlayLowerSmoke(targetSprite);
                 bottomBottles[i].GetComponent<Image>().sprite = targetSprite;
             }
@@ -290,29 +315,22 @@ public class Mode2Manager : MonoBehaviour
         else
             StartCoroutine(WaitAndHandleTurn(hasCorrected));
 
-        if (isTutorialActive)
+        if (isTutorialActive && hasCorrected)
         {
-            isTutorialActive = false; // Tắt trạng thái tutorial
-            PlayerPrefs.SetInt("Mode2TutorialDone", 1); // Lưu lại đã hoàn thành
+            isTutorialActive = false;
+            PlayerPrefs.SetInt("Mode2TutorialDone", 1);
             PlayerPrefs.Save();
 
             if (tutorialWinTip)
             {
                 tutorialWinTip.SetActive(true);
-                // Thông báo này sẽ tự ẩn sau 4 giây
                 DOVirtual.DelayedCall(4f, () => {
                     if (tutorialWinTip != null) tutorialWinTip.SetActive(false);
                 });
             }
         }
-
-        if (!isPosCorrect.Contains(false))
-            StartCoroutine(WinSequence());
-        else
-            StartCoroutine(WaitAndHandleTurn(hasCorrected));
     }
 
-    // Hàm hiệu ứng bàn tay nhấp nhô
     private void AnimateHand(GameObject group)
     {
         Transform hand = group.transform.Find("HandPointer");
@@ -353,12 +371,12 @@ public class Mode2Manager : MonoBehaviour
     void OnBottleClick(GameObject clickedBottle)
     {
         if (isGameOver || isProcessingTurn) return;
+
         if (firstSelected == null)
         {
             firstSelected = clickedBottle;
             firstSelected.transform.DOLocalMoveY(35f, 0.2f).SetRelative(true);
 
-            // Chuyển sang bước 2
             if (isTutorialActive)
             {
                 if (tutorialStep1) tutorialStep1.SetActive(false);
@@ -374,7 +392,6 @@ public class Mode2Manager : MonoBehaviour
             firstSelected.transform.DOLocalMoveY(-35f, 0.2f).SetRelative(true);
             firstSelected = null;
 
-            // Nếu bỏ chọn, quay lại bước 1
             if (isTutorialActive)
             {
                 if (tutorialStep1) tutorialStep1.SetActive(true);
@@ -384,7 +401,6 @@ public class Mode2Manager : MonoBehaviour
         else
         {
             isProcessingTurn = true;
-            // Tắt Step 2 khi bắt đầu swap
             if (isTutorialActive && tutorialStep2) tutorialStep2.SetActive(false);
 
             GameObject secondSelected = clickedBottle;
@@ -446,10 +462,15 @@ public class Mode2Manager : MonoBehaviour
     {
         isGameOver = true;
         if (fireworkEffect != null) fireworkEffect.Play();
+        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX("Win");
+
         yield return new WaitForSeconds(delayBeforeWinPanel);
+
         winPanel.SetActive(true);
         player1Crown.SetActive(currentTurn == 1);
         player2Crown.SetActive(currentTurn == 2);
+
+        if (AdsManager.Instance != null) AdsManager.Instance.ShowMREC("is_show_mrec_complete_game");
     }
 
     IEnumerator WaitAndHandleTurn(bool keep)
@@ -480,67 +501,66 @@ public class Mode2Manager : MonoBehaviour
 
     void UpdateShelfSize(float w)
     {
-        // 1. Cố định chiều rộng tối đa theo yêu cầu của bạn
         float maxShelfWidth = 1080f;
-
-        // 2. Chiều rộng thực tế của kệ gỗ (Visual) không được vượt quá 1080
         float targetWidth = Mathf.Min(w, maxShelfWidth);
 
-        // 3. Cập nhật kích thước khung kệ gỗ
         if (topShelfVisual) topShelfVisual.sizeDelta = new Vector2(targetWidth, topShelfVisual.sizeDelta.y);
         if (bottomShelfVisual) bottomShelfVisual.sizeDelta = new Vector2(targetWidth, bottomShelfVisual.sizeDelta.y);
 
-        // 4. Tính toán tỉ lệ thu nhỏ nếu tổng độ rộng chai vượt quá 1080
         float requiredScale = 1f;
-        if (w > maxShelfWidth)
-        {
-            requiredScale = maxShelfWidth / w;
-        }
+        if (w > maxShelfWidth) requiredScale = maxShelfWidth / w;
 
-        // 5. Áp dụng Scale cho Container
         topShelf.localScale = new Vector3(requiredScale, requiredScale, 1f);
         bottomShelf.localScale = new Vector3(requiredScale, requiredScale, 1f);
 
-        // Cập nhật SizeDelta của Container để HorizontalLayoutGroup căn giữa đúng
         if (topShelf is RectTransform rt) rt.sizeDelta = new Vector2(w, rt.sizeDelta.y);
         if (bottomShelf is RectTransform rb) rb.sizeDelta = new Vector2(w, rb.sizeDelta.y);
 
-        // 6. ĐIỀU CHỈNH VỊ TRÍ Y ĐỂ CHAI CHẠM MẶT KỆ
-        // Giả sử chiều cao Prefab chai của bạn là khoảng 150-200 đơn vị.
-        // Khi scale nhỏ lại, chúng ta cần hạ thấp trục Y xuống.
-
-        float bottleBaseHeight = 160f; // Thay số này bằng chiều cao thực tế của Prefab chai
+        float bottleBaseHeight = 160f;
         float yOffset = (bottleBaseHeight * (1f - requiredScale)) / 2f;
 
-        // Áp dụng vị trí Y cho Container để kéo toàn bộ hàng chai xuống
-        // Nếu Container của bạn đang ở Pos Y = 0, thì trừ đi yOffset
         topShelf.localPosition = new Vector3(topShelf.localPosition.x, -yOffset, 0f);
         bottomShelf.localPosition = new Vector3(bottomShelf.localPosition.x, -yOffset, 0f);
     }
 
     public void OnNextLevelClick()
     {
-        // Random số lượng chai từ 3 đến 6 (hoặc 7 tùy bạn)
-        currentLevelCount = Random.Range(4, 10);
-        StartNewRound();
+        if (AdsManager.Instance != null)
+        {
+            AdsManager.Instance.HideMREC();
+            AdsManager.Instance.ShowInterstitialWithDelay("is_show_inter_retry", () => {
+                currentLevelCount = Random.Range(4, 10);
+                StartNewRound();
+            }, 0.3f);
+        }
+        else
+        {
+            currentLevelCount = Random.Range(4, 10);
+            StartNewRound();
+        }
     }
-    public void OnBackToMode1Click() => SceneManager.LoadScene("SelectScene");
+
+    public void OnBackToMode1Click()
+    {
+        if (AdsManager.Instance != null)
+        {
+            AdsManager.Instance.HideMREC();
+            AdsManager.Instance.ShowInterstitialWithDelay("is_show_inter_back_home", () => {
+                SceneManager.LoadScene("SelectScene");
+            }, 0.3f);
+        }
+        else SceneManager.LoadScene("SelectScene");
+    }
+
     public void OnSettingClick() => settingPanel.SetActive(true);
     public void OnCloseSettingClick() => settingPanel.SetActive(false);
-    // Thêm hàm này vào trong class Mode2Manager
+
     private void PlayBounceEffect(GameObject bottle)
     {
         if (bottle == null) return;
-
-        // Hiệu ứng nẩy lên: Di chuyển lên 20 đơn vị rồi rơi về vị trí cũ với độ đàn hồi (Elastic/Back)
-        // Sau đó co giãn nhẹ (Scale) để tạo cảm giác mềm mại
         Sequence bounceSeq = DOTween.Sequence();
-
-        // Nẩy lên và rơi xuống
         bounceSeq.Append(bottle.transform.DOLocalMoveY(20f, 0.3f).SetRelative(true).SetEase(Ease.OutQuad));
         bounceSeq.Append(bottle.transform.DOLocalMoveY(-20f, 0.5f).SetRelative(true).SetEase(Ease.OutBounce));
-
-        // Co giãn nhẹ
         bounceSeq.Join(bottle.transform.DOScale(new Vector3(1.1f, 0.9f, 1f), 0.2f).SetLoops(2, LoopType.Yoyo));
     }
 }

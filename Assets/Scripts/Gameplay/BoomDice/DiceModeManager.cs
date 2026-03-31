@@ -17,15 +17,14 @@ public class DiceModeManager : MonoBehaviour
     [Header("Tutorial Prediction")]
     public GameObject tutorialGroupP1; // Hướng dẫn Tung xúc xắc
     public GameObject tutorialGroupP2; // Hướng dẫn Lật ô
-    private bool isTutorialFinished = false; // Khi đã làm xong cả 2 bước thì tắt vĩnh viễn
+    private bool isTutorialFinished = false;
 
     [Header("UI Text & Indicators")]
     public TextMeshProUGUI turnStatusText;
     public TextMeshProUGUI p1ScoreText;
     public TextMeshProUGUI p2ScoreText;
-    // THAY ĐỔI: Chuyển sang Image để đổi màu thay vì Alpha
     public Image p1IndicatorFrame;
-    public Image p2IndicatorFrame; 
+    public Image p2IndicatorFrame;
     public Image p1Frame;
     public Image p2Frame;
     public Image p1avatar;
@@ -43,6 +42,14 @@ public class DiceModeManager : MonoBehaviour
     public GameObject panelWin;
     public GameObject panelTransition;
     public GameObject panelSetting;
+
+    [Header("Transition Strips (New)")]
+    public RectTransform leftStrip;
+    public RectTransform rightStrip;
+    public RectTransform leftObj;
+    public RectTransform rightObj;
+    public CanvasGroup centerLogo;
+    private Vector2 _leftStripOrig, _rightStripOrig, _leftObjOrig, _rightObjOrig;
 
     [Header("Board Visuals")]
     public Image boardBackgroundImage;
@@ -83,12 +90,17 @@ public class DiceModeManager : MonoBehaviour
     private bool isGameOver = false;
     private List<DiceTile> allBoardTiles = new List<DiceTile>();
 
-    // Hàm bổ trợ để lấy ID mode: Bomb = 9, Thường = 10
     private int GetCurrentModeID() => isBombModeActive ? 9 : 10;
 
     void Awake()
     {
         Instance = this;
+
+        // Lưu vị trí gốc cho Transition
+        if (leftStrip != null) _leftStripOrig = leftStrip.anchoredPosition;
+        if (rightStrip != null) _rightStripOrig = rightStrip.anchoredPosition;
+        if (leftObj != null) _leftObjOrig = leftObj.anchoredPosition;
+        if (rightObj != null) _rightObjOrig = rightObj.anchoredPosition;
 
         if (BoomChipSettings.player1Sprite != null) p1Color = BoomChipSettings.player1Sprite;
         if (BoomChipSettings.player2Sprite != null) p2Color = BoomChipSettings.player2Sprite;
@@ -109,7 +121,6 @@ public class DiceModeManager : MonoBehaviour
         if (panelWin) panelWin.SetActive(false);
         if (panelAnimation) panelAnimation.SetActive(false);
 
-        // FIREBASE: Log bắt đầu game với Mode ID tương ứng
         if (FirebaseManager.Instance != null) FirebaseManager.Instance.LogModeEnter(GetCurrentModeID());
 
         GenerateBoard();
@@ -118,7 +129,13 @@ public class DiceModeManager : MonoBehaviour
 
         if (AdsManager.Instance != null) AdsManager.Instance.HideMREC();
 
-        if (panelTransition != null) StartCoroutine(RunStartTransition());
+        if (panelTransition != null)
+        {
+            panelTransition.SetActive(true);
+            SetStripsPos(1); // Đóng ngay lập tức để chuẩn bị mở
+            SetObjectsPos(1);
+            StartCoroutine(RunStartTransition());
+        }
         else StartCoinFlipSequence();
 
         if (isBombModeActive)
@@ -140,6 +157,63 @@ public class DiceModeManager : MonoBehaviour
             allBoardTiles.Add(tileScript);
         }
     }
+
+    #region TRANSITION STRIPS LOGIC
+    private void SetStripsPos(float t)
+    {
+        float offset = 2000f;
+        if (leftStrip) leftStrip.anchoredPosition = Vector2.Lerp(_leftStripOrig + new Vector2(-offset, 0), _leftStripOrig, t);
+        if (rightStrip) rightStrip.anchoredPosition = Vector2.Lerp(_rightStripOrig + new Vector2(offset, 0), _rightStripOrig, t);
+    }
+
+    private void SetObjectsPos(float t)
+    {
+        float offset = 1500f;
+        if (leftObj) leftObj.anchoredPosition = Vector2.Lerp(_leftObjOrig + new Vector2(-offset, 0), _leftObjOrig, t);
+        if (rightObj) rightObj.anchoredPosition = Vector2.Lerp(_rightObjOrig + new Vector2(offset, 0), _rightObjOrig, t);
+    }
+
+    private IEnumerator AnimateStrips(float start, float end, float duration)
+    {
+        float elapsed = 0;
+        while (elapsed < duration)
+        {
+            elapsed += Time.deltaTime;
+            float currentT = Mathf.Lerp(start, end, Mathf.SmoothStep(0, 1, elapsed / duration));
+            SetStripsPos(currentT);
+            yield return null;
+        }
+        SetStripsPos(end);
+    }
+
+    private IEnumerator AnimateSideElements(float start, float end, float duration)
+    {
+        float elapsed = 0;
+        while (elapsed < duration)
+        {
+            elapsed += Time.deltaTime;
+            float currentT = Mathf.Lerp(start, end, Mathf.SmoothStep(0, 1, elapsed / duration));
+            SetObjectsPos(currentT);
+            yield return null;
+        }
+        SetObjectsPos(end);
+    }
+
+    private IEnumerator RunStartTransition()
+    {
+        yield return new WaitForSeconds(1.2f);
+
+        // Bắt đầu mở các dải màu (Giống BoomChip)
+        StartCoroutine(AnimateSideElements(1, 0, 0.5f));
+        if (centerLogo != null) { centerLogo.transform.DOScale(0, 0.3f); centerLogo.DOFade(0, 0.3f); }
+
+        yield return new WaitForSeconds(0.2f);
+        yield return StartCoroutine(AnimateStrips(1, 0, 0.5f));
+
+        panelTransition.SetActive(false);
+        StartCoinFlipSequence();
+    }
+    #endregion
 
     #region GAMEPLAY LOGIC
     public void OnTileClicked(int index, DiceTile tile)
@@ -164,7 +238,6 @@ public class DiceModeManager : MonoBehaviour
         currentMovesLeft--;
 
         UpdateScoreUI();
-
         UpdateTutorial();
 
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX("SFX_Click");
@@ -187,34 +260,27 @@ public class DiceModeManager : MonoBehaviour
     {
         isGameOver = true;
         SetBoardInteractable(false);
-
-        // 1. Gọi lệnh hiển thị visual bom và chạy Animation nổ trong DiceTile
         tile.SetVisual(bombSprite, true);
 
-        // 2. Rung điện thoại và âm thanh nổ
         GlobalSettings.PlayVibrate();
         if (AudioManager.Instance != null && !string.IsNullOrEmpty(BoomChipSettings.hitSFXName))
         {
             AudioManager.Instance.PlaySFX(BoomChipSettings.hitSFXName);
         }
 
-        // 3. Rung toàn bộ Board (Shake Effect)
         Vector3 originalBoardPos = boardContainer.localPosition;
         float elapsed = 0f;
         float duration = 0.6f;
         while (elapsed < duration)
         {
             elapsed += Time.deltaTime;
-            float strength = (1 - (elapsed / duration)) * 15f; // Rung yếu dần
+            float strength = (1 - (elapsed / duration)) * 15f;
             boardContainer.localPosition = originalBoardPos + (Vector3)UnityEngine.Random.insideUnitCircle * strength;
             yield return null;
         }
-        boardContainer.localPosition = originalBoardPos; // Trả về vị trí cũ để Grid không lệch
+        boardContainer.localPosition = originalBoardPos;
 
-        // 4. Chờ 1 giây để người chơi xem xong Animation nổ
         yield return new WaitForSeconds(1.0f);
-
-        // 5. Kết thúc game: Người bấm trúng bom là người thua
         EndGame(isP1Turn ? 2 : 1);
     }
 
@@ -230,23 +296,12 @@ public class DiceModeManager : MonoBehaviour
 
     private void UpdateScoreUI()
     {
-        if (p1ScoreText != null)
-            p1ScoreText.text = $"Chips: {p1ClaimedCells}";
-
-        if (p2ScoreText != null)
-            p2ScoreText.text = $"Chips: {p2ClaimedCells}";
+        if (p1ScoreText != null) p1ScoreText.text = $"Chips: {p1ClaimedCells}";
+        if (p2ScoreText != null) p2ScoreText.text = $"Chips: {p2ClaimedCells}";
     }
     #endregion
 
-    #region TRANSITIONS & COIN FLIP
-    private IEnumerator RunStartTransition()
-    {
-        panelTransition.SetActive(true);
-        yield return new WaitForSeconds(1.2f);
-        panelTransition.SetActive(false);
-        StartCoinFlipSequence();
-    }
-
+    #region COIN FLIP
     private void StartCoinFlipSequence()
     {
         if (panelAnimation)
@@ -270,9 +325,7 @@ public class DiceModeManager : MonoBehaviour
             }
             flipStatusText.text = $"<color=yellow><b> {winnerName.ToUpper()}</b></color> GO FIRST!";
         }
-
         yield return new WaitForSeconds(1.0f);
-
         FinishTransitionToGameplay(winnerID);
     }
 
@@ -314,7 +367,6 @@ public class DiceModeManager : MonoBehaviour
 
     private void UpdateTurnIndicators()
     {
-        // Cập nhật màu sắc thay vì Alpha
         if (p1IndicatorFrame != null) p1IndicatorFrame.color = isP1Turn ? activeColor : inactiveColor;
         if (p2IndicatorFrame != null) p2IndicatorFrame.color = isP1Turn ? inactiveColor : activeColor;
         if (p1Frame != null) p1Frame.color = isP1Turn ? activeColor : inactiveColor;
@@ -405,7 +457,6 @@ public class DiceModeManager : MonoBehaviour
             AccountManager.SetWinResult(winnerID);
         }
 
-        // FIREBASE: Log hoàn thành game với Mode ID tương ứng
         if (FirebaseManager.Instance != null) FirebaseManager.Instance.LogModeComplete(GetCurrentModeID());
 
         if (p1IndicatorFrame) p1IndicatorFrame.color = inactiveColor;
@@ -413,7 +464,7 @@ public class DiceModeManager : MonoBehaviour
         if (rollButton) rollButton.interactable = false;
 
         if (panelWin) panelWin.SetActive(true);
-        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX("SFX_Win");
+        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX("Win");
 
         if (AdsManager.Instance != null) AdsManager.Instance.ShowMREC("is_show_mrec_complete_game");
 
@@ -428,6 +479,8 @@ public class DiceModeManager : MonoBehaviour
     #region BUTTONS
     public void Restart()
     {
+        if (panelWin != null) panelWin.SetActive(false); // Ẩn panel thắng cuộc (bao gồm pháo hoa) trước khi chuyển cảnh
+
         if (AdsManager.Instance != null)
         {
             AdsManager.Instance.HideMREC();
@@ -440,6 +493,8 @@ public class DiceModeManager : MonoBehaviour
 
     public void Home()
     {
+        if (panelWin != null) panelWin.SetActive(false); // Ẩn panel thắng cuộc trước khi chuyển cảnh
+
         if (AdsManager.Instance != null)
         {
             AdsManager.Instance.HideMREC();
@@ -474,10 +529,9 @@ public class DiceModeManager : MonoBehaviour
     }
     #endregion
 
+    #region TUTORIAL
     public void UpdateTutorial()
     {
-        // Kiểm tra xem người chơi đã từng hoàn thành tutorial chưa (Lưu trong máy)
-        // 1 là đã xong, 0 là chưa xong
         if (PlayerPrefs.GetInt("TutorialDone", 0) == 1)
         {
             if (tutorialGroupP1) tutorialGroupP1.SetActive(false);
@@ -505,33 +559,27 @@ public class DiceModeManager : MonoBehaviour
         }
         else
         {
-            // Khi lật xong ô đầu tiên -> Lưu lại trạng thái ĐÃ XONG vào máy
             PlayerPrefs.SetInt("TutorialDone", 1);
-            PlayerPrefs.Save(); // Lưu ngay lập tức
+            PlayerPrefs.Save();
 
             if (tutorialGroupP1) tutorialGroupP1.SetActive(false);
             if (tutorialGroupP2) tutorialGroupP2.SetActive(false);
         }
     }
 
-    // Hàm bổ trợ làm tay nhấp nhô
     private void AnimateHand(GameObject group)
     {
-        // Tìm object có tên là "HandPointer" bên trong Group
         Transform hand = group.transform.Find("HandPointer");
         if (hand != null)
         {
-            hand.DOKill(); // Xóa các tween cũ để tránh chồng chéo
-            hand.localScale = Vector3.one; // Reset về 1
-
-            // Hiệu ứng: Phóng lên 1.2 lần, chạy liên tục (Loop), kiểu Yoyo (lên rồi về)
+            hand.DOKill();
+            hand.localScale = Vector3.one;
             hand.DOScale(1.2f, 0.5f).SetLoops(-1, LoopType.Yoyo).SetEase(Ease.InOutSine);
         }
     }
 
     public void OnClickReplayTutorial()
     {
-        // Cho phép hiện lại dù đã lưu là hoàn thành
         if (waitingForRoll)
         {
             if (tutorialGroupP1) tutorialGroupP1.SetActive(true);
@@ -543,4 +591,5 @@ public class DiceModeManager : MonoBehaviour
             AnimateHand(tutorialGroupP2);
         }
     }
+    #endregion
 }

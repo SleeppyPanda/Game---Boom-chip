@@ -737,10 +737,10 @@ RectTransform:
   - {fileID: 1481489937}
   - {fileID: 2142848023}
   - {fileID: 1726961376}
-  - {fileID: 1921438330}
   - {fileID: 616162940}
   - {fileID: 461175388}
   - {fileID: 119769540}
+  - {fileID: 1921438330}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
@@ -1001,6 +1001,11 @@ MonoBehaviour:
   panelWin: {fileID: 70913929507207252}
   panelTransition: {fileID: 1921438329}
   panelSetting: {fileID: 2142848024}
+  leftStrip: {fileID: 1238627001}
+  rightStrip: {fileID: 1983737886}
+  leftObj: {fileID: 439460245}
+  rightObj: {fileID: 577157332}
+  centerLogo: {fileID: 2029177964}
   boardBackgroundImage: {fileID: 1192044826}
   p1BoardSprite: {fileID: 21300000, guid: 309dc72f6d023f8428397582bfda5ec5, type: 3}
   p2BoardSprite: {fileID: 21300000, guid: 2052245a0585289468c075b9d31842eb, type: 3}
@@ -3059,10 +3064,10 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 775262762}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 1}
-  m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 290, y: -290}
-  m_SizeDelta: {x: 280, y: 280}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 0, y: 0}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 1, y: 0}
 --- !u!114 &1152740130
 MonoBehaviour:
@@ -3612,10 +3617,10 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 643016637}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 1}
-  m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 10, y: -10}
-  m_SizeDelta: {x: 280, y: 280}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 0, y: 0}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0, y: 1}
 --- !u!114 &1317412278
 MonoBehaviour:
@@ -5126,7 +5131,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!224 &1921438330
 RectTransform:
   m_ObjectHideFlags: 0

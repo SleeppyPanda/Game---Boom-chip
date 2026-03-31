@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using UnityEngine.SceneManagement;
 using UnityEngine.EventSystems;
 using DG.Tweening;
+using UnityEngine.UI;
 
 public class Mode3Manager : MonoBehaviour
 {
@@ -18,6 +19,12 @@ public class Mode3Manager : MonoBehaviour
     public TextMeshProUGUI txtComment;
     public List<Mode3Data> database;
 
+    [Header("Transition Prefab (New)")]
+    public Transform mainCanvas;
+    public GameObject transitionPrefab;
+    private GameObject currentTransitionObj;
+    private bool isTransitioning = false; // Biến chặn thao tác người chơi khi đang chạy transition
+
     [Header("Renderers")]
     public SpriteRenderer leftCircleRenderer;
     public SpriteRenderer rightCircleRenderer;
@@ -30,17 +37,21 @@ public class Mode3Manager : MonoBehaviour
 
     [Header("Quick Tutorial")]
     public GameObject tutorialGroup;
-    public GameObject handPointer; // Thêm biến này để làm hiệu ứng bàn tay nếu cần
+    public GameObject handPointer;
 
     [Header("Animation Settings")]
     public float rotateSpeed = 60f;
+
+    [Header("Win Effects (Panel-based)")]
+    public GameObject fireworkPanel;
+    public float delayBeforeWinPanel = 2.0f;
 
     private int bounceCount;
     private Mode3Data currentData;
     private GameObject currentItem;
     private bool canPlay = true;
     private bool isGameOver = false;
-    private bool isShowingTutorial = false; // Biến kiểm soát trạng thái đang hiện tutorial
+    private bool isShowingTutorial = false;
 
     private const int MODE_ID = 12;
 
@@ -67,16 +78,65 @@ public class Mode3Manager : MonoBehaviour
         if (FirebaseManager.Instance != null) FirebaseManager.Instance.LogModeEnter(MODE_ID);
         if (AdsManager.Instance != null) AdsManager.Instance.HideMREC();
 
+        StartCoroutine(StartGameFlow());
+    }
+
+    private IEnumerator StartGameFlow()
+    {
+        isTransitioning = true; // Khóa game lại
+
+        // 1. Setup bàn chơi ngầm phía dưới
         SetupNewTurn();
+
+        // 2. Sinh ra Prefab Transition
+        if (transitionPrefab != null && mainCanvas != null)
+        {
+            currentTransitionObj = Instantiate(transitionPrefab, mainCanvas);
+            currentTransitionObj.transform.SetAsLastSibling(); // Ép lên trên cùng layer
+
+            // 3. Đợi Transition chạy xong y hệt Mode 2
+            yield return StartCoroutine(RunStartTransition());
+        }
+
+        // 4. Mở khóa game và bắt đầu check Tutorial
+        isTransitioning = false;
         CheckTutorial();
     }
+
+    #region TRANSITION LOGIC (Copied from Mode 2)
+    private IEnumerator RunStartTransition()
+    {
+        if (currentTransitionObj == null) yield break;
+
+        CanvasGroup cg = currentTransitionObj.GetComponent<CanvasGroup>();
+        if (cg != null) { cg.blocksRaycasts = true; }
+
+        // Chờ 2 giây để người chơi nhìn thấy Transition
+        yield return new WaitForSeconds(2.0f);
+
+        CoreUiTransition transScript = currentTransitionObj.GetComponent<CoreUiTransition>();
+
+        if (transScript != null)
+        {
+            transScript.PlayOutAnimation();
+        }
+        else
+        {
+            Destroy(currentTransitionObj);
+        }
+
+        // Chờ đến khi object bị HỦY hoàn toàn
+        yield return new WaitUntil(() => currentTransitionObj == null);
+
+        Debug.Log("<color=green>[Mode3Manager]</color> Transition đã mở xong!");
+    }
+    #endregion
 
     void CheckTutorial()
     {
         if (PlayerPrefs.GetInt("FirstTime_Mode3", 0) == 0)
         {
             ShowTutorial();
-            // Lưu ý: Không SetInt ở đây, hãy Set ở lúc người chơi chạm tay lần đầu
         }
         else
         {
@@ -88,33 +148,21 @@ public class Mode3Manager : MonoBehaviour
     public void ShowTutorial()
     {
         if (tutorialGroup == null) return;
-
         tutorialGroup.SetActive(true);
         isShowingTutorial = true;
-
-        // --- SỬA Ở ĐÂY ---
-        // Thay vì chạy code tween trực tiếp, ta gọi Coroutine để delay
         if (handPointer != null)
         {
-            // Xóa các tween cũ trên object này để tránh bị chồng chéo
             handPointer.transform.DOKill();
             StartCoroutine(StartHandTweenWithDelay());
         }
     }
 
-    // Coroutine mới để delay
     private IEnumerator StartHandTweenWithDelay()
     {
-        // Đợi 1 khung hình (hoặc 0.1s) để DOTween component kịp khởi tạo
-        yield return new WaitForEndOfFrame(); // Cách 1: Đợi 1 frame (Khuyên dùng)
-                                              // yield return new WaitForSeconds(0.05f); // Cách 2: Đợi một chút thời gian cố định
-
-        if (handPointer != null && isShowingTutorial) // Kiểm tra lại object vẫn tồn tại
+        yield return new WaitForEndOfFrame();
+        if (handPointer != null && isShowingTutorial)
         {
-            // Chạy hiệu ứng co giãn
-            handPointer.transform.DOScale(1.2f, 0.5f)
-                .SetLoops(-1, LoopType.Yoyo)
-                .SetEase(Ease.InOutSine);
+            handPointer.transform.DOScale(1.2f, 0.5f).SetLoops(-1, LoopType.Yoyo).SetEase(Ease.InOutSine);
         }
     }
 
@@ -122,6 +170,8 @@ public class Mode3Manager : MonoBehaviour
     {
         isGameOver = false;
         resultPanel.SetActive(false);
+        if (fireworkPanel != null) fireworkPanel.SetActive(false);
+
         if (AdsManager.Instance != null) AdsManager.Instance.HideMREC();
 
         bounceCount = 0;
@@ -152,8 +202,8 @@ public class Mode3Manager : MonoBehaviour
         if (leftHalf != null) leftHalf.Rotate(0, 0, rotateSpeed * Time.deltaTime);
         if (rightHalf != null) rightHalf.Rotate(0, 0, rotateSpeed * Time.deltaTime);
 
-        // Chỉnh sửa điều kiện: Vẫn cho phép HandleDragInput chạy khi đang hiện Tutorial
-        if (currentItem == null || isGameOver) return;
+        // NẾU ĐANG CHẠY TRANSITION THÌ KHÔNG CHO NGƯỜI CHƠI BẤM THẢ ĐỒ VẬT
+        if (isTransitioning || currentItem == null || isGameOver) return;
 
         HandleDragInput();
     }
@@ -164,18 +214,14 @@ public class Mode3Manager : MonoBehaviour
         {
             if (!IsPointerOverUI())
             {
-                // TRƯỜNG HỢP 1: Đang hiện Tutorial
                 if (isShowingTutorial)
                 {
                     isShowingTutorial = false;
                     tutorialGroup.SetActive(false);
                     PlayerPrefs.SetInt("FirstTime_Mode3", 1);
                     PlayerPrefs.Save();
-
-                    // Thực hiện thả bóng ngay lập tức
                     DropItem();
                 }
-                // TRƯỜNG HỢP 2: Đang chơi bình thường
                 else if (canPlay)
                 {
                     DropItem();
@@ -194,7 +240,6 @@ public class Mode3Manager : MonoBehaviour
         }
     }
 
-    // Các hàm còn lại (IsPointerOverUI, AddBounce, FinishGame, v.v.) giữ nguyên...
     private bool IsPointerOverUI()
     {
         if (EventSystem.current.IsPointerOverGameObject()) return true;
@@ -236,17 +281,47 @@ public class Mode3Manager : MonoBehaviour
 
     private IEnumerator HandleFinishSequence()
     {
-        yield return new WaitForSeconds(1.2f);
+        if (fireworkPanel != null) fireworkPanel.SetActive(true);
+        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX("Win");
+
+        yield return new WaitForSeconds(delayBeforeWinPanel);
+
         ShowResultUI();
     }
 
     private void ShowResultUI()
     {
-        resultPanel.SetActive(true);
+        if (resultPanel) resultPanel.SetActive(true);
         if (txtFinalScore != null) txtFinalScore.text = (bounceCount * 1).ToString() + " " + currentData.unit;
         if (currentData.comments.Count > 0) txtComment.text = currentData.comments[UnityEngine.Random.Range(0, currentData.comments.Count)];
+
+        if (AdsManager.Instance != null) AdsManager.Instance.ShowMREC("is_show_mrec_complete_game");
     }
 
-    public void Btn_PlayAgain() { SetupNewTurn(); }
-    public void Btn_BackToHome() { SceneManager.LoadScene("SelectScene"); }
+    public void Btn_PlayAgain()
+    {
+        if (fireworkPanel) fireworkPanel.SetActive(false);
+        if (resultPanel) resultPanel.SetActive(false);
+
+        if (AdsManager.Instance != null)
+        {
+            AdsManager.Instance.HideMREC();
+            AdsManager.Instance.ShowInterstitialWithDelay("is_show_inter_retry", () => {
+                StartCoroutine(StartGameFlow()); // Đã sửa lại để gọi luôn StartGameFlow khi Play Again
+            }, 0.3f);
+        }
+        else StartCoroutine(StartGameFlow()); // Đã sửa lại
+    }
+
+    public void Btn_BackToHome()
+    {
+        if (AdsManager.Instance != null)
+        {
+            AdsManager.Instance.HideMREC();
+            AdsManager.Instance.ShowInterstitialWithDelay("is_show_inter_back_home", () => {
+                SceneManager.LoadScene("SelectScene");
+            }, 0.3f);
+        }
+        else SceneManager.LoadScene("SelectScene");
+    }
 }
