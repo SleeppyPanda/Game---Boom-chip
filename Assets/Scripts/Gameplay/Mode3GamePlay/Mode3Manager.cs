@@ -4,7 +4,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine.SceneManagement;
 using UnityEngine.EventSystems;
-using DG.Tweening; // Đảm bảo bạn đã có DoTween để đồng bộ hiệu ứng nếu cần
+using DG.Tweening;
 
 public class Mode3Manager : MonoBehaviour
 {
@@ -29,16 +29,14 @@ public class Mode3Manager : MonoBehaviour
     public GameObject itemPrefab;
 
     [Header("Animation Settings")]
-    public float rotateSpeed = 90f;
+    public float rotateSpeed = 60f; // ĐÃ GIẢM: Từ 90 xuống 60
 
     private int bounceCount;
     private Mode3Data currentData;
     private GameObject currentItem;
-    private bool isDragging = false;
     private bool canPlay = true;
     private bool isGameOver = false;
 
-    // ID cố định cho Mode 3 là 12
     private const int MODE_ID = 12;
 
     [System.Serializable]
@@ -60,10 +58,8 @@ public class Mode3Manager : MonoBehaviour
 
     void Start()
     {
-        // FIREBASE: Log bắt đầu game Mode 12
         Debug.Log($"<color=cyan>[ANALYTIC]</color> Enter Mode: {MODE_ID}");
         if (FirebaseManager.Instance != null) FirebaseManager.Instance.LogModeEnter(MODE_ID);
-
         if (AdsManager.Instance != null) AdsManager.Instance.HideMREC();
         SetupNewTurn();
     }
@@ -72,12 +68,10 @@ public class Mode3Manager : MonoBehaviour
     {
         isGameOver = false;
         resultPanel.SetActive(false);
-
         if (AdsManager.Instance != null) AdsManager.Instance.HideMREC();
 
         bounceCount = 0;
         canPlay = true;
-        isDragging = false;
 
         if (txtScore != null)
         {
@@ -101,6 +95,7 @@ public class Mode3Manager : MonoBehaviour
 
     void Update()
     {
+        // Xoay bánh xe (Giảm tốc độ theo yêu cầu)
         if (leftHalf != null) leftHalf.Rotate(0, 0, rotateSpeed * Time.deltaTime);
         if (rightHalf != null) rightHalf.Rotate(0, 0, rotateSpeed * Time.deltaTime);
 
@@ -115,27 +110,11 @@ public class Mode3Manager : MonoBehaviour
         {
             if (!IsPointerOverUI())
             {
-                isDragging = true;
-            }
-        }
-
-        if (isDragging && currentItem != null)
-        {
-            Vector3 mousePos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
-            currentItem.transform.position = new Vector3(mousePos.x, spawnPoint.position.y, 0);
-        }
-
-        if (Input.GetMouseButtonUp(0))
-        {
-            if (isDragging)
-            {
-                isDragging = false;
-                canPlay = false;
-
-                Mode3Item itemScript = currentItem.GetComponent<Mode3Item>();
-                if (itemScript != null)
+                if (currentItem != null && canPlay)
                 {
-                    itemScript.StartFalling();
+                    canPlay = false;
+                    Mode3Item itemScript = currentItem.GetComponent<Mode3Item>();
+                    if (itemScript != null) itemScript.StartFalling();
                 }
             }
         }
@@ -158,16 +137,23 @@ public class Mode3Manager : MonoBehaviour
         if (sr != null) sr.sprite = currentData.itemSprite;
     }
 
-    public void AddBounce()
+    // THAY ĐỔI: Nhận Transform để chỉ rung bánh xe đó
+    public void AddBounce(Transform wheelHit)
     {
         if (isGameOver) return;
         bounceCount++;
         if (txtScore != null)
         {
-            txtScore.text = "Score: " + (bounceCount * 10);
+            txtScore.text = "Score: " + (bounceCount * 1);
             txtScore.color = Color.yellow;
+            txtScore.transform.DOPunchScale(Vector3.one * 0.3f, 0.2f, 10, 1f);
         }
-        StartCoroutine(ScreenShake(0.05f, 0.03f));
+
+        // CHỈ RUNG BÁNH XE: Dùng DoTween rung nhẹ object bị chạm
+        if (wheelHit != null)
+        {
+            wheelHit.DOPunchPosition(new Vector3(0, -0.2f, 0), 0.2f, 10, 1f);
+        }
     }
 
     public void FinishGame()
@@ -179,15 +165,8 @@ public class Mode3Manager : MonoBehaviour
 
     private IEnumerator HandleFinishSequence()
     {
-        // ĐỒNG BỘ ACCOUNT: Lưu kết quả thắng (Giả định mode này là 1 người chơi thắng/vượt qua thử thách)
         Debug.Log($"<color=green>[ANALYTIC]</color> Mode Complete: {MODE_ID}");
-        if (AccountManager.Instance != null)
-        {
-            // Nếu mode này tính thắng cho Player 1 mặc định (hoặc người đang chơi)
-            AccountManager.SetWinResult(1);
-        }
-
-        // FIREBASE: Log hoàn thành mode
+        if (AccountManager.Instance != null) AccountManager.SetWinResult(1);
         if (FirebaseManager.Instance != null) FirebaseManager.Instance.LogModeComplete(MODE_ID);
 
         yield return new WaitForSeconds(1.2f);
@@ -207,12 +186,9 @@ public class Mode3Manager : MonoBehaviour
     private void ShowResultUI()
     {
         resultPanel.SetActive(true);
+        if (AdsManager.Instance != null) AdsManager.Instance.ShowMREC("is_show_mrec_complete_game");
 
-        if (AdsManager.Instance != null)
-            AdsManager.Instance.ShowMREC("is_show_mrec_complete_game");
-
-        string scoreFinalText = (bounceCount * 10).ToString() + " " + currentData.unit;
-
+        string scoreFinalText = (bounceCount * 1).ToString() + " " + currentData.unit;
         if (txtFinalScore != null)
         {
             txtFinalScore.text = scoreFinalText;
@@ -254,20 +230,5 @@ public class Mode3Manager : MonoBehaviour
         {
             SceneManager.LoadScene("SelectScene");
         }
-    }
-
-    IEnumerator ScreenShake(float duration, float magnitude)
-    {
-        Vector3 originalPos = Camera.main.transform.localPosition;
-        float elapsed = 0.0f;
-        while (elapsed < duration)
-        {
-            float x = UnityEngine.Random.Range(-1f, 1f) * magnitude;
-            float y = UnityEngine.Random.Range(-1f, 1f) * magnitude;
-            Camera.main.transform.localPosition = new Vector3(x, y, originalPos.z);
-            elapsed += Time.deltaTime;
-            yield return null;
-        }
-        Camera.main.transform.localPosition = originalPos;
     }
 }

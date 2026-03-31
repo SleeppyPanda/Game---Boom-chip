@@ -466,7 +466,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 4.9, y: -2, z: 0}
-  m_LocalScale: {x: 0.64684737, y: 0.64684737, z: 0.64684737}
+  m_LocalScale: {x: 0.56572574, y: 0.56572574, z: 0.56572574}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
@@ -802,7 +802,7 @@ MonoBehaviour:
     unit: billion
     itemSprite: {fileID: 21300000, guid: 153be027129ca484bb32b1a5ac9e24b9, type: 3}
     circleSprite: {fileID: 21300000, guid: bcec0f5f06da5e747b1946a6198d07cb, type: 3}
-    gapSize: 2.68
+    gapSize: 2.7
     comments:
     - Congrats! Your net worth is
   - themeName: "Tr\xE1i tim m\xE0u \u0111\u1ECF"
@@ -818,7 +818,7 @@ MonoBehaviour:
     unit: countries!
     itemSprite: {fileID: 21300000, guid: 465ab1baa92004d4babc9cd9fbba3f2e, type: 3}
     circleSprite: {fileID: 21300000, guid: 7c8772691eb267f44bfc7aa6d87eb2bf, type: 3}
-    gapSize: 2.68
+    gapSize: 2.7
     comments:
     - Pack your bags! You will visit
   - themeName: "Ng\u1ECDn l\u1EEDa"
@@ -834,7 +834,7 @@ MonoBehaviour:
     unit: 'supercars! '
     itemSprite: {fileID: 21300000, guid: 7852c96e8b9be044fa623f50748f596e, type: 3}
     circleSprite: {fileID: 21300000, guid: 3a48f0bc94a3e2e4ca9482a5d02820e2, type: 3}
-    gapSize: 2.68
+    gapSize: 2.7
     comments:
     - Your garage currently has
   - themeName: "nh\u1EABn"
@@ -845,6 +845,14 @@ MonoBehaviour:
     gapSize: 2.68
     comments:
     - only
+  - themeName: "Kim c\u01B0\u01A1ng"
+    question: How much property will you own?
+    unit: asset
+    itemSprite: {fileID: 21300000, guid: 52091d85ffc2cbd4091f5de59245232e, type: 3}
+    circleSprite: {fileID: 21300000, guid: 259fcffc3a366da4fb8056d027e1911d, type: 3}
+    gapSize: 2.82
+    comments:
+    - You are truly rich.
   leftCircleRenderer: {fileID: 1001951106}
   rightCircleRenderer: {fileID: 8942574}
   leftHalf: {fileID: 1001951107}
@@ -1650,7 +1658,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5766482030724548493, guid: 7db468ac4fffb094b9a404626775d043, type: 3}
       propertyPath: m_IsActive
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     m_RemovedComponents:
     - {fileID: 2255960029028641901, guid: 7db468ac4fffb094b9a404626775d043, type: 3}
@@ -2566,7 +2574,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: -4.9, y: -2, z: 0}
-  m_LocalScale: {x: 0.64684737, y: 0.64684737, z: 0.64684737}
+  m_LocalScale: {x: 0.56572574, y: 0.56572574, z: 0.56572574}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
@@ -3490,7 +3498,7 @@ Transform:
   m_GameObject: {fileID: 1984418929}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0.7071068, w: 0.7071068}
-  m_LocalPosition: {x: 0.3, y: -4.49, z: 0}
+  m_LocalPosition: {x: 0.3, y: -5.15, z: 0}
   m_LocalScale: {x: 0.1634544, y: 0.60225, z: 0.60225}
   m_ConstrainProportionsScale: 0
   m_Children: []
