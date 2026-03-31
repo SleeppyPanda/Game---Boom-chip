@@ -69,11 +69,13 @@ public class UnlockButton : MonoBehaviour
         }
         else if (type == UnlockType.Avatar)
         {
+            // Nếu Avatar là đồ miễn phí (không nằm trong danh sách cần xem Ads)
             if (!AdEventTracker.IsAvatarInRwList(indexValue))
             {
                 SaveUnlockState(finalItemID);
                 UpdateUI();
-                return; // Mở xong chỉ hiện UI, không chuyển scene ngay
+                ExecuteAction(); // SỬA Ở ĐÂY: Mở khóa xong tự động chọn luôn
+                return;
             }
             logicConfigKey = "is_show_rw_profile";
         }
@@ -88,7 +90,13 @@ public class UnlockButton : MonoBehaviour
                 // SAU KHI XEM ADS XONG:
                 Debug.Log($"<color=yellow>[UnlockButton]</color> Mở khóa thành công {finalItemID}.");
                 UpdateUI(); // Cập nhật để ẩn ổ khóa
-                // Không gọi ExecuteAction ở đây để người dùng bấm lại lần nữa mới vào game
+
+                // SỬA Ở ĐÂY: Nếu là Avatar thì tự động chọn/gắn luôn sau khi tắt Ads
+                if (type == UnlockType.Avatar)
+                {
+                    ExecuteAction();
+                }
+                // (Nếu là Mode thì không gọi ExecuteAction để người chơi không bị ép vào game ngay)
             });
         }
     }

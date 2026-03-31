@@ -801,8 +801,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   flipStatusText: {fileID: 426627742}
-  p1ResultSprite: {fileID: 21300000, guid: 142dc28f313dd054eb6d537fd3d8f1e3, type: 3}
-  p2ResultSprite: {fileID: 21300000, guid: 938f2705fdc3db545aab7fde6bd619d9, type: 3}
+  p1ResultSprite: {fileID: 21300000, guid: a8e4ad8805777914aabf3722244954e5, type: 3}
+  p2ResultSprite: {fileID: 21300000, guid: 71a77b0cb739fa9449046065181d7018, type: 3}
 --- !u!95 &268673622
 Animator:
   serializedVersion: 5
@@ -844,7 +844,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 21300000, guid: 142dc28f313dd054eb6d537fd3d8f1e3, type: 3}
+  m_Sprite: {fileID: 21300000, guid: 71a77b0cb739fa9449046065181d7018, type: 3}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1

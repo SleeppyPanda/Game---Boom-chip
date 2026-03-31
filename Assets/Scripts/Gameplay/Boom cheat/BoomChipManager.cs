@@ -165,9 +165,11 @@ public class BoomChipManager : MonoBehaviour
         if (FirebaseManager.Instance != null) FirebaseManager.Instance.LogModeEnter(9);
         if (AudioManager.Instance != null) AudioManager.Instance.PlayMusic(gameplayMusicName);
 
-        ShowMRECByPhase();
+        // Ẩn MREC đi để đảm bảo an toàn lúc chuyển cảnh
+        if (AdsManager.Instance != null) AdsManager.Instance.HideMREC();
+
+        // Chỉ gọi mở màn, KHÔNG gọi MREC và Tutorial ở đây nữa
         StartCoroutine(InitialOpenSequence());
-        CheckAndShowTutorial(1);
     }
 
     private void SetupWinImage(Image img, Sprite sp)
@@ -333,6 +335,10 @@ public class BoomChipManager : MonoBehaviour
         yield return StartCoroutine(AnimateStrips(1, 0, 0.5f));
 
         panelTransition.SetActive(false);
+
+        // --- MÀN HÌNH ĐÃ MỞ XONG, GIỜ MỚI HIỆN ADS VÀ TUTORIAL ---
+        ShowMRECByPhase();
+        CheckAndShowTutorial(1);
     }
     #endregion
 

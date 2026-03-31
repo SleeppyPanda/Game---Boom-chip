@@ -103,7 +103,7 @@ Rigidbody2D:
   m_Mass: 0.5
   m_LinearDrag: 0.1
   m_AngularDrag: 0.05
-  m_GravityScale: 1
+  m_GravityScale: 0.8
   m_Material: {fileID: 0}
   m_IncludeLayers:
     serializedVersion: 2
@@ -129,7 +129,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   moveSpeed: 2
   moveRange: 2
-  gravityScale: 1
+  gravityScale: 0.8
   maxVelocity: 10
   bounceCooldown: 0.15
   anim: {fileID: 7422025919671616137}

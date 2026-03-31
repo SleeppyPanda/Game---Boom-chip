@@ -201,13 +201,21 @@ public class DiceModeManager : MonoBehaviour
 
     private IEnumerator RunStartTransition()
     {
+        // Thời gian chờ ban đầu (bạn có thể giảm xuống 0.5f nếu muốn nhanh hơn nữa)
         yield return new WaitForSeconds(1.2f);
+
         StartCoroutine(AnimateSideElements(1, 0, 0.5f));
         if (centerLogo != null) { centerLogo.transform.DOScale(0, 0.3f); centerLogo.DOFade(0, 0.3f); }
+
         yield return new WaitForSeconds(0.2f);
+
+        // --- SỬA Ở ĐÂY ---
+        // Gọi Panel tung đồng xu sớm ngay trước khi 2 dải Strip chạy mở ra
+        StartCoinFlipSequence();
+
+        // 2 dải nền mở ra cùng lúc với lúc đồng xu đang hiện lên
         yield return StartCoroutine(AnimateStrips(1, 0, 0.5f));
         panelTransition.SetActive(false);
-        StartCoinFlipSequence();
     }
     #endregion
 
