@@ -179,26 +179,34 @@ public class DiceModeManager : MonoBehaviour
     {
         isGameOver = true;
         SetBoardInteractable(false);
+
+        // 1. Gọi lệnh hiển thị visual bom và chạy Animation nổ trong DiceTile
         tile.SetVisual(bombSprite, true);
 
+        // 2. Rung điện thoại và âm thanh nổ
         GlobalSettings.PlayVibrate();
         if (AudioManager.Instance != null && !string.IsNullOrEmpty(BoomChipSettings.hitSFXName))
         {
             AudioManager.Instance.PlaySFX(BoomChipSettings.hitSFXName);
         }
 
+        // 3. Rung toàn bộ Board (Shake Effect)
         Vector3 originalBoardPos = boardContainer.localPosition;
-        float elapsed = 0f; float duration = 0.8f;
+        float elapsed = 0f;
+        float duration = 0.6f;
         while (elapsed < duration)
         {
             elapsed += Time.deltaTime;
-            float strength = (1 - (elapsed / duration)) * 15f;
-            boardContainer.localPosition = originalBoardPos + (Vector3)Random.insideUnitCircle * strength;
+            float strength = (1 - (elapsed / duration)) * 15f; // Rung yếu dần
+            boardContainer.localPosition = originalBoardPos + (Vector3)UnityEngine.Random.insideUnitCircle * strength;
             yield return null;
         }
-        boardContainer.localPosition = originalBoardPos;
+        boardContainer.localPosition = originalBoardPos; // Trả về vị trí cũ để Grid không lệch
 
-        yield return new WaitForSeconds(1.2f);
+        // 4. Chờ 1 giây để người chơi xem xong Animation nổ
+        yield return new WaitForSeconds(1.0f);
+
+        // 5. Kết thúc game: Người bấm trúng bom là người thua
         EndGame(isP1Turn ? 2 : 1);
     }
 

@@ -104,7 +104,13 @@ public class BoomChipManager : MonoBehaviour
         panelAnimation.SetActive(false);
         panelWin.SetActive(false);
         if (panelSetting != null) panelSetting.SetActive(false);
-        if (panelTransition != null) panelTransition.SetActive(false);
+        if (panelTransition != null)
+        {
+            panelTransition.SetActive(true);
+            SetStripsPos(1);
+            SetObjectsPos(1);
+            if (centerLogo != null) { centerLogo.transform.localScale = Vector3.one; centerLogo.alpha = 1; }
+        }
 
         InitializeHearts();
         RotatePlayer2TileVisuals();
@@ -145,6 +151,7 @@ public class BoomChipManager : MonoBehaviour
         if (AudioManager.Instance != null) AudioManager.Instance.PlayMusic(gameplayMusicName);
 
         ShowMRECByPhase();
+        StartCoroutine(InitialOpenSequence());
     }
 
     private void SetupWinImage(Image img, Sprite sp)
@@ -219,9 +226,13 @@ public class BoomChipManager : MonoBehaviour
         }
 
         panelTransition.SetActive(true);
+
+        // ĐẢM BẢO RESET VỀ 0 TRƯỚC KHI BAY VÀO
+        SetStripsPos(0);
+        SetObjectsPos(0);
         if (centerLogo != null) { centerLogo.transform.localScale = Vector3.zero; centerLogo.alpha = 0; }
 
-        SetStripsPos(0); SetObjectsPos(0);
+        // Logic bay vào che màn hình
         yield return StartCoroutine(AnimateStrips(0, 1, 0.5f));
         yield return StartCoroutine(AnimateSideElements(0, 1, 0.5f));
 
@@ -230,6 +241,7 @@ public class BoomChipManager : MonoBehaviour
         SwitchToPhase3State();
         yield return new WaitForSeconds(1.0f);
 
+        // Logic bay ra (giữ nguyên như cũ của bạn)
         StartCoroutine(AnimateSideElements(1, 0, 0.5f));
         if (centerLogo != null) { centerLogo.transform.localScale = Vector3.zero; centerLogo.alpha = 0; }
 
@@ -291,6 +303,21 @@ public class BoomChipManager : MonoBehaviour
             yield return null;
         }
         SetObjectsPos(end);
+    }
+
+    private IEnumerator InitialOpenSequence()
+    {
+        // Đợi 1-2 giây tùy ý để người chơi kịp nhìn thấy logo/màn hình chờ
+        yield return new WaitForSeconds(1.5f);
+
+        // Tái sử dụng logic bay ra của bạn (từ 1 về 0)
+        StartCoroutine(AnimateSideElements(1, 0, 0.5f));
+        if (centerLogo != null) { centerLogo.transform.localScale = Vector3.zero; centerLogo.alpha = 0; }
+
+        yield return new WaitForSeconds(0.2f);
+        yield return StartCoroutine(AnimateStrips(1, 0, 0.5f));
+
+        panelTransition.SetActive(false);
     }
     #endregion
 
