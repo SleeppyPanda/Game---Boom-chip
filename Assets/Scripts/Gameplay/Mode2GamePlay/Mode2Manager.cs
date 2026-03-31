@@ -90,6 +90,7 @@ public class Mode2Manager : MonoBehaviour
     private bool isProcessingTurn = false;
     private Color numberColor = Color.black;
     private bool isFirstStart = true;
+    private bool hasMadeMistake = false;
 
     void Awake()
     {
@@ -119,6 +120,7 @@ public class Mode2Manager : MonoBehaviour
         winPanel.SetActive(false);
         player1Crown.SetActive(false);
         player2Crown.SetActive(false);
+        hasMadeMistake = false;
 
         if (fireworkEffect != null) fireworkEffect.Stop();
 
@@ -344,6 +346,13 @@ public class Mode2Manager : MonoBehaviour
                     hasCorrected = true;
                     if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(sfxCorrectMatch);
                     PlayBounceEffect(bottomBottles[i]);
+                    int totalMatched = PlayerPrefs.GetInt("TotalMatchedBottles", 0) + 1;
+                    PlayerPrefs.SetInt("TotalMatchedBottles", totalMatched);
+
+                    if (totalMatched >= 100)
+                    {
+                        UGS_AchievementLocal.Unlock("ACH_SORT_MASTER");
+                    }
                 }
                 else
                 {
@@ -512,6 +521,17 @@ public class Mode2Manager : MonoBehaviour
     IEnumerator WinSequence()
     {
         isGameOver = true;
+        if (!hasMadeMistake)
+        {
+            UGS_AchievementLocal.Unlock("ACH_SORT_PERFECT");
+        }
+        int streak = PlayerPrefs.GetInt("Mode2WinStreak", 0) + 1;
+        PlayerPrefs.SetInt("Mode2WinStreak", streak);
+        if (streak >= 5)
+        {
+            UGS_AchievementLocal.Unlock("ACH_SORT_STREAK");
+        }
+        PlayerPrefs.Save();
         if (fireworkEffect != null) fireworkEffect.Play();
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX("Win");
 
@@ -529,6 +549,10 @@ public class Mode2Manager : MonoBehaviour
         yield return new WaitForSeconds(0.5f);
         if (!keep)
         {
+            hasMadeMistake = true;
+            PlayerPrefs.SetInt("Mode2WinStreak", 0);
+            PlayerPrefs.Save();
+
             currentTurn = currentTurn == 1 ? 2 : 1;
             UpdateTurnUI();
 

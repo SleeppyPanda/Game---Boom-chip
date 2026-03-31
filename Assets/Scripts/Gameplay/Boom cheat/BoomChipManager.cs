@@ -206,6 +206,7 @@ public class BoomChipManager : MonoBehaviour
     {
         if (currentActiveTutorial != null) currentActiveTutorial.SetActive(false);
         isShowingTutorial = false;
+        UGS_AchievementLocal.Unlock("ACH_BOOM_PLANTER");
 
         currentPhase = GamePhase.Phase2;
         panelPhase1.SetActive(false);
@@ -390,6 +391,13 @@ public class BoomChipManager : MonoBehaviour
             tile.SetVisual(ownerSkin);
 
             if (boardOwnerID == 1) p1HitCount++; else p2HitCount++;
+
+            int currentHits = (isP1Turn) ? p1HitCount : p2HitCount;
+            if (currentHits == 1)
+            {
+                UGS_AchievementLocal.Unlock("ACH_BOOM_SNIPER");
+            }
+
             UpdateHeartsUI(boardOwnerID);
 
             string sound = (boardOwnerID == 1) ? p1HitSFX : p2HitSFX;
@@ -483,6 +491,16 @@ public class BoomChipManager : MonoBehaviour
     void ShowWinScreen(int winnerID)
     {
         AccountManager.SetWinResult(winnerID);
+
+        int hitsAgainstWinner = (winnerID == 1) ? p2HitCount : p1HitCount;
+        if (hitsAgainstWinner == 0)
+        {
+            UGS_AchievementLocal.Unlock("ACH_BOOM_FLAWLESS");
+        }
+        else if (hitsAgainstWinner == 2)
+        {
+            UGS_AchievementLocal.Unlock("ACH_BOOM_CLUTCH");
+        }
 
         // Kích hoạt bảng kết quả
         panelWin.SetActive(true);
@@ -676,6 +694,12 @@ public class BoomChipManager : MonoBehaviour
             string key = "FirstTime_Boom_Phase" + (currentActiveTutorial == tutorialP1 ? 1 : (currentActiveTutorial == tutorialP2 ? 2 : 3));
             PlayerPrefs.SetInt(key, 1);
             PlayerPrefs.Save();
+
+            int currentTutoPhase = (currentActiveTutorial == tutorialP1 ? 1 : (currentActiveTutorial == tutorialP2 ? 2 : 3));
+            if (currentTutoPhase == 3)
+            {
+                UGS_AchievementLocal.Unlock("ACH_BOOM_LEARNER");
+            }
 
             currentActiveTutorial.SetActive(false);
             currentActiveTutorial = null;

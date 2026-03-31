@@ -59,6 +59,7 @@ public class Mode3Manager : MonoBehaviour
     private bool isGameOver = false;
     private bool isShowingTutorial = false;
     private bool isFirstStart = true; // Thêm biến này
+    private bool hasDroppedOut = false;
 
     private const int MODE_ID = 12;
 
@@ -215,6 +216,7 @@ public class Mode3Manager : MonoBehaviour
         // Xóa vật thể cũ nếu còn sót lại và sinh vật thể mới
         if (currentItem != null) Destroy(currentItem);
         SpawnPreviewItem();
+        hasDroppedOut = false;
     }
 
     void Update()
@@ -241,6 +243,7 @@ public class Mode3Manager : MonoBehaviour
                     PlayerPrefs.SetInt("FirstTime_Mode3", 1);
                     PlayerPrefs.Save();
                     DropItem();
+                    UGS_AchievementLocal.Unlock("ACH_BOUNCE_LEARNER");
                 }
                 else if (canPlay)
                 {
@@ -290,6 +293,13 @@ public class Mode3Manager : MonoBehaviour
         {
             wheelHit.DOPunchPosition(new Vector3(0, -0.2f, 0), 0.2f, 10, 1f);
         }
+        int totalBounces = PlayerPrefs.GetInt("TotalMode3Bounces", 0) + 1;
+        PlayerPrefs.SetInt("TotalMode3Bounces", totalBounces);
+
+        if (totalBounces >= 200) // Ví dụ: tâng tổng cộng 200 lần
+        {
+            UGS_AchievementLocal.Unlock("ACH_BOUNCE_MASTER");
+        }
     }
 
     public void FinishGame()
@@ -320,6 +330,19 @@ public class Mode3Manager : MonoBehaviour
         // -------------------------
 
         if (AdsManager.Instance != null) AdsManager.Instance.ShowMREC("is_show_mrec_complete_game");
+        if (bounceCount >= 15)
+        {
+            UGS_AchievementLocal.Unlock("ACH_BOUNCE_PERFECT");
+        }
+
+        // 2. ACH_BOUNCE_STREAK: Thắng (hoàn thành) 5 ván liên tiếp
+        int streak = PlayerPrefs.GetInt("Mode3WinStreak", 0) + 1;
+        PlayerPrefs.SetInt("Mode3WinStreak", streak);
+        if (streak >= 5)
+        {
+            UGS_AchievementLocal.Unlock("ACH_BOUNCE_STREAK");
+        }
+        PlayerPrefs.Save();
     }
 
     public void Btn_PlayAgain()

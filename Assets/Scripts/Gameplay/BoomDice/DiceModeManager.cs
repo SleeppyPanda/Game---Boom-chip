@@ -259,6 +259,9 @@ public class DiceModeManager : MonoBehaviour
             {
                 tutorialStep = 4; // Xong Flip P2 -> Xong toàn bộ Tutorial
                 PlayerPrefs.SetInt("TutorialDone", 1);
+
+                UGS_AchievementLocal.Unlock("ACH_DICE_LEARNER");
+
                 PlayerPrefs.Save();
             }
 
@@ -274,6 +277,11 @@ public class DiceModeManager : MonoBehaviour
 
     private IEnumerator HandleBombExplosionSequence(DiceTile tile)
     {
+        int currentClaimed = isP1Turn ? p1ClaimedCells : p2ClaimedCells;
+        if (currentClaimed <= 1)
+        {
+            UGS_AchievementLocal.Unlock("ACH_DICE_BOMB_HIT");
+        }
         isGameOver = true;
         SetBoardInteractable(false);
         tile.SetVisual(bombSprite, true);
@@ -408,6 +416,11 @@ public class DiceModeManager : MonoBehaviour
         int finalResult = Random.Range(1, 7);
         diceDisplayImage.sprite = diceSprites[finalResult - 1];
 
+        if (finalResult == 6)
+        {
+            UGS_AchievementLocal.Unlock("ACH_DICE_ROLL_6");
+        }
+
         Animator diceAnim = diceDisplayImage.GetComponent<Animator>();
         if (diceAnim != null) diceAnim.enabled = false;
 
@@ -439,6 +452,10 @@ public class DiceModeManager : MonoBehaviour
     #region END GAME
     void DetermineWinnerByScore()
     {
+        if (isBombModeActive)
+        {
+            UGS_AchievementLocal.Unlock("ACH_DICE_SURVIVOR");
+        }
         int winner = 0;
         if (p1ClaimedCells > p2ClaimedCells) winner = 1;
         else if (p2ClaimedCells > p1ClaimedCells) winner = 2;
@@ -455,6 +472,12 @@ public class DiceModeManager : MonoBehaviour
 
     void EndGame(int winnerID)
     {
+        int winnerScore = (winnerID == 1) ? p1ClaimedCells : p2ClaimedCells;
+
+        if (winnerScore >= 18)
+        {
+            UGS_AchievementLocal.Unlock("ACH_DICE_DOMINANCE");
+        }
         isGameOver = true;
         SetBoardInteractable(false);
         if (AccountManager.Instance != null) AccountManager.SetWinResult(winnerID);
