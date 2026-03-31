@@ -26,6 +26,12 @@ public class Mode2Manager : MonoBehaviour
     public GameObject winPanel;
     public GameObject settingPanel;
 
+    [Header("Tutorial System")]
+    public GameObject tutorialStep1;
+    public GameObject tutorialStep2;
+    public GameObject tutorialWinTip;
+    private bool isTutorialActive = false;
+
     [Header("Win Effects & Objects")]
     public GameObject player1Crown;
     public GameObject player2Crown;
@@ -72,6 +78,7 @@ public class Mode2Manager : MonoBehaviour
     void Start()
     {
         UpdateTurnUI();
+        isTutorialActive = (PlayerPrefs.GetInt("Mode2TutorialDone", 0) == 0);
         StartNewRound();
     }
 
@@ -185,6 +192,24 @@ public class Mode2Manager : MonoBehaviour
 
         topBottles.ForEach(b => b.GetComponent<Button>().interactable = true);
         isProcessingTurn = false;
+
+        if (curtainRect != null)
+        {
+            float canvasWidth = curtainRect.GetComponentInParent<Canvas>().GetComponent<RectTransform>().rect.width;
+            float endX = -((canvasWidth / 2) + (curtainRect.sizeDelta.x / 2) + 200f);
+            yield return curtainRect.DOAnchorPosX(endX, curtainMoveDuration).SetEase(Ease.InQuad).WaitForCompletion();
+            curtainRect.gameObject.SetActive(false);
+        }
+
+        topBottles.ForEach(b => b.GetComponent<Button>().interactable = true);
+        isProcessingTurn = false;
+
+        // --- THÊM LOGIC TUTORIAL VÀO ĐÂY ---
+        if (isTutorialActive && tutorialStep1 != null)
+        {
+            tutorialStep1.SetActive(true);
+            AnimateHand(tutorialStep1);
+        }
     }
 
     IEnumerator FastShuffleRoutine(List<GameObject> list)
@@ -252,6 +277,39 @@ public class Mode2Manager : MonoBehaviour
             StartCoroutine(WinSequence());
         else
             StartCoroutine(WaitAndHandleTurn(hasCorrected));
+
+        if (isTutorialActive)
+        {
+            isTutorialActive = false; // Tắt trạng thái tutorial
+            PlayerPrefs.SetInt("Mode2TutorialDone", 1); // Lưu lại đã hoàn thành
+            PlayerPrefs.Save();
+
+            if (tutorialWinTip)
+            {
+                tutorialWinTip.SetActive(true);
+                // Thông báo này sẽ tự ẩn sau 4 giây
+                DOVirtual.DelayedCall(4f, () => {
+                    if (tutorialWinTip != null) tutorialWinTip.SetActive(false);
+                });
+            }
+        }
+
+        if (!isPosCorrect.Contains(false))
+            StartCoroutine(WinSequence());
+        else
+            StartCoroutine(WaitAndHandleTurn(hasCorrected));
+    }
+
+    // Hàm hiệu ứng bàn tay nhấp nhô
+    private void AnimateHand(GameObject group)
+    {
+        Transform hand = group.transform.Find("HandPointer");
+        if (hand != null)
+        {
+            hand.DOKill();
+            hand.localScale = Vector3.one;
+            hand.DOScale(1.2f, 0.5f).SetLoops(-1, LoopType.Yoyo).SetEase(Ease.InOutSine);
+        }
     }
 
     void EnsureNoMatchesAtStart()
@@ -287,15 +345,36 @@ public class Mode2Manager : MonoBehaviour
         {
             firstSelected = clickedBottle;
             firstSelected.transform.DOLocalMoveY(35f, 0.2f).SetRelative(true);
+
+            // Chuyển sang bước 2
+            if (isTutorialActive)
+            {
+                if (tutorialStep1) tutorialStep1.SetActive(false);
+                if (tutorialStep2)
+                {
+                    tutorialStep2.SetActive(true);
+                    AnimateHand(tutorialStep2);
+                }
+            }
         }
         else if (firstSelected == clickedBottle)
         {
             firstSelected.transform.DOLocalMoveY(-35f, 0.2f).SetRelative(true);
             firstSelected = null;
+
+            // Nếu bỏ chọn, quay lại bước 1
+            if (isTutorialActive)
+            {
+                if (tutorialStep1) tutorialStep1.SetActive(true);
+                if (tutorialStep2) tutorialStep2.SetActive(false);
+            }
         }
         else
         {
             isProcessingTurn = true;
+            // Tắt Step 2 khi bắt đầu swap
+            if (isTutorialActive && tutorialStep2) tutorialStep2.SetActive(false);
+
             GameObject secondSelected = clickedBottle;
             secondSelected.transform.DOLocalMoveY(35f, 0.2f).SetRelative(true).OnComplete(() => {
                 SwapBottles(firstSelected, secondSelected);
