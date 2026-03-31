@@ -19,6 +19,12 @@ public class Mode3Manager : MonoBehaviour
     public TextMeshProUGUI txtComment;
     public List<Mode3Data> database;
 
+    [Header("Audio Settings")]
+    public string sfxBounce = "ItemBounce";
+    public string sfxDead = "ItemDead";
+    public string bgmMusic = "Mode3_BGM";
+    public string sfxWin = "Win";
+
     [Header("Transition Prefab (New)")]
     public Transform mainCanvas;
     public GameObject transitionPrefab;
@@ -74,6 +80,8 @@ public class Mode3Manager : MonoBehaviour
 
     void Start()
     {
+        if (AudioManager.Instance != null)
+            AudioManager.Instance.PlayMusic(bgmMusic);
         Debug.Log($"<color=cyan>[ANALYTIC]</color> Enter Mode: {MODE_ID}");
         if (FirebaseManager.Instance != null) FirebaseManager.Instance.LogModeEnter(MODE_ID);
         if (AdsManager.Instance != null) AdsManager.Instance.HideMREC();
@@ -315,6 +323,7 @@ public class Mode3Manager : MonoBehaviour
 
     public void Btn_BackToHome()
     {
+        if (AudioManager.Instance != null) AudioManager.Instance.StopMusic();
         if (AdsManager.Instance != null)
         {
             AdsManager.Instance.HideMREC();

@@ -26,6 +26,14 @@ public class Mode2Manager : MonoBehaviour
     public GameObject winPanel;
     public GameObject settingPanel;
 
+    [Header("Audio Settings")]
+    public string sfxBottleSelect = "BottleSelect";
+    public string sfxBottleLand = "BottleLand";
+    public string sfxCorrectMatch = "CorrectMatch";
+    public string sfxPopupShow = "PopupShow";
+    public string sfxWin = "Win";
+    public string bgmMusic = "BackgroundMusic";
+
     [Header("Turn Popup Simple")]
     public GameObject turnPopupObj;     // Kéo TurnPopup vào đây
     public GameObject player1TextObj;   // Kéo Player1Text vào đây
@@ -89,6 +97,11 @@ public class Mode2Manager : MonoBehaviour
 
     void Start()
     {
+        if (AudioManager.Instance != null)
+        {
+            AudioManager.Instance.PlayMusic(bgmMusic);
+        }
+
         UpdateTurnUI();
         isTutorialActive = (PlayerPrefs.GetInt("Mode2TutorialDone", 0) == 0);
         currentLevelCount = isTutorialActive ? 3 : Random.Range(4, 10);
@@ -301,6 +314,7 @@ public class Mode2Manager : MonoBehaviour
                     var data = masterBottleList.Find(x => x.bottleID == topID);
                     targetSprite = data != null ? data.bottleSprite : grayBottleSprite;
                     hasCorrected = true;
+                    if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(sfxCorrectMatch);
                     PlayBounceEffect(bottomBottles[i]);
                 }
                 else
@@ -379,6 +393,7 @@ public class Mode2Manager : MonoBehaviour
 
         if (firstSelected == null)
         {
+            if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(sfxBottleSelect);
             firstSelected = clickedBottle;
             firstSelected.transform.DOLocalMoveY(35f, 0.2f).SetRelative(true);
 
@@ -394,6 +409,7 @@ public class Mode2Manager : MonoBehaviour
         }
         else if (firstSelected == clickedBottle)
         {
+            if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX("BottleSelect");
             firstSelected.transform.DOLocalMoveY(-35f, 0.2f).SetRelative(true);
             firstSelected = null;
 
@@ -405,6 +421,7 @@ public class Mode2Manager : MonoBehaviour
         }
         else
         {
+            if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX("BottleSelect");
             isProcessingTurn = true;
             if (isTutorialActive && tutorialStep2) tutorialStep2.SetActive(false);
 
@@ -439,6 +456,7 @@ public class Mode2Manager : MonoBehaviour
     {
         a.GetComponent<BottleController>()?.PlayUpperLand();
         b.GetComponent<BottleController>()?.PlayUpperLand();
+        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(sfxBottleLand);
         yield return new WaitForSeconds(0.5f);
         a.GetComponent<BottleController>()?.InactiveUpperLand();
         b.GetComponent<BottleController>()?.InactiveUpperLand();
@@ -558,6 +576,7 @@ public class Mode2Manager : MonoBehaviour
 
     public void OnBackToMode1Click()
     {
+        if (AudioManager.Instance != null) AudioManager.Instance.StopMusic();
         if (AdsManager.Instance != null)
         {
             AdsManager.Instance.HideMREC();
@@ -583,7 +602,7 @@ public class Mode2Manager : MonoBehaviour
     private void ShowTurnPopup()
     {
         if (turnPopupObj == null) return;
-
+        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(sfxPopupShow);
         // Bật/tắt text theo đúng người chơi hiện tại
         if (player1TextObj != null) player1TextObj.SetActive(currentTurn == 1);
         if (player2TextObj != null) player2TextObj.SetActive(currentTurn == 2);

@@ -105,4 +105,14 @@ public class AudioManager : MonoBehaviour
             sfxSource.PlayOneShot(clip);
         }
     }
+    public void StopMusic()
+    {
+        if (musicSource != null && musicSource.isPlaying)
+        {
+            // Dừng hẳn nhạc ngay lập tức
+            musicSource.Stop();
+            // Hoặc nếu muốn chuyên nghiệp, bạn có thể dùng DOTween để fade volume về 0
+            // musicSource.DOFade(0, 0.5f).OnComplete(() => musicSource.Stop());
+        }
+    }
 }

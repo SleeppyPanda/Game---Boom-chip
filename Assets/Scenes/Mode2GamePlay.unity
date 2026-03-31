@@ -688,6 +688,11 @@ MonoBehaviour:
   turnNotificationText: {fileID: 0}
   winPanel: {fileID: 1701871755}
   settingPanel: {fileID: 774665642}
+  sfxBottleSelect: BottleSelect
+  sfxBottleLand: DapBan
+  sfxCorrectMatch: CorrectMatch
+  sfxPopupShow: PopupShow
+  sfxWin: Win
   turnPopupObj: {fileID: 476931170}
   player1TextObj: {fileID: 743365712}
   player2TextObj: {fileID: 882243075}
@@ -1465,7 +1470,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5766482030724548493, guid: 7db468ac4fffb094b9a404626775d043, type: 3}
       propertyPath: m_IsActive
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 7564218586378184321, guid: 7db468ac4fffb094b9a404626775d043, type: 3}
       propertyPath: m_AnchoredPosition.y
@@ -1573,9 +1578,17 @@ PrefabInstance:
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 6032909115035226978, guid: c12a666c0ebdfcd49a270faab1c442f7, type: 3}
+      propertyPath: sfxClips.Array.size
+      value: 15
+      objectReference: {fileID: 0}
+    - target: {fileID: 6032909115035226978, guid: c12a666c0ebdfcd49a270faab1c442f7, type: 3}
       propertyPath: musicClips.Array.size
       value: 3
       objectReference: {fileID: 0}
+    - target: {fileID: 6032909115035226978, guid: c12a666c0ebdfcd49a270faab1c442f7, type: 3}
+      propertyPath: sfxClips.Array.data[14]
+      value: 
+      objectReference: {fileID: 8300000, guid: 250c4af4df6a18342bf510c9a97c06d9, type: 3}
     - target: {fileID: 6032909115035226978, guid: c12a666c0ebdfcd49a270faab1c442f7, type: 3}
       propertyPath: musicClips.Array.data[3]
       value: 

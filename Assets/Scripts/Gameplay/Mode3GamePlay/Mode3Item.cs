@@ -101,12 +101,17 @@ public class Mode3Item : MonoBehaviour
     {
         if (isDead) return;
 
-        // Va chạm bánh xe (Rung bánh xe)
+        // --- THÊM ÂM THANH KHI CHẠM BÁNH XE (WALL/HALF) ---
         if (collision.gameObject.CompareTag("Wall") || collision.gameObject.name.Contains("Half"))
         {
             if (Time.time - lastBounceTime > bounceCooldown)
             {
                 lastBounceTime = Time.time;
+
+                // GỌI ÂM THANH NẢY (Bounce)
+                if (AudioManager.Instance != null && Mode3Manager.Instance != null)
+                    AudioManager.Instance.PlaySFX(Mode3Manager.Instance.sfxBounce);
+
                 if (Mode3Manager.Instance != null)
                     Mode3Manager.Instance.AddBounce(collision.transform);
 
@@ -120,6 +125,10 @@ public class Mode3Item : MonoBehaviour
         // 3. CHỈ KÍCH HOẠT KHI CHẠM DEADZONE
         if (other.CompareTag("DeadZone") && !isDead)
         {
+            // --- THÊM ÂM THANH KHI CHẠM VÀO VÙNG THUA (DeadZone) ---
+            if (AudioManager.Instance != null && Mode3Manager.Instance != null)
+                AudioManager.Instance.PlaySFX(Mode3Manager.Instance.sfxDead);
+
             HandleDeadSequence();
         }
     }
