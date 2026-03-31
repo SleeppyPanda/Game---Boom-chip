@@ -30,7 +30,6 @@ public class Mode3Manager : MonoBehaviour
 
     [Header("Quick Tutorial")]
     public GameObject tutorialGroup;
-    public TextMeshProUGUI txtGuide;
     public GameObject handPointer; // Thêm biến này để làm hiệu ứng bàn tay nếu cần
 
     [Header("Animation Settings")]
@@ -92,9 +91,6 @@ public class Mode3Manager : MonoBehaviour
 
         tutorialGroup.SetActive(true);
         isShowingTutorial = true;
-
-        if (txtGuide != null)
-            txtGuide.text = "QUY TẮC:\n- Chạm để thả bóng\n- Dự đoán số lần nảy\n- Điểm cao nhất sẽ thắng!";
 
         // --- SỬA Ở ĐÂY ---
         // Thay vì chạy code tween trực tiếp, ta gọi Coroutine để delay
