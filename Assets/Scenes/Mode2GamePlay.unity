@@ -368,11 +368,6 @@ MonoBehaviour:
   targetType: 0
   nameText: {fileID: 0}
   avatarImage: {fileID: 1088207621}
---- !u!1 &22383697 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 4844003828462124962, guid: 7db468ac4fffb094b9a404626775d043, type: 3}
-  m_PrefabInstance: {fileID: 684059717}
-  m_PrefabAsset: {fileID: 0}
 --- !u!1 &186875365
 GameObject:
   m_ObjectHideFlags: 0
@@ -466,7 +461,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!224 &251041139
 RectTransform:
   m_ObjectHideFlags: 0
@@ -476,15 +471,15 @@ RectTransform:
   m_GameObject: {fileID: 251041138}
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1.2524059, y: 1, z: 1.2121}
+  m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 266780292}
+  m_Father: {fileID: 1577348197}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -0.00011444, y: -439.5}
-  m_SizeDelta: {x: 862.34, y: 295}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 1080, y: 295}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &251041142
 MonoBehaviour:
@@ -621,7 +616,7 @@ RectTransform:
   - {fileID: 793086301}
   - {fileID: 5160404}
   - {fileID: 751162971}
-  - {fileID: 251041139}
+  - {fileID: 1577348197}
   - {fileID: 774665641}
   - {fileID: 589815547}
   - {fileID: 822874021}
@@ -688,11 +683,12 @@ MonoBehaviour:
   turnNotificationText: {fileID: 0}
   winPanel: {fileID: 1701871755}
   settingPanel: {fileID: 774665642}
-  sfxBottleSelect: BottleSelect
+  sfxBottleSelect: pop SFX_5
   sfxBottleLand: DapBan
-  sfxCorrectMatch: CorrectMatch
+  sfxCorrectMatch: correct SFX 1
   sfxPopupShow: PopupShow
   sfxWin: Win
+  bgmMusic: Background_04
   turnPopupObj: {fileID: 476931170}
   player1TextObj: {fileID: 743365712}
   player2TextObj: {fileID: 882243075}
@@ -701,8 +697,8 @@ MonoBehaviour:
   tutorialStep1: {fileID: 681703296}
   tutorialStep2: {fileID: 966865412}
   tutorialWinTip: {fileID: 686655167}
-  player1Crown: {fileID: 22383697}
-  player2Crown: {fileID: 406564454}
+  player1Crown: {fileID: 616180009}
+  player2Crown: {fileID: 1868722335}
   fireworkEffect: {fileID: 0}
   delayBeforeWinPanel: 1.2
   masterBottleList:
@@ -771,11 +767,6 @@ RectTransform:
   m_AnchoredPosition: {x: 0, y: 355}
   m_SizeDelta: {x: -5.2453613, y: -55}
   m_Pivot: {x: 0.5, y: 0.5}
---- !u!1 &406564454 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 3532944996918371315, guid: 7db468ac4fffb094b9a404626775d043, type: 3}
-  m_PrefabInstance: {fileID: 684059717}
-  m_PrefabAsset: {fileID: 0}
 --- !u!1 &476931170
 GameObject:
   m_ObjectHideFlags: 0
@@ -1122,6 +1113,11 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 589815546}
   m_CullTransparentMesh: 1
+--- !u!1 &616180009 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 5106432659160437737, guid: 7db468ac4fffb094b9a404626775d043, type: 3}
+  m_PrefabInstance: {fileID: 684059717}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &619394800
 GameObject:
   m_ObjectHideFlags: 0
@@ -1577,30 +1573,6 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 6032909115035226978, guid: c12a666c0ebdfcd49a270faab1c442f7, type: 3}
-      propertyPath: sfxClips.Array.size
-      value: 15
-      objectReference: {fileID: 0}
-    - target: {fileID: 6032909115035226978, guid: c12a666c0ebdfcd49a270faab1c442f7, type: 3}
-      propertyPath: musicClips.Array.size
-      value: 3
-      objectReference: {fileID: 0}
-    - target: {fileID: 6032909115035226978, guid: c12a666c0ebdfcd49a270faab1c442f7, type: 3}
-      propertyPath: sfxClips.Array.data[14]
-      value: 
-      objectReference: {fileID: 8300000, guid: 250c4af4df6a18342bf510c9a97c06d9, type: 3}
-    - target: {fileID: 6032909115035226978, guid: c12a666c0ebdfcd49a270faab1c442f7, type: 3}
-      propertyPath: musicClips.Array.data[3]
-      value: 
-      objectReference: {fileID: 8300000, guid: d4a5d5187657bc2439a85da4a4af1341, type: 3}
-    - target: {fileID: 6032909115035226978, guid: c12a666c0ebdfcd49a270faab1c442f7, type: 3}
-      propertyPath: musicClips.Array.data[4]
-      value: 
-      objectReference: {fileID: 8300000, guid: d4a5d5187657bc2439a85da4a4af1341, type: 3}
-    - target: {fileID: 6032909115035226978, guid: c12a666c0ebdfcd49a270faab1c442f7, type: 3}
-      propertyPath: musicClips.Array.data[5]
-      value: 
-      objectReference: {fileID: 8300000, guid: d4a5d5187657bc2439a85da4a4af1341, type: 3}
     - target: {fileID: 7015523558225163803, guid: c12a666c0ebdfcd49a270faab1c442f7, type: 3}
       propertyPath: m_Name
       value: Soundmanager
@@ -3339,6 +3311,42 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1551819802}
   m_CullTransparentMesh: 1
+--- !u!1 &1577348196
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1577348197}
+  m_Layer: 5
+  m_Name: CurtainGroup
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!224 &1577348197
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1577348196}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 251041139}
+  m_Father: {fileID: 266780292}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0.5, y: 0.5}
+  m_AnchorMax: {x: 0.5, y: 0.5}
+  m_AnchoredPosition: {x: 0, y: -439.5}
+  m_SizeDelta: {x: 100, y: 100}
+  m_Pivot: {x: 0.5, y: 0.5}
 --- !u!1 &1606843074
 GameObject:
   m_ObjectHideFlags: 0
@@ -3551,6 +3559,11 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1748970586}
   m_CullTransparentMesh: 1
+--- !u!1 &1868722335 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 1739022220677919370, guid: 7db468ac4fffb094b9a404626775d043, type: 3}
+  m_PrefabInstance: {fileID: 684059717}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &1927728740
 GameObject:
   m_ObjectHideFlags: 0

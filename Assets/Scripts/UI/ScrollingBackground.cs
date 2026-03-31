@@ -8,8 +8,12 @@ public class ScrollingBackground : MonoBehaviour
 
     void Update()
     {
-        // Tạo vector di chuyển chéo bằng cách kết hợp X và Y
-        Vector2 offset = new Vector2(Time.time * speedX, Time.time * speedY);
+        // Sử dụng toán tử % 1.0f để giữ giá trị luôn trong khoảng 0-1
+        // Điều này giúp tránh lỗi sai số dấu phẩy động (Floating Point Precision Error)
+        float offsetX = (Time.time * speedX) % 1.0f;
+        float offsetY = (Time.time * speedY) % 1.0f;
+
+        Vector2 offset = new Vector2(offsetX, offsetY);
 
         // Gán offset vào material
         bgRenderer.material.mainTextureOffset = offset;

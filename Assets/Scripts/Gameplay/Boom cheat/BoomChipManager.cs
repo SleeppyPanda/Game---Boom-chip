@@ -401,8 +401,14 @@ public class BoomChipManager : MonoBehaviour
 
         if (!panelWin.activeSelf && currentPhase == GamePhase.Phase3)
         {
-            isP1Turn = !isP1Turn;
-            UpdateBoardVisuals();
+            p1BoardArea.blocksRaycasts = false;
+            p2BoardArea.blocksRaycasts = false;
+
+            // Dùng DOTween để gọi hàm sau 0.5s
+            DOVirtual.DelayedCall(0.5f, () => {
+                isP1Turn = !isP1Turn;
+                UpdateBoardVisuals();
+            });
         }
     }
 

@@ -190,15 +190,33 @@ public class Mode2Manager : MonoBehaviour
             // Phải dùng yield return để TOÀN BỘ luồng game phía sau dừng lại
             yield return StartCoroutine(RunStartTransition());
         }
-        // -------------------
-
-        // Chỉ khi Transition ĐÃ MỞ XONG và BỊ HỦY, code phía dưới mới chạy
+        
         if (curtainRect != null)
         {
             curtainRect.gameObject.SetActive(true);
+
+            // 1. Tính toán Scale dựa trên giới hạn 1080
+            float maxCurtainWidth = 1080f;
+            float curtainScale = 1f;
+
+            if (targetWidth > maxCurtainWidth)
+            {
+                curtainScale = maxCurtainWidth / targetWidth;
+            }
+
+            // 2. Áp dụng kích thước và Scale
+            // Chiều rộng vẫn set theo targetWidth để nội dung bên trong (nếu có) không bị bóp
+            // Nhưng Scale sẽ làm nó trông nhỏ lại vừa màn hình
             curtainRect.sizeDelta = new Vector2(targetWidth, curtainRect.sizeDelta.y);
-            curtainRect.gameObject.SetActive(true);
-            curtainRect.anchoredPosition = new Vector2(0f, curtainRect.anchoredPosition.y);
+            curtainRect.localScale = new Vector3(curtainScale, curtainScale, 1f);
+
+            // 3. Đẩy vị trí xuống đáy (Pivot của Curtain nên để là 0.5, 0.5)
+            // Tính toán offset dựa trên chiều cao bị mất đi do scale
+            float baseHeight = curtainRect.sizeDelta.y;
+            float yOffset = (baseHeight * (1f - curtainScale)) / 2f;
+
+            // Giữ nguyên X ở giữa (0), đẩy Y xuống dưới
+            curtainRect.anchoredPosition = new Vector2(0f, -yOffset);
         }
 
         List<int> availableIDs = masterBottleList.Select(x => x.bottleID).ToList();

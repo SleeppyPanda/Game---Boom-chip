@@ -240,7 +240,7 @@ public class DiceModeManager : MonoBehaviour
         UpdateScoreUI();
         UpdateTutorial();
 
-        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX("SFX_Click");
+        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX("Chip");
 
         if (totalCellsClaimed >= 25)
         {

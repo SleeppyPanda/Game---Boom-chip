@@ -17,6 +17,10 @@ public class MenuManager : MonoBehaviour
     public CanvasGroup panelAccount;
     public CanvasGroup panelSetting;
 
+    [Header("Audio Settings")]
+    public string bgmMusic = "background_02"; // Tên nhạc nền (Task)
+    public string sfxClick = "ButtonClick";   // Tên tiếng bấm nút
+
     [Header("Danh sách các Transform của Button (Bottom Bar)")]
     public RectTransform[] menuButtons;
     public RectTransform btnAccount;
@@ -68,8 +72,10 @@ public class MenuManager : MonoBehaviour
             if (centerLogo != null) { centerLogo.DOKill(); centerLogo.transform.localScale = Vector3.zero; centerLogo.alpha = 0; }
         }
 
-        // Âm thanh và Ads
-        if (AudioManager.Instance != null) AudioManager.Instance.PlayMusic("background_01");
+        // Chạy nhạc nền theo biến cấu hình
+        if (AudioManager.Instance != null)
+            AudioManager.Instance.PlayMusic(bgmMusic);
+
         if (AdsManager.Instance != null) AdsManager.Instance.ShowBanner();
 
         // Khởi tạo mảng UI Bottom Bar
@@ -91,8 +97,8 @@ public class MenuManager : MonoBehaviour
 
         isTransitioning = false;
 
-        // Luôn bắt đầu ở Panel chính (Mode 1)
-        ShowPanel1();
+        // Luôn bắt đầu ở Panel chính (Mode 1) - Không phát âm thanh click lúc khởi tạo
+        ShowPanel1(false);
     }
 
     private void InitPanel(CanvasGroup cg)
@@ -108,19 +114,21 @@ public class MenuManager : MonoBehaviour
 
     #region PANEL NAVIGATION
 
-    public void ShowPanel1()
+    public void ShowPanel1() => ShowPanel1(true);
+
+    private void ShowPanel1(bool playSound)
     {
+        if (playSound) PlayClick();
+
         if (currentPanel == panelAccount || currentPanel == panelSetting)
-            CloseExtraPanel();
+            CloseExtraPanel(playSound);
         else if (currentPanel != panelMode1)
             SwitchToMode(panelMode1, 0, false);
     }
 
-    /// <summary>
-    /// Chuyển hướng hiển thị UI Mode (Dành cho việc hiện Panel sau khi mở khóa)
-    /// </summary>
     public void DirectSwitchToMode(int index)
     {
+        PlayClick();
         if (index == 0) SwitchToMode(panelMode1, 0, false);
         else if (index == 1) SwitchToMode(panelMode2, 1, true);
         else if (index == 2) SwitchToMode(panelMode3, 2, true);
@@ -134,8 +142,8 @@ public class MenuManager : MonoBehaviour
         currentPanel = target;
     }
 
-    public void ClosePanelMode2() => CloseSpecificPopup(panelMode2);
-    public void ClosePanelMode3() => CloseSpecificPopup(panelMode3);
+    public void ClosePanelMode2() { PlayClick(); CloseSpecificPopup(panelMode2); }
+    public void ClosePanelMode3() { PlayClick(); CloseSpecificPopup(panelMode3); }
 
     private void CloseSpecificPopup(CanvasGroup popup)
     {
@@ -149,7 +157,6 @@ public class MenuManager : MonoBehaviour
         popup.transform.DOScale(0.8f, fadeDuration).OnComplete(() => {
             popup.gameObject.SetActive(false);
 
-            // Reset về Mode 1
             currentPanel = panelMode1;
             panelMode1.gameObject.SetActive(true);
             panelMode1.alpha = 1;
@@ -162,22 +169,16 @@ public class MenuManager : MonoBehaviour
 
     #region SCENE LOADING & TRANSITION (PUBLIC)
 
-    // Các hàm này giờ có thể gọi từ bên ngoài (LevelButton/UnlockButton)
-    public void StartGameMode2() => StartAnyScene(sceneNameMode2, 2);
-    public void StartGameMode3() => StartAnyScene(sceneNameMode3, 3);
+    public void StartGameMode2() { PlayClick(); StartAnyScene(sceneNameMode2, 2); }
+    public void StartGameMode3() { PlayClick(); StartAnyScene(sceneNameMode3, 3); }
 
-    /// <summary>
-    /// Chạy hiệu ứng Transition Strips và load Scene bất kỳ
-    /// </summary>
     public void StartAnyScene(string sceneName, int modeIndex)
     {
         if (isTransitioning) return;
         isTransitioning = true;
 
-        // Cập nhật UI Bottom Bar để người dùng thấy phản hồi ngay lập tức
         HandleButtonAnimationOnly(modeIndex - 1);
 
-        // Lưu mode đang chọn vào bộ nhớ
         PlayerPrefs.SetInt("SelectedMode", modeIndex);
         PlayerPrefs.Save();
 
@@ -186,7 +187,6 @@ public class MenuManager : MonoBehaviour
 
     private IEnumerator TransitionAndLoad(string sceneName)
     {
-        // Khóa tương tác toàn bộ UI tránh người dùng bấm lung tung
         if (currentPanel != null)
         {
             currentPanel.interactable = false;
@@ -199,7 +199,6 @@ public class MenuManager : MonoBehaviour
             AdsManager.Instance.HideMREC();
         }
 
-        // Kích hoạt dải màu và logo trung tâm (Strips Transition)
         if (panelTransition != null)
         {
             panelTransition.SetActive(true);
@@ -219,7 +218,6 @@ public class MenuManager : MonoBehaviour
             StartCoroutine(AnimateSideElements(0, 1, 0.6f));
         }
 
-        // Đợi 1.2s cho hiệu ứng dải màu che kín màn hình rồi mới load
         yield return new WaitForSecondsRealtime(1.2f);
 
         DOTween.KillAll();
@@ -271,7 +269,6 @@ public class MenuManager : MonoBehaviour
 
     public void HandleButtonAnimationOnly(int index)
     {
-        // Hiệu ứng dịch chuyển nhẹ vị trí X cho Bottom Bar
         if (menuButtons.Length > 0 && menuButtons[0] != null)
         {
             menuButtons[0].DOKill();
@@ -285,14 +282,14 @@ public class MenuManager : MonoBehaviour
             if (menuButtons[i] == null) continue;
             menuButtons[i].DOKill();
 
-            if (i == index) // Trạng thái đang chọn (Highlight)
+            if (i == index)
             {
                 if (buttonImages[i] != null) buttonImages[i].sprite = frameSelected;
                 if (buttonTexts[i] != null) buttonTexts[i].color = Color.white;
                 menuButtons[i].DOAnchorPosY(200f, 0.25f).SetEase(Ease.OutBack);
                 menuButtons[i].DOScale(1.37f, 0.25f).SetEase(Ease.OutBack);
             }
-            else // Trạng thái không chọn
+            else
             {
                 if (buttonImages[i] != null) buttonImages[i].sprite = frameUnselected;
                 if (buttonTexts[i] != null)
@@ -307,8 +304,8 @@ public class MenuManager : MonoBehaviour
         }
     }
 
-    public void ShowAccount() => SwitchToExtra(panelAccount, btnAccount, 1.6f);
-    public void ShowSetting() => SwitchToExtra(panelSetting, btnSetting, 1.0f);
+    public void ShowAccount() { PlayClick(); SwitchToExtra(panelAccount, btnAccount, 1.6f); }
+    public void ShowSetting() { PlayClick(); SwitchToExtra(panelSetting, btnSetting, 1.0f); }
 
     private void SwitchToExtra(CanvasGroup target, RectTransform btn, float scale)
     {
@@ -343,8 +340,11 @@ public class MenuManager : MonoBehaviour
         currentPanel = target;
     }
 
-    public void CloseExtraPanel()
+    public void CloseExtraPanel() => CloseExtraPanel(true);
+
+    private void CloseExtraPanel(bool playSound)
     {
+        if (playSound) PlayClick();
         if (currentPanel == null || currentPanel == panelMode1) return;
 
         if (currentPanel == panelAccount && AccountManager.Instance != null)
@@ -379,4 +379,10 @@ public class MenuManager : MonoBehaviour
         btn.DOScale(Vector3.one * targetScale, 0.2f);
     }
     #endregion
+
+    private void PlayClick()
+    {
+        if (AudioManager.Instance != null)
+            AudioManager.Instance.PlaySFX(sfxClick);
+    }
 }
