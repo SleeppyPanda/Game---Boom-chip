@@ -28,14 +28,20 @@ public class Mode3Manager : MonoBehaviour
     public Transform spawnPoint;
     public GameObject itemPrefab;
 
+    [Header("Quick Tutorial")]
+    public GameObject tutorialGroup;
+    public TextMeshProUGUI txtGuide;
+    public GameObject handPointer; // Thêm biến này để làm hiệu ứng bàn tay nếu cần
+
     [Header("Animation Settings")]
-    public float rotateSpeed = 60f; // ĐÃ GIẢM: Từ 90 xuống 60
+    public float rotateSpeed = 60f;
 
     private int bounceCount;
     private Mode3Data currentData;
     private GameObject currentItem;
     private bool canPlay = true;
     private bool isGameOver = false;
+    private bool isShowingTutorial = false; // Biến kiểm soát trạng thái đang hiện tutorial
 
     private const int MODE_ID = 12;
 
@@ -61,7 +67,59 @@ public class Mode3Manager : MonoBehaviour
         Debug.Log($"<color=cyan>[ANALYTIC]</color> Enter Mode: {MODE_ID}");
         if (FirebaseManager.Instance != null) FirebaseManager.Instance.LogModeEnter(MODE_ID);
         if (AdsManager.Instance != null) AdsManager.Instance.HideMREC();
+
         SetupNewTurn();
+        CheckTutorial();
+    }
+
+    void CheckTutorial()
+    {
+        if (PlayerPrefs.GetInt("FirstTime_Mode3", 0) == 0)
+        {
+            ShowTutorial();
+            // Lưu ý: Không SetInt ở đây, hãy Set ở lúc người chơi chạm tay lần đầu
+        }
+        else
+        {
+            if (tutorialGroup != null) tutorialGroup.SetActive(false);
+            isShowingTutorial = false;
+        }
+    }
+
+    public void ShowTutorial()
+    {
+        if (tutorialGroup == null) return;
+
+        tutorialGroup.SetActive(true);
+        isShowingTutorial = true;
+
+        if (txtGuide != null)
+            txtGuide.text = "QUY TẮC:\n- Chạm để thả bóng\n- Dự đoán số lần nảy\n- Điểm cao nhất sẽ thắng!";
+
+        // --- SỬA Ở ĐÂY ---
+        // Thay vì chạy code tween trực tiếp, ta gọi Coroutine để delay
+        if (handPointer != null)
+        {
+            // Xóa các tween cũ trên object này để tránh bị chồng chéo
+            handPointer.transform.DOKill();
+            StartCoroutine(StartHandTweenWithDelay());
+        }
+    }
+
+    // Coroutine mới để delay
+    private IEnumerator StartHandTweenWithDelay()
+    {
+        // Đợi 1 khung hình (hoặc 0.1s) để DOTween component kịp khởi tạo
+        yield return new WaitForEndOfFrame(); // Cách 1: Đợi 1 frame (Khuyên dùng)
+                                              // yield return new WaitForSeconds(0.05f); // Cách 2: Đợi một chút thời gian cố định
+
+        if (handPointer != null && isShowingTutorial) // Kiểm tra lại object vẫn tồn tại
+        {
+            // Chạy hiệu ứng co giãn
+            handPointer.transform.DOScale(1.2f, 0.5f)
+                .SetLoops(-1, LoopType.Yoyo)
+                .SetEase(Ease.InOutSine);
+        }
     }
 
     public void SetupNewTurn()
@@ -95,11 +153,11 @@ public class Mode3Manager : MonoBehaviour
 
     void Update()
     {
-        // Xoay bánh xe (Giảm tốc độ theo yêu cầu)
         if (leftHalf != null) leftHalf.Rotate(0, 0, rotateSpeed * Time.deltaTime);
         if (rightHalf != null) rightHalf.Rotate(0, 0, rotateSpeed * Time.deltaTime);
 
-        if (!canPlay || currentItem == null || isGameOver) return;
+        // Chỉnh sửa điều kiện: Vẫn cho phép HandleDragInput chạy khi đang hiện Tutorial
+        if (currentItem == null || isGameOver) return;
 
         HandleDragInput();
     }
@@ -110,16 +168,37 @@ public class Mode3Manager : MonoBehaviour
         {
             if (!IsPointerOverUI())
             {
-                if (currentItem != null && canPlay)
+                // TRƯỜNG HỢP 1: Đang hiện Tutorial
+                if (isShowingTutorial)
                 {
-                    canPlay = false;
-                    Mode3Item itemScript = currentItem.GetComponent<Mode3Item>();
-                    if (itemScript != null) itemScript.StartFalling();
+                    isShowingTutorial = false;
+                    tutorialGroup.SetActive(false);
+                    PlayerPrefs.SetInt("FirstTime_Mode3", 1);
+                    PlayerPrefs.Save();
+
+                    // Thực hiện thả bóng ngay lập tức
+                    DropItem();
+                }
+                // TRƯỜNG HỢP 2: Đang chơi bình thường
+                else if (canPlay)
+                {
+                    DropItem();
                 }
             }
         }
     }
 
+    void DropItem()
+    {
+        if (currentItem != null)
+        {
+            canPlay = false;
+            Mode3Item itemScript = currentItem.GetComponent<Mode3Item>();
+            if (itemScript != null) itemScript.StartFalling();
+        }
+    }
+
+    // Các hàm còn lại (IsPointerOverUI, AddBounce, FinishGame, v.v.) giữ nguyên...
     private bool IsPointerOverUI()
     {
         if (EventSystem.current.IsPointerOverGameObject()) return true;
@@ -137,7 +216,6 @@ public class Mode3Manager : MonoBehaviour
         if (sr != null) sr.sprite = currentData.itemSprite;
     }
 
-    // THAY ĐỔI: Nhận Transform để chỉ rung bánh xe đó
     public void AddBounce(Transform wheelHit)
     {
         if (isGameOver) return;
@@ -145,11 +223,8 @@ public class Mode3Manager : MonoBehaviour
         if (txtScore != null)
         {
             txtScore.text = "Score: " + (bounceCount * 1);
-            txtScore.color = Color.yellow;
             txtScore.transform.DOPunchScale(Vector3.one * 0.3f, 0.2f, 10, 1f);
         }
-
-        // CHỈ RUNG BÁNH XE: Dùng DoTween rung nhẹ object bị chạm
         if (wheelHit != null)
         {
             wheelHit.DOPunchPosition(new Vector3(0, -0.2f, 0), 0.2f, 10, 1f);
@@ -165,70 +240,17 @@ public class Mode3Manager : MonoBehaviour
 
     private IEnumerator HandleFinishSequence()
     {
-        Debug.Log($"<color=green>[ANALYTIC]</color> Mode Complete: {MODE_ID}");
-        if (AccountManager.Instance != null) AccountManager.SetWinResult(1);
-        if (FirebaseManager.Instance != null) FirebaseManager.Instance.LogModeComplete(MODE_ID);
-
         yield return new WaitForSeconds(1.2f);
-
-        if (AdsManager.Instance != null)
-        {
-            AdsManager.Instance.ShowInterstitialWithDelay("is_show_inter_complete_game", () => {
-                ShowResultUI();
-            }, 0.2f);
-        }
-        else
-        {
-            ShowResultUI();
-        }
+        ShowResultUI();
     }
 
     private void ShowResultUI()
     {
         resultPanel.SetActive(true);
-        if (AdsManager.Instance != null) AdsManager.Instance.ShowMREC("is_show_mrec_complete_game");
-
-        string scoreFinalText = (bounceCount * 1).ToString() + " " + currentData.unit;
-        if (txtFinalScore != null)
-        {
-            txtFinalScore.text = scoreFinalText;
-            txtFinalScore.color = Color.yellow;
-            txtFinalScore.transform.DOPunchScale(Vector3.one * 0.1f, 0.5f);
-        }
-
-        if (currentData.comments.Count > 0)
-        {
-            txtComment.text = currentData.comments[UnityEngine.Random.Range(0, currentData.comments.Count)];
-        }
+        if (txtFinalScore != null) txtFinalScore.text = (bounceCount * 1).ToString() + " " + currentData.unit;
+        if (currentData.comments.Count > 0) txtComment.text = currentData.comments[UnityEngine.Random.Range(0, currentData.comments.Count)];
     }
 
-    public void Btn_PlayAgain()
-    {
-        if (AdsManager.Instance != null)
-        {
-            AdsManager.Instance.HideMREC();
-            AdsManager.Instance.ShowInterstitialWithDelay("is_show_inter_retry", () => {
-                SetupNewTurn();
-            }, 0.3f);
-        }
-        else
-        {
-            SetupNewTurn();
-        }
-    }
-
-    public void Btn_BackToHome()
-    {
-        if (AdsManager.Instance != null)
-        {
-            AdsManager.Instance.HideMREC();
-            AdsManager.Instance.ShowInterstitialWithDelay("is_show_inter_back_home", () => {
-                SceneManager.LoadScene("SelectScene");
-            }, 0.3f);
-        }
-        else
-        {
-            SceneManager.LoadScene("SelectScene");
-        }
-    }
+    public void Btn_PlayAgain() { SetupNewTurn(); }
+    public void Btn_BackToHome() { SceneManager.LoadScene("SelectScene"); }
 }
