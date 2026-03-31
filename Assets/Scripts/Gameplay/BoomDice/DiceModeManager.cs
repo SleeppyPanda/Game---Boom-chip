@@ -14,10 +14,11 @@ public class DiceModeManager : MonoBehaviour
     public GameObject tilePrefab;
     public Transform boardContainer;
 
-    [Header("Tutorial Prediction")]
-    public GameObject tutorialGroupP1; // Hướng dẫn Tung xúc xắc
-    public GameObject tutorialGroupP2; // Hướng dẫn Lật ô
-    private bool isTutorialFinished = false;
+    [Header("Tutorial Configuration")]
+    public GameObject tutorialGroupP1; // Hướng dẫn Tung xúc xắc (Dùng cho cả 2 lượt)
+    public GameObject tutorialGroupP2; // Hướng dẫn Lật ô (Lượt 1)
+    public GameObject tutorialGroupP3; // Hướng dẫn Lật ô (Lượt 2)
+    private int tutorialStep = 0;      // 0: P1 Roll, 1: P1 Flip, 2: P2 Roll, 3: P2 Flip, 4: Done
 
     [Header("UI Text & Indicators")]
     public TextMeshProUGUI turnStatusText;
@@ -43,7 +44,7 @@ public class DiceModeManager : MonoBehaviour
     public GameObject panelTransition;
     public GameObject panelSetting;
 
-    [Header("Transition Strips (New)")]
+    [Header("Transition Strips")]
     public RectTransform leftStrip;
     public RectTransform rightStrip;
     public RectTransform leftObj;
@@ -96,7 +97,6 @@ public class DiceModeManager : MonoBehaviour
     {
         Instance = this;
 
-        // Lưu vị trí gốc cho Transition
         if (leftStrip != null) _leftStripOrig = leftStrip.anchoredPosition;
         if (rightStrip != null) _rightStripOrig = rightStrip.anchoredPosition;
         if (leftObj != null) _leftObjOrig = leftObj.anchoredPosition;
@@ -132,7 +132,7 @@ public class DiceModeManager : MonoBehaviour
         if (panelTransition != null)
         {
             panelTransition.SetActive(true);
-            SetStripsPos(1); // Đóng ngay lập tức để chuẩn bị mở
+            SetStripsPos(1);
             SetObjectsPos(1);
             StartCoroutine(RunStartTransition());
         }
@@ -202,14 +202,10 @@ public class DiceModeManager : MonoBehaviour
     private IEnumerator RunStartTransition()
     {
         yield return new WaitForSeconds(1.2f);
-
-        // Bắt đầu mở các dải màu (Giống BoomChip)
         StartCoroutine(AnimateSideElements(1, 0, 0.5f));
         if (centerLogo != null) { centerLogo.transform.DOScale(0, 0.3f); centerLogo.DOFade(0, 0.3f); }
-
         yield return new WaitForSeconds(0.2f);
         yield return StartCoroutine(AnimateStrips(1, 0, 0.5f));
-
         panelTransition.SetActive(false);
         StartCoinFlipSequence();
     }
@@ -238,7 +234,6 @@ public class DiceModeManager : MonoBehaviour
         currentMovesLeft--;
 
         UpdateScoreUI();
-        UpdateTutorial();
 
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX("Chip");
 
@@ -250,9 +245,22 @@ public class DiceModeManager : MonoBehaviour
 
         if (currentMovesLeft <= 0)
         {
+            // Kiểm tra bước Tutorial khi người chơi dùng hết lượt lật ô
+            if (tutorialStep == 1) tutorialStep = 2; // Xong Flip P1 -> Chờ Roll P2
+            else if (tutorialStep == 3)
+            {
+                tutorialStep = 4; // Xong Flip P2 -> Xong toàn bộ Tutorial
+                PlayerPrefs.SetInt("TutorialDone", 1);
+                PlayerPrefs.Save();
+            }
+
             SetBoardInteractable(false);
             isP1Turn = !isP1Turn;
             PrepareNewTurn();
+        }
+        else
+        {
+            UpdateTutorial(); // Cập nhật để duy trì bàn tay chỉ vào ô (Group P2 hoặc P3)
         }
     }
 
@@ -261,12 +269,9 @@ public class DiceModeManager : MonoBehaviour
         isGameOver = true;
         SetBoardInteractable(false);
         tile.SetVisual(bombSprite, true);
-
         GlobalSettings.PlayVibrate();
         if (AudioManager.Instance != null && !string.IsNullOrEmpty(BoomChipSettings.hitSFXName))
-        {
             AudioManager.Instance.PlaySFX(BoomChipSettings.hitSFXName);
-        }
 
         Vector3 originalBoardPos = boardContainer.localPosition;
         float elapsed = 0f;
@@ -279,7 +284,6 @@ public class DiceModeManager : MonoBehaviour
             yield return null;
         }
         boardContainer.localPosition = originalBoardPos;
-
         yield return new WaitForSeconds(1.0f);
         EndGame(isP1Turn ? 2 : 1);
     }
@@ -319,10 +323,7 @@ public class DiceModeManager : MonoBehaviour
         if (flipStatusText != null)
         {
             string winnerName = "Player";
-            if (AccountManager.Instance != null)
-            {
-                winnerName = AccountManager.Instance.GetPlayerName(winnerID == 0 ? 1 : 2);
-            }
+            if (AccountManager.Instance != null) winnerName = AccountManager.Instance.GetPlayerName(winnerID == 0 ? 1 : 2);
             flipStatusText.text = $"<color=yellow><b> {winnerName.ToUpper()}</b></color> GO FIRST!";
         }
         yield return new WaitForSeconds(1.0f);
@@ -334,9 +335,7 @@ public class DiceModeManager : MonoBehaviour
         if (panelAnimation) panelAnimation.SetActive(false);
         isP1Turn = (winnerID == 0);
         if (AdsManager.Instance != null) AdsManager.Instance.ShowMREC("is_show_mrec_gameplay");
-
         PrepareNewTurn();
-        UpdateTutorial();
     }
     #endregion
 
@@ -349,20 +348,17 @@ public class DiceModeManager : MonoBehaviour
         if (rollButtonAnimator != null) rollButtonAnimator.enabled = false;
 
         SetBoardInteractable(false);
-
         if (diceBackground) diceBackground.sprite = diceBgIdle;
         if (boardBackgroundImage) boardBackgroundImage.sprite = isP1Turn ? p1BoardSprite : p2BoardSprite;
 
         if (turnStatusText != null)
         {
             string currentPlayerName = "PLAYER";
-            if (AccountManager.Instance != null)
-            {
-                currentPlayerName = AccountManager.Instance.GetPlayerName(isP1Turn ? 1 : 2);
-            }
+            if (AccountManager.Instance != null) currentPlayerName = AccountManager.Instance.GetPlayerName(isP1Turn ? 1 : 2);
             turnStatusText.text = currentPlayerName.ToUpper() + " TURN";
         }
         UpdateTurnIndicators();
+        UpdateTutorial(); // Hiện Tutorial Roll (P1) cho lượt mới
     }
 
     private void UpdateTurnIndicators()
@@ -422,9 +418,13 @@ public class DiceModeManager : MonoBehaviour
 
         if (diceBackground) diceBackground.sprite = diceBgIdle;
 
+        // Cập nhật bước Tutorial sau khi có kết quả xúc xắc
+        if (tutorialStep == 0) tutorialStep = 1;      // Sang lượt lật P1 (Group P2)
+        else if (tutorialStep == 2) tutorialStep = 3; // Sang lượt lật P2 (Group P3)
+
         SetBoardInteractable(true);
         currentMovesLeft = Mathf.Min(finalResult, 25 - totalCellsClaimed);
-        UpdateTutorial();
+        UpdateTutorial(); // Chuyển từ Group P1 sang Group P2/P3
     }
     #endregion
 
@@ -434,8 +434,6 @@ public class DiceModeManager : MonoBehaviour
         int winner = 0;
         if (p1ClaimedCells > p2ClaimedCells) winner = 1;
         else if (p2ClaimedCells > p1ClaimedCells) winner = 2;
-        else winner = 0;
-
         isGameOver = true;
         SetBoardInteractable(false);
         StartCoroutine(DelayEndGame(winner));
@@ -451,26 +449,16 @@ public class DiceModeManager : MonoBehaviour
     {
         isGameOver = true;
         SetBoardInteractable(false);
-
-        if (AccountManager.Instance != null)
-        {
-            AccountManager.SetWinResult(winnerID);
-        }
-
+        if (AccountManager.Instance != null) AccountManager.SetWinResult(winnerID);
         if (FirebaseManager.Instance != null) FirebaseManager.Instance.LogModeComplete(GetCurrentModeID());
-
         if (p1IndicatorFrame) p1IndicatorFrame.color = inactiveColor;
         if (p2IndicatorFrame) p2IndicatorFrame.color = inactiveColor;
         if (rollButton) rollButton.interactable = false;
-
         if (panelWin) panelWin.SetActive(true);
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX("Win");
-
         if (AdsManager.Instance != null) AdsManager.Instance.ShowMREC("is_show_mrec_complete_game");
-
         if (p1ResultScore) p1ResultScore.text = "x " + p1ClaimedCells;
         if (p2ResultScore) p2ResultScore.text = "x " + p2ClaimedCells;
-
         if (p1Crown) p1Crown.SetActive(winnerID == 1);
         if (p2Crown) p2Crown.SetActive(winnerID == 2);
     }
@@ -479,8 +467,7 @@ public class DiceModeManager : MonoBehaviour
     #region BUTTONS
     public void Restart()
     {
-        if (panelWin != null) panelWin.SetActive(false); // Ẩn panel thắng cuộc (bao gồm pháo hoa) trước khi chuyển cảnh
-
+        if (panelWin != null) panelWin.SetActive(false);
         if (AdsManager.Instance != null)
         {
             AdsManager.Instance.HideMREC();
@@ -493,8 +480,7 @@ public class DiceModeManager : MonoBehaviour
 
     public void Home()
     {
-        if (panelWin != null) panelWin.SetActive(false); // Ẩn panel thắng cuộc trước khi chuyển cảnh
-
+        if (panelWin != null) panelWin.SetActive(false);
         if (AdsManager.Instance != null)
         {
             AdsManager.Instance.HideMREC();
@@ -520,51 +506,57 @@ public class DiceModeManager : MonoBehaviour
         {
             panelSetting.SetActive(false);
             if (AdsManager.Instance == null) return;
-
-            if (isGameOver && panelWin.activeSelf)
-                AdsManager.Instance.ShowMREC("is_show_mrec_complete_game");
-            else if (!isGameOver)
-                AdsManager.Instance.ShowMREC("is_show_mrec_gameplay");
+            if (isGameOver && panelWin.activeSelf) AdsManager.Instance.ShowMREC("is_show_mrec_complete_game");
+            else if (!isGameOver) AdsManager.Instance.ShowMREC("is_show_mrec_gameplay");
         }
     }
     #endregion
 
-    #region TUTORIAL
+    #region TUTORIAL LOGIC
     public void UpdateTutorial()
     {
-        if (PlayerPrefs.GetInt("TutorialDone", 0) == 1)
+        if (PlayerPrefs.GetInt("TutorialDone", 0) == 1 || isGameOver)
         {
-            if (tutorialGroupP1) tutorialGroupP1.SetActive(false);
-            if (tutorialGroupP2) tutorialGroupP2.SetActive(false);
+            HideAllTutorials();
             return;
         }
 
-        if (waitingForRoll)
-        {
-            if (tutorialGroupP1)
-            {
-                tutorialGroupP1.SetActive(true);
-                AnimateHand(tutorialGroupP1);
-            }
-            if (tutorialGroupP2) tutorialGroupP2.SetActive(false);
-        }
-        else if (currentMovesLeft > 0)
-        {
-            if (tutorialGroupP1) tutorialGroupP1.SetActive(false);
-            if (tutorialGroupP2)
-            {
-                tutorialGroupP2.SetActive(true);
-                AnimateHand(tutorialGroupP2);
-            }
-        }
-        else
-        {
-            PlayerPrefs.SetInt("TutorialDone", 1);
-            PlayerPrefs.Save();
+        HideAllTutorials();
 
-            if (tutorialGroupP1) tutorialGroupP1.SetActive(false);
-            if (tutorialGroupP2) tutorialGroupP2.SetActive(false);
+        switch (tutorialStep)
+        {
+            case 0: // Lượt 1: Chờ Roll
+            case 2: // Lượt 2: Chờ Roll
+                if (waitingForRoll && tutorialGroupP1)
+                {
+                    tutorialGroupP1.SetActive(true);
+                    AnimateHand(tutorialGroupP1);
+                }
+                break;
+
+            case 1: // Lượt 1: Đang lật ô
+                if (!waitingForRoll && currentMovesLeft > 0 && tutorialGroupP2)
+                {
+                    tutorialGroupP2.SetActive(true);
+                    AnimateHand(tutorialGroupP2);
+                }
+                break;
+
+            case 3: // Lượt 2: Đang lật ô
+                if (!waitingForRoll && currentMovesLeft > 0 && tutorialGroupP3)
+                {
+                    tutorialGroupP3.SetActive(true);
+                    AnimateHand(tutorialGroupP3);
+                }
+                break;
         }
+    }
+
+    private void HideAllTutorials()
+    {
+        if (tutorialGroupP1) tutorialGroupP1.SetActive(false);
+        if (tutorialGroupP2) tutorialGroupP2.SetActive(false);
+        if (tutorialGroupP3) tutorialGroupP3.SetActive(false);
     }
 
     private void AnimateHand(GameObject group)
@@ -580,15 +572,9 @@ public class DiceModeManager : MonoBehaviour
 
     public void OnClickReplayTutorial()
     {
-        if (waitingForRoll)
+        if (PlayerPrefs.GetInt("TutorialDone", 0) == 0)
         {
-            if (tutorialGroupP1) tutorialGroupP1.SetActive(true);
-            AnimateHand(tutorialGroupP1);
-        }
-        else
-        {
-            if (tutorialGroupP2) tutorialGroupP2.SetActive(true);
-            AnimateHand(tutorialGroupP2);
+            UpdateTutorial();
         }
     }
     #endregion
