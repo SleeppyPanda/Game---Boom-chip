@@ -18,17 +18,18 @@ public class UnlockSystemManager : MonoBehaviour
     [Header("Cấu hình hiệu ứng")]
     public float fadeDuration = 0.3f;
 
-    [Header("Quản lý Panel")]
+    [Header("Quản lý Panel Phụ")]
     public List<CanvasGroup> panelsToHide;
     public List<CanvasGroup> ignorePanels;
 
     private Action _onSuccessCallback;
-    private string _currentItemKey;
-    private string _currentRawID;
+    private string _currentRawID; // Ví dụ: "Mode2", "Avatar_5"
 
     void Awake()
     {
-        Instance = this;
+        if (Instance == null) Instance = this;
+        else Destroy(gameObject);
+
         if (simpleAdPanel != null)
         {
             simpleAdPanel.DOKill();
@@ -39,59 +40,80 @@ public class UnlockSystemManager : MonoBehaviour
         }
     }
 
-    #region HÀM CẦU NỐI SỬA LỖI CS1501 & CS1061
+    #region HÀM CẦU NỐI (BRIDGE METHODS)
+
     /// <summary>
-    /// Khớp hoàn toàn với UnlockButton.cs: (string itemID, string logicKey, Sprite sprite, Action success)
+    /// Hàm chính xử lý luồng mở khóa.
     /// </summary>
     public void HandleUnlockFlow(string itemID, string logicConfigKey, Sprite itemSprite, Action onSuccess)
     {
-        // Kiểm tra xem item đã được mở khóa chưa trước khi hiện Popup
+        // 1. Nếu đã mở khóa thì thực hiện hành động ngay (ví dụ: Chuyển scene)
         if (IsItemUnlocked(itemID))
         {
             onSuccess?.Invoke();
             return;
         }
 
-        // Nếu chưa mở, hiện Popup và truyền logicConfigKey vào Ads
+        // 2. Nếu chưa, hiện Popup bắt xem quảng cáo
         OpenUnlockPopup(itemID, itemSprite, onSuccess, logicConfigKey);
     }
 
-    // Bản dự phòng cho MenuManager hoặc các script khác (nếu dùng 2-3 tham số)
+    // Các hàm overload hỗ trợ gọi nhanh
     public void HandleUnlockFlow(string itemID, Action onSuccess)
         => HandleUnlockFlow(itemID, "", null, onSuccess);
 
-    public void HandleUnlockFlow(string itemID, Sprite itemSprite, Action onSuccess)
-        => HandleUnlockFlow(itemID, "", itemSprite, onSuccess);
     #endregion
 
+    /// <summary>
+    /// Kiểm tra trạng thái mở khóa chuẩn xác nhất
+    /// </summary>
     public bool IsItemUnlocked(string itemID)
     {
-        return PlayerPrefs.GetInt("Unlock_" + itemID, 0) == 1;
+        string key = GetUnlockKey(itemID);
+        return PlayerPrefs.GetInt(key, 0) == 1;
     }
 
-    // Cập nhật hàm OpenUnlockPopup để nhận logicConfigKey từ Remote Config
+    /// <summary>
+    /// Logic tạo Key lưu trữ: Mode -> ModeX_Unlocked | Avatar -> Unlock_Avatar_X
+    /// </summary>
+    private string GetUnlockKey(string itemID)
+    {
+        if (string.IsNullOrEmpty(itemID)) return "Unknown_Item";
+
+        // Đồng bộ với MenuManager: "Mode2_Unlocked"
+        if (itemID.Contains("Mode"))
+        {
+            return itemID.Contains("_Unlocked") ? itemID : itemID + "_Unlocked";
+        }
+
+        // Đồng bộ với UnlockButton: "Unlock_Avatar_5"
+        return itemID.StartsWith("Unlock_") ? itemID : "Unlock_" + itemID;
+    }
+
     public void OpenUnlockPopup(string itemID, Sprite itemSprite, Action onSuccess, string adLogicKey = "")
     {
         if (simpleAdPanel == null)
         {
-            Debug.LogError("Chưa gán simpleAdPanel!");
             onSuccess?.Invoke();
             return;
         }
 
         _currentRawID = itemID;
-        _currentItemKey = "Unlock_" + itemID;
         _onSuccessCallback = onSuccess;
 
+        // Hiển thị hình ảnh vật phẩm định mở khóa
         if (displayAvatar != null && itemSprite != null)
         {
             displayAvatar.sprite = itemSprite;
         }
 
-        // AppsFlyer: Eligible
-        AdEventTracker.TrackRewardEligible();
+        // Tracking Analytics
+        // AdEventTracker.TrackRewardEligible();
 
+        // 1. Ẩn các Panel nền để tập trung vào Popup
         ToggleOtherPanels(false);
+
+        // 2. Hiệu ứng Fade In cho toàn bộ Panel
         simpleAdPanel.gameObject.SetActive(true);
         simpleAdPanel.DOKill();
         simpleAdPanel.DOFade(1, fadeDuration).OnComplete(() => {
@@ -99,6 +121,7 @@ public class UnlockSystemManager : MonoBehaviour
             simpleAdPanel.blocksRaycasts = true;
         });
 
+        // 3. Hiệu ứng Scale cho khung Popup
         if (popupContent != null)
         {
             popupContent.DOKill();
@@ -106,28 +129,32 @@ public class UnlockSystemManager : MonoBehaviour
             popupContent.DOScale(Vector3.one, fadeDuration).SetEase(Ease.OutBack);
         }
 
+        // 4. Gán sự kiện xem Ads
         if (watchAdButton != null)
         {
             watchAdButton.onClick.RemoveAllListeners();
             watchAdButton.onClick.AddListener(() => {
-                // AppsFlyer: Api Called
-                AdEventTracker.TrackRewardApiCalled();
+                // AdEventTracker.TrackRewardApiCalled();
 
                 if (AdsManager.Instance != null)
                 {
-                    // Truyền adLogicKey (ví dụ: "is_show_rw_challenge") vào hệ thống quảng cáo
+                    // Ưu tiên key từ Remote Config (ví dụ: "is_show_rw_challenge")
                     string finalKey = string.IsNullOrEmpty(adLogicKey) ? _currentRawID : adLogicKey;
+
                     AdsManager.Instance.ShowRewardedAd(finalKey, () => {
-                        ExecuteUnlockSuccess();
+                        ExecuteUnlockSuccess(); // Callback khi xem hết quảng cáo
                     });
                 }
                 else
                 {
+                    // Fallback trong Editor để test nhanh
+                    Debug.Log("<color=green>AdsManager không tìm thấy, tự động mở khóa (Editor Mode)</color>");
                     ExecuteUnlockSuccess();
                 }
             });
         }
 
+        // 5. Nút đóng
         if (closeButton != null)
         {
             closeButton.onClick.RemoveAllListeners();
@@ -137,20 +164,25 @@ public class UnlockSystemManager : MonoBehaviour
 
     private void ExecuteUnlockSuccess()
     {
-        if (!string.IsNullOrEmpty(_currentItemKey))
-        {
-            PlayerPrefs.SetInt(_currentItemKey, 1);
-            PlayerPrefs.Save();
-        }
+        // Lưu trạng thái vĩnh viễn
+        string key = GetUnlockKey(_currentRawID);
+        PlayerPrefs.SetInt(key, 1);
+        PlayerPrefs.Save();
 
+        // Đóng popup trước
         ClosePopup();
+
+        // Sau đó mới thực hiện callback thành công (Update UI hoặc Chuyển scene)
         _onSuccessCallback?.Invoke();
     }
 
     public void ClosePopup()
     {
         if (simpleAdPanel == null) return;
+
+        // Hiện lại các panel cũ
         ToggleOtherPanels(true);
+
         simpleAdPanel.DOKill();
         simpleAdPanel.interactable = false;
         simpleAdPanel.blocksRaycasts = false;
@@ -169,10 +201,12 @@ public class UnlockSystemManager : MonoBehaviour
     private void ToggleOtherPanels(bool show)
     {
         if (panelsToHide == null) return;
+
         float targetAlpha = show ? 1f : 0f;
         foreach (var panel in panelsToHide)
         {
             if (panel == null || ignorePanels.Contains(panel)) continue;
+
             panel.DOKill();
             panel.DOFade(targetAlpha, fadeDuration);
             panel.blocksRaycasts = show;

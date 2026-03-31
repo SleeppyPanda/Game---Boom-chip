@@ -3,10 +3,13 @@ using UnityEngine.UI;
 using TMPro;
 using DG.Tweening;
 using UnityEngine.SceneManagement;
-using System.Collections.Generic;
+using System.Collections;
 
 public class MenuManager : MonoBehaviour
 {
+    // Singleton để các Script khác gọi nhanh qua MenuManager.Instance
+    public static MenuManager Instance;
+
     [Header("Danh sách các Panel (Cần gắn CanvasGroup)")]
     public CanvasGroup panelMode1;
     public CanvasGroup panelMode2;
@@ -14,7 +17,7 @@ public class MenuManager : MonoBehaviour
     public CanvasGroup panelAccount;
     public CanvasGroup panelSetting;
 
-    [Header("Danh sách các Transform của Button")]
+    [Header("Danh sách các Transform của Button (Bottom Bar)")]
     public RectTransform[] menuButtons;
     public RectTransform btnAccount;
     public RectTransform btnSetting;
@@ -28,32 +31,50 @@ public class MenuManager : MonoBehaviour
     [Header("Cấu hình hiệu ứng")]
     public float fadeDuration = 0.3f;
     private CanvasGroup currentPanel;
+    private bool isTransitioning = false;
 
     [Header("Tên Scene Gameplay")]
     public string sceneNameMode2 = "GameplayMode2";
     public string sceneNameMode3 = "GameplayMode3";
 
+    [Header("Transition Panel (Logic Animation)")]
+    public GameObject panelTransition;
+    public RectTransform leftStrip;
+    public RectTransform rightStrip;
+    public RectTransform leftObj;
+    public RectTransform rightObj;
+    public CanvasGroup centerLogo;
+
+    private Vector2 _leftStripOrig, _rightStripOrig, _leftObjOrig, _rightObjOrig;
+
+    void Awake()
+    {
+        if (Instance == null) Instance = this;
+    }
+
     void Start()
     {
-        // 1. Dọn dẹp tween cũ
         DOTween.KillAll();
 
-        // 2. Play nhạc nền
-        if (AudioManager.Instance != null)
+        // Khởi tạo vị trí gốc cho hiệu ứng transition
+        if (leftStrip != null) _leftStripOrig = leftStrip.anchoredPosition;
+        if (rightStrip != null) _rightStripOrig = rightStrip.anchoredPosition;
+        if (leftObj != null) _leftObjOrig = leftObj.anchoredPosition;
+        if (rightObj != null) _rightObjOrig = rightObj.anchoredPosition;
+
+        if (panelTransition != null)
         {
-            AudioManager.Instance.PlayMusic("background_01");
+            panelTransition.SetActive(false);
+            if (centerLogo != null) { centerLogo.DOKill(); centerLogo.transform.localScale = Vector3.zero; centerLogo.alpha = 0; }
         }
 
-        // 3. Khởi tạo Banner ngay khi vào Menu
-        if (AdsManager.Instance != null)
-        {
-            AdsManager.Instance.ShowBanner();
-        }
+        // Âm thanh và Ads
+        if (AudioManager.Instance != null) AudioManager.Instance.PlayMusic("background_01");
+        if (AdsManager.Instance != null) AdsManager.Instance.ShowBanner();
 
-        // 4. Cache UI components
+        // Khởi tạo mảng UI Bottom Bar
         buttonImages = new Image[menuButtons.Length];
         buttonTexts = new TextMeshProUGUI[menuButtons.Length];
-
         for (int i = 0; i < menuButtons.Length; i++)
         {
             if (menuButtons[i] == null) continue;
@@ -61,14 +82,16 @@ public class MenuManager : MonoBehaviour
             buttonTexts[i] = menuButtons[i].GetComponentInChildren<TextMeshProUGUI>();
         }
 
-        // 5. Khởi tạo trạng thái ẩn cho các Panel
+        // Reset tất cả các panel về trạng thái ẩn
         InitPanel(panelMode1);
         InitPanel(panelMode2);
         InitPanel(panelMode3);
         InitPanel(panelAccount);
         InitPanel(panelSetting);
 
-        // 6. Hiển thị Panel chính
+        isTransitioning = false;
+
+        // Luôn bắt đầu ở Panel chính (Mode 1)
         ShowPanel1();
     }
 
@@ -83,51 +106,24 @@ public class MenuManager : MonoBehaviour
         cg.gameObject.SetActive(false);
     }
 
+    #region PANEL NAVIGATION
+
     public void ShowPanel1()
     {
-        // Nếu quay về từ các popup hoặc mode khác, cần dọn dẹp Ads tương ứng
-        if (currentPanel == panelMode2) ClosePanelMode2();
-        else if (currentPanel == panelMode3) ClosePanelMode3();
-        else if (currentPanel == panelAccount || currentPanel == panelSetting) CloseExtraPanel();
-
-        // Panel 1 là menu chính, ẩn MREC để không che nút
-        if (AdsManager.Instance != null) AdsManager.Instance.HideMREC();
-
-        SwitchToMode(panelMode1, 0, false);
+        if (currentPanel == panelAccount || currentPanel == panelSetting)
+            CloseExtraPanel();
+        else if (currentPanel != panelMode1)
+            SwitchToMode(panelMode1, 0, false);
     }
 
+    /// <summary>
+    /// Chuyển hướng hiển thị UI Mode (Dành cho việc hiện Panel sau khi mở khóa)
+    /// </summary>
     public void DirectSwitchToMode(int index)
     {
-        if (index == 1) SwitchToMode(panelMode2, 1, true);
+        if (index == 0) SwitchToMode(panelMode1, 0, false);
+        else if (index == 1) SwitchToMode(panelMode2, 1, true);
         else if (index == 2) SwitchToMode(panelMode3, 2, true);
-    }
-
-    public void ShowPanel2WithAvatar(Sprite avatar)
-    {
-        if (UnlockSystemManager.Instance != null)
-        {
-            UnlockSystemManager.Instance.HandleUnlockFlow("Mode2", "is_show_rw_challenge", avatar, () => {
-                SwitchToMode(panelMode2, 1, true);
-
-                // Hiển thị MREC khi chọn Mode 2
-                if (AdsManager.Instance != null)
-                    AdsManager.Instance.ShowMREC("is_show_mrec_p1_choose");
-            });
-        }
-    }
-
-    public void ShowPanel3WithAvatar(Sprite avatar)
-    {
-        if (UnlockSystemManager.Instance != null)
-        {
-            UnlockSystemManager.Instance.HandleUnlockFlow("Mode3", "is_show_rw_prediction", avatar, () => {
-                SwitchToMode(panelMode3, 2, true);
-
-                // Hiển thị MREC khi chọn Mode 3
-                if (AdsManager.Instance != null)
-                    AdsManager.Instance.ShowMREC("is_show_mrec_p1_choose");
-            });
-        }
     }
 
     private void SwitchToMode(CanvasGroup target, int index, bool isPopup)
@@ -138,59 +134,147 @@ public class MenuManager : MonoBehaviour
         currentPanel = target;
     }
 
-    public void ClosePanelMode2() { CloseSpecificPopup(panelMode2); }
-    public void ClosePanelMode3() { CloseSpecificPopup(panelMode3); }
+    public void ClosePanelMode2() => CloseSpecificPopup(panelMode2);
+    public void ClosePanelMode3() => CloseSpecificPopup(panelMode3);
 
     private void CloseSpecificPopup(CanvasGroup popup)
     {
         if (popup == null) return;
-
-        // Ẩn MREC khi đóng popup mode để về menu chính sạch sẽ
         if (AdsManager.Instance != null) AdsManager.Instance.HideMREC();
 
         popup.DOKill();
         popup.interactable = false;
         popup.blocksRaycasts = false;
-
         popup.DOFade(0, fadeDuration);
         popup.transform.DOScale(0.8f, fadeDuration).OnComplete(() => {
             popup.gameObject.SetActive(false);
-            currentPanel = panelMode1;
 
+            // Reset về Mode 1
+            currentPanel = panelMode1;
             panelMode1.gameObject.SetActive(true);
-            panelMode1.DOKill();
-            panelMode1.transform.localScale = Vector3.one;
             panelMode1.alpha = 1;
             panelMode1.interactable = true;
             panelMode1.blocksRaycasts = true;
-
             HandleButtonAnimationOnly(0);
         });
     }
+    #endregion
 
-    public void StartGameMode2() { LoadGameplay(2, sceneNameMode2); }
-    public void StartGameMode3() { LoadGameplay(3, sceneNameMode3); }
+    #region SCENE LOADING & TRANSITION (PUBLIC)
 
-    private void LoadGameplay(int mode, string sceneName)
+    // Các hàm này giờ có thể gọi từ bên ngoài (LevelButton/UnlockButton)
+    public void StartGameMode2() => StartAnyScene(sceneNameMode2, 2);
+    public void StartGameMode3() => StartAnyScene(sceneNameMode3, 3);
+
+    /// <summary>
+    /// Chạy hiệu ứng Transition Strips và load Scene bất kỳ
+    /// </summary>
+    public void StartAnyScene(string sceneName, int modeIndex)
     {
-        PlayerPrefs.SetInt("SelectedMode", mode);
+        if (isTransitioning) return;
+        isTransitioning = true;
+
+        // Cập nhật UI Bottom Bar để người dùng thấy phản hồi ngay lập tức
+        HandleButtonAnimationOnly(modeIndex - 1);
+
+        // Lưu mode đang chọn vào bộ nhớ
+        PlayerPrefs.SetInt("SelectedMode", modeIndex);
         PlayerPrefs.Save();
 
-        // Loại bỏ Interstitial theo yêu cầu, chỉ dọn dẹp Ads cũ rồi load scene
+        StartCoroutine(TransitionAndLoad(sceneName));
+    }
+
+    private IEnumerator TransitionAndLoad(string sceneName)
+    {
+        // Khóa tương tác toàn bộ UI tránh người dùng bấm lung tung
+        if (currentPanel != null)
+        {
+            currentPanel.interactable = false;
+            currentPanel.blocksRaycasts = false;
+        }
+
         if (AdsManager.Instance != null)
         {
             AdsManager.Instance.HideBanner();
             AdsManager.Instance.HideMREC();
         }
 
+        // Kích hoạt dải màu và logo trung tâm (Strips Transition)
+        if (panelTransition != null)
+        {
+            panelTransition.SetActive(true);
+            SetStripsPos(0);
+            SetObjectsPos(0);
+
+            if (centerLogo != null)
+            {
+                centerLogo.DOKill();
+                centerLogo.transform.localScale = Vector3.zero;
+                centerLogo.alpha = 0;
+                centerLogo.DOFade(1, 0.3f);
+                centerLogo.transform.DOScale(Vector3.one, 0.4f).SetEase(Ease.OutBack);
+            }
+
+            StartCoroutine(AnimateStrips(0, 1, 0.6f));
+            StartCoroutine(AnimateSideElements(0, 1, 0.6f));
+        }
+
+        // Đợi 1.2s cho hiệu ứng dải màu che kín màn hình rồi mới load
+        yield return new WaitForSecondsRealtime(1.2f);
+
         DOTween.KillAll();
         SceneManager.LoadScene(sceneName);
     }
 
+    private void SetStripsPos(float t)
+    {
+        float offset = 2500f;
+        if (leftStrip) leftStrip.anchoredPosition = Vector2.Lerp(_leftStripOrig + new Vector2(-offset, 0), _leftStripOrig, t);
+        if (rightStrip) rightStrip.anchoredPosition = Vector2.Lerp(_rightStripOrig + new Vector2(offset, 0), _rightStripOrig, t);
+    }
+
+    private void SetObjectsPos(float t)
+    {
+        float offset = 1800f;
+        if (leftObj) leftObj.anchoredPosition = Vector2.Lerp(_leftObjOrig + new Vector2(-offset, 0), _leftObjOrig, t);
+        if (rightObj) rightObj.anchoredPosition = Vector2.Lerp(_rightObjOrig + new Vector2(offset, 0), _rightObjOrig, t);
+    }
+
+    private IEnumerator AnimateStrips(float start, float end, float duration)
+    {
+        float elapsed = 0;
+        while (elapsed < duration)
+        {
+            elapsed += Time.deltaTime;
+            float currentT = Mathf.Lerp(start, end, Mathf.SmoothStep(0, 1, elapsed / duration));
+            SetStripsPos(currentT);
+            yield return null;
+        }
+        SetStripsPos(end);
+    }
+
+    private IEnumerator AnimateSideElements(float start, float end, float duration)
+    {
+        float elapsed = 0;
+        while (elapsed < duration)
+        {
+            elapsed += Time.deltaTime;
+            float currentT = Mathf.Lerp(start, end, Mathf.SmoothStep(0, 1, elapsed / duration));
+            SetObjectsPos(currentT);
+            yield return null;
+        }
+        SetObjectsPos(end);
+    }
+    #endregion
+
+    #region UI BOTTOM BAR & EXTRA PANELS
+
     public void HandleButtonAnimationOnly(int index)
     {
+        // Hiệu ứng dịch chuyển nhẹ vị trí X cho Bottom Bar
         if (menuButtons.Length > 0 && menuButtons[0] != null)
         {
+            menuButtons[0].DOKill();
             if (index == 1) menuButtons[0].DOAnchorPosX(29f, 0.25f);
             else if (index == 2) menuButtons[0].DOAnchorPosX(-29f, 0.25f);
             else if (index == 0) menuButtons[0].DOAnchorPosX(0f, 0.25f);
@@ -199,14 +283,16 @@ public class MenuManager : MonoBehaviour
         for (int i = 0; i < menuButtons.Length; i++)
         {
             if (menuButtons[i] == null) continue;
-            if (i == index)
+            menuButtons[i].DOKill();
+
+            if (i == index) // Trạng thái đang chọn (Highlight)
             {
                 if (buttonImages[i] != null) buttonImages[i].sprite = frameSelected;
                 if (buttonTexts[i] != null) buttonTexts[i].color = Color.white;
                 menuButtons[i].DOAnchorPosY(200f, 0.25f).SetEase(Ease.OutBack);
                 menuButtons[i].DOScale(1.37f, 0.25f).SetEase(Ease.OutBack);
             }
-            else
+            else // Trạng thái không chọn
             {
                 if (buttonImages[i] != null) buttonImages[i].sprite = frameUnselected;
                 if (buttonTexts[i] != null)
@@ -221,14 +307,12 @@ public class MenuManager : MonoBehaviour
         }
     }
 
-    public void ShowAccount() { SwitchToExtra(panelAccount, btnAccount, 1.6f); }
-    public void ShowSetting() { SwitchToExtra(panelSetting, btnSetting, 1.0f); }
+    public void ShowAccount() => SwitchToExtra(panelAccount, btnAccount, 1.6f);
+    public void ShowSetting() => SwitchToExtra(panelSetting, btnSetting, 1.0f);
 
     private void SwitchToExtra(CanvasGroup target, RectTransform btn, float scale)
     {
-        // Khi mở bảng Account/Setting, tạm ẩn MREC để tránh che giao diện
         if (AdsManager.Instance != null) AdsManager.Instance.HideMREC();
-
         AnimateButtonScale(btn, scale);
         if (target == null || currentPanel == target) return;
         HandleTransition(target, true);
@@ -250,7 +334,6 @@ public class MenuManager : MonoBehaviour
         target.DOKill();
         target.alpha = 0;
         target.transform.localScale = Vector3.one * 0.8f;
-
         target.DOFade(1, fadeDuration);
         target.transform.DOScale(Vector3.one, fadeDuration).SetEase(Ease.OutBack).OnComplete(() => {
             target.interactable = true;
@@ -265,9 +348,7 @@ public class MenuManager : MonoBehaviour
         if (currentPanel == null || currentPanel == panelMode1) return;
 
         if (currentPanel == panelAccount && AccountManager.Instance != null)
-        {
             AccountManager.Instance.SaveAndExit();
-        }
 
         CanvasGroup closingPanel = currentPanel;
         closingPanel.DOKill();
@@ -282,13 +363,11 @@ public class MenuManager : MonoBehaviour
 
             currentPanel = panelMode1;
             panelMode1.gameObject.SetActive(true);
-            panelMode1.DOKill();
-            panelMode1.transform.localScale = Vector3.one;
             panelMode1.alpha = 1;
             panelMode1.interactable = true;
             panelMode1.blocksRaycasts = true;
+            panelMode1.transform.localScale = Vector3.one;
 
-            // Đảm bảo Banner hiện lại khi quay về menu chính
             if (AdsManager.Instance != null) AdsManager.Instance.ShowBanner();
         });
     }
@@ -299,4 +378,5 @@ public class MenuManager : MonoBehaviour
         btn.DOKill(true);
         btn.DOScale(Vector3.one * targetScale, 0.2f);
     }
+    #endregion
 }
