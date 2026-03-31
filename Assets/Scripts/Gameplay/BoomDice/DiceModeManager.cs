@@ -4,6 +4,7 @@ using System.Collections;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine.SceneManagement;
+using DG.Tweening;
 
 public class DiceModeManager : MonoBehaviour
 {
@@ -12,6 +13,11 @@ public class DiceModeManager : MonoBehaviour
     [Header("Prefab Configuration")]
     public GameObject tilePrefab;
     public Transform boardContainer;
+
+    [Header("Tutorial Prediction")]
+    public GameObject tutorialGroupP1; // Hướng dẫn Tung xúc xắc
+    public GameObject tutorialGroupP2; // Hướng dẫn Lật ô
+    private bool isTutorialFinished = false; // Khi đã làm xong cả 2 bước thì tắt vĩnh viễn
 
     [Header("UI Text & Indicators")]
     public TextMeshProUGUI turnStatusText;
@@ -159,6 +165,8 @@ public class DiceModeManager : MonoBehaviour
 
         UpdateScoreUI();
 
+        UpdateTutorial();
+
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX("SFX_Click");
 
         if (totalCellsClaimed >= 25)
@@ -275,6 +283,7 @@ public class DiceModeManager : MonoBehaviour
         if (AdsManager.Instance != null) AdsManager.Instance.ShowMREC("is_show_mrec_gameplay");
 
         PrepareNewTurn();
+        UpdateTutorial();
     }
     #endregion
 
@@ -363,6 +372,7 @@ public class DiceModeManager : MonoBehaviour
 
         SetBoardInteractable(true);
         currentMovesLeft = Mathf.Min(finalResult, 25 - totalCellsClaimed);
+        UpdateTutorial();
     }
     #endregion
 
@@ -463,4 +473,74 @@ public class DiceModeManager : MonoBehaviour
         }
     }
     #endregion
+
+    public void UpdateTutorial()
+    {
+        // Kiểm tra xem người chơi đã từng hoàn thành tutorial chưa (Lưu trong máy)
+        // 1 là đã xong, 0 là chưa xong
+        if (PlayerPrefs.GetInt("TutorialDone", 0) == 1)
+        {
+            if (tutorialGroupP1) tutorialGroupP1.SetActive(false);
+            if (tutorialGroupP2) tutorialGroupP2.SetActive(false);
+            return;
+        }
+
+        if (waitingForRoll)
+        {
+            if (tutorialGroupP1)
+            {
+                tutorialGroupP1.SetActive(true);
+                AnimateHand(tutorialGroupP1);
+            }
+            if (tutorialGroupP2) tutorialGroupP2.SetActive(false);
+        }
+        else if (currentMovesLeft > 0)
+        {
+            if (tutorialGroupP1) tutorialGroupP1.SetActive(false);
+            if (tutorialGroupP2)
+            {
+                tutorialGroupP2.SetActive(true);
+                AnimateHand(tutorialGroupP2);
+            }
+        }
+        else
+        {
+            // Khi lật xong ô đầu tiên -> Lưu lại trạng thái ĐÃ XONG vào máy
+            PlayerPrefs.SetInt("TutorialDone", 1);
+            PlayerPrefs.Save(); // Lưu ngay lập tức
+
+            if (tutorialGroupP1) tutorialGroupP1.SetActive(false);
+            if (tutorialGroupP2) tutorialGroupP2.SetActive(false);
+        }
+    }
+
+    // Hàm bổ trợ làm tay nhấp nhô
+    private void AnimateHand(GameObject group)
+    {
+        // Tìm object có tên là "HandPointer" bên trong Group
+        Transform hand = group.transform.Find("HandPointer");
+        if (hand != null)
+        {
+            hand.DOKill(); // Xóa các tween cũ để tránh chồng chéo
+            hand.localScale = Vector3.one; // Reset về 1
+
+            // Hiệu ứng: Phóng lên 1.2 lần, chạy liên tục (Loop), kiểu Yoyo (lên rồi về)
+            hand.DOScale(1.2f, 0.5f).SetLoops(-1, LoopType.Yoyo).SetEase(Ease.InOutSine);
+        }
+    }
+
+    public void OnClickReplayTutorial()
+    {
+        // Cho phép hiện lại dù đã lưu là hoàn thành
+        if (waitingForRoll)
+        {
+            if (tutorialGroupP1) tutorialGroupP1.SetActive(true);
+            AnimateHand(tutorialGroupP1);
+        }
+        else
+        {
+            if (tutorialGroupP2) tutorialGroupP2.SetActive(true);
+            AnimateHand(tutorialGroupP2);
+        }
+    }
 }

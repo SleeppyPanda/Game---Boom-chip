@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using TMPro;
 using UnityEngine.SceneManagement;
 using System;
+using DG.Tweening;
 
 public class BoomChipManager : MonoBehaviour
 {
@@ -20,6 +21,13 @@ public class BoomChipManager : MonoBehaviour
     public GameObject panelAnimation;
     public GameObject panelWin;
     public GameObject panelTransition;
+
+    [Header("Multi-Phase Tutorials")]
+    public GameObject tutorialP1;
+    public GameObject tutorialP2;
+    public GameObject tutorialP3;
+    public GameObject handPointer; // Dùng chung 1 cái hoặc mỗi Group 1 cái tùy bạn
+
 
     [Header("--- THÔNG TIN NGƯỜI CHƠI (Đã đồng bộ) ---")]
     public TextMeshProUGUI nameTextP1;
@@ -81,6 +89,10 @@ public class BoomChipManager : MonoBehaviour
     private List<int> board2TargetBombs = new List<int>();
     private int p1HitCount = 0;
     private int p2HitCount = 0;
+
+    private bool isShowingTutorial = false;
+    private GameObject currentActiveTutorial;
+
 
     void Awake()
     {
@@ -152,6 +164,7 @@ public class BoomChipManager : MonoBehaviour
 
         ShowMRECByPhase();
         StartCoroutine(InitialOpenSequence());
+        CheckAndShowTutorial(1);
     }
 
     private void SetupWinImage(Image img, Sprite sp)
@@ -186,10 +199,14 @@ public class BoomChipManager : MonoBehaviour
 
     private void ExecutePhase2Transition()
     {
+        if (currentActiveTutorial != null) currentActiveTutorial.SetActive(false);
+        isShowingTutorial = false;
+
         currentPhase = GamePhase.Phase2;
         panelPhase1.SetActive(false);
         panelPhase2.SetActive(true);
         ShowMRECByPhase();
+        CheckAndShowTutorial(2);
     }
 
     private void ShowMRECByPhase()
@@ -333,6 +350,8 @@ public class BoomChipManager : MonoBehaviour
         board2TargetBombs = new List<int>(selectionLogic.p1SelectedTiles);
 
         StartCoroutine(ShowTurnAndStartGame(winnerID));
+
+        CheckAndShowTutorial(3);
     }
 
     private IEnumerator ShowTurnAndStartGame(int winnerID)
@@ -486,10 +505,18 @@ public class BoomChipManager : MonoBehaviour
 
     public void HandleTileClick(int tileIndex, TileButton tile)
     {
+        if (isShowingTutorial)
+        {
+            CloseCurrentTutorial();
+        }
         if (currentPhase == GamePhase.Phase1 || currentPhase == GamePhase.Phase2)
         {
             if (selectionLogic != null)
             {
+                if (isShowingTutorial)
+                {
+                    CloseCurrentTutorial();
+                }
                 selectionLogic.HandleTileClick(tileIndex, tile);
                 bool isSelected = selectionLogic.IsTileSelected(currentPhase == GamePhase.Phase1 ? 1 : 2, tileIndex);
                 Sprite mySkin = (currentPhase == GamePhase.Phase1) ? p1SkinSprite : p2SkinSprite;
@@ -560,4 +587,119 @@ public class BoomChipManager : MonoBehaviour
         }
     }
     #endregion
+
+    public void CheckAndShowTutorial(int phaseNumber)
+    {
+        string key = "FirstTime_Boom_Phase" + phaseNumber;
+        Debug.Log("Checking Tutorial for Phase: " + phaseNumber + " | Status: " + PlayerPrefs.GetInt(key, 0));
+
+        if (PlayerPrefs.GetInt(key, 0) == 1) return;
+
+        if (tutorialP1) tutorialP1.SetActive(false);
+        if (tutorialP2) tutorialP2.SetActive(false);
+        if (tutorialP3) tutorialP3.SetActive(false);
+
+        GameObject targetTutorial = null;
+        if (phaseNumber == 1) targetTutorial = tutorialP1;
+        else if (phaseNumber == 2) targetTutorial = tutorialP2;
+        else if (phaseNumber == 3) targetTutorial = tutorialP3;
+
+        if (targetTutorial != null)
+        {
+            targetTutorial.SetActive(true);
+            currentActiveTutorial = targetTutorial;
+            isShowingTutorial = true;
+
+            // CHỈ CHẠY BÀN TAY NẾU KHÔNG PHẢI PHASE 3
+            if (phaseNumber != 3)
+            {
+                Transform hand = targetTutorial.transform.Find("HandPointer");
+                if (hand != null)
+                {
+                    hand.DOKill();
+                    hand.localScale = Vector3.one;
+                    hand.DOScale(1.2f, 0.5f).SetLoops(-1, LoopType.Yoyo).SetEase(Ease.InOutSine);
+                }
+            }
+            else
+            {
+                // Nếu là Phase 3, đảm bảo ẩn bàn tay đi nếu lỡ tay để trong Prefab
+                Transform hand = targetTutorial.transform.Find("HandPointer");
+                if (hand != null) hand.gameObject.SetActive(false);
+            }
+        }
+    }
+
+    void Update()
+    {
+        // Chỉ cần đang hiện tutorial và người chơi chạm màn hình là tắt ngay
+        if (isShowingTutorial && Input.GetMouseButtonDown(0))
+        {
+            CloseCurrentTutorial();
+        }
+    }
+
+    private void CloseCurrentTutorial()
+    {
+        if (currentActiveTutorial != null)
+        {
+            // Lưu lại là đã xem Phase này
+            string key = "FirstTime_Boom_Phase" + (currentActiveTutorial == tutorialP1 ? 1 : (currentActiveTutorial == tutorialP2 ? 2 : 3));
+            PlayerPrefs.SetInt(key, 1);
+            PlayerPrefs.Save();
+
+            currentActiveTutorial.SetActive(false);
+            currentActiveTutorial = null;
+            isShowingTutorial = false;
+        }
+    }
+
+    // Hàm này để gán vào Sự kiện OnClick của nút "?" trên màn hình
+    public void ReplayTutorial()
+    {
+        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX("SFX_Click");
+
+        int phaseToShow = 1; // Mặc định là Phase 1
+
+        // Kiểm tra xem người chơi đang thực sự ở Phase nào
+        if (currentPhase == GamePhase.Phase1) phaseToShow = 1;
+        else if (currentPhase == GamePhase.Phase2) phaseToShow = 2;
+        else if (currentPhase == GamePhase.Phase3) phaseToShow = 3;
+
+        // Gọi hàm hiện Tutorial nhưng bỏ qua kiểm tra PlayerPrefs
+        ForceShowTutorial(phaseToShow);
+    }
+
+    private void ForceShowTutorial(int phaseNumber)
+    {
+        // Tắt các cái cũ đang hiện (nếu có)
+        if (tutorialP1) tutorialP1.SetActive(false);
+        if (tutorialP2) tutorialP2.SetActive(false);
+        if (tutorialP3) tutorialP3.SetActive(false);
+
+        GameObject targetTutorial = null;
+        if (phaseNumber == 1) targetTutorial = tutorialP1;
+        else if (phaseNumber == 2) targetTutorial = tutorialP2;
+        else if (phaseNumber == 3) targetTutorial = tutorialP3;
+
+        if (targetTutorial != null)
+        {
+            targetTutorial.SetActive(true);
+            currentActiveTutorial = targetTutorial;
+            isShowingTutorial = true;
+
+            // Chạy lại hiệu ứng bàn tay (trừ Phase 3 như bạn muốn)
+            if (phaseNumber != 3)
+            {
+                Transform hand = targetTutorial.transform.Find("HandPointer");
+                if (hand != null)
+                {
+                    hand.gameObject.SetActive(true);
+                    hand.DOKill();
+                    hand.localScale = Vector3.one;
+                    hand.DOScale(1.2f, 0.5f).SetLoops(-1, LoopType.Yoyo).SetEase(Ease.InOutSine);
+                }
+            }
+        }
+    }
 }
