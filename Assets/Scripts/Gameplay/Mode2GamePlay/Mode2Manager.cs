@@ -26,6 +26,11 @@ public class Mode2Manager : MonoBehaviour
     public GameObject winPanel;
     public GameObject settingPanel;
 
+    [Header("Turn Popup Simple")]
+    public GameObject turnPopupObj;     // Kéo TurnPopup vào đây
+    public GameObject player1TextObj;   // Kéo Player1Text vào đây
+    public GameObject player2TextObj;   // Kéo Player2Text vào đây
+
     [Header("Transition Strips (New)")]
     public Transform mainCanvas;
     public GameObject transitionPrefab; // Kéo Prefab Transition vào đây trong Inspector
@@ -476,7 +481,18 @@ public class Mode2Manager : MonoBehaviour
     IEnumerator WaitAndHandleTurn(bool keep)
     {
         yield return new WaitForSeconds(0.5f);
-        if (!keep) { currentTurn = currentTurn == 1 ? 2 : 1; UpdateTurnUI(); }
+        if (!keep)
+        {
+            currentTurn = currentTurn == 1 ? 2 : 1;
+            UpdateTurnUI();
+
+            // Gọi hàm show popup
+            ShowTurnPopup();
+
+            // Chờ cho popup chạy xong rồi mới cho phép người chơi bấm tiếp
+            // (0.3s phóng to + 1.0s hiển thị + 0.3s thu nhỏ = 1.6s)
+            yield return new WaitForSeconds(1.6f);
+        }
         isProcessingTurn = false;
     }
 
@@ -562,5 +578,26 @@ public class Mode2Manager : MonoBehaviour
         bounceSeq.Append(bottle.transform.DOLocalMoveY(20f, 0.3f).SetRelative(true).SetEase(Ease.OutQuad));
         bounceSeq.Append(bottle.transform.DOLocalMoveY(-20f, 0.5f).SetRelative(true).SetEase(Ease.OutBounce));
         bounceSeq.Join(bottle.transform.DOScale(new Vector3(1.1f, 0.9f, 1f), 0.2f).SetLoops(2, LoopType.Yoyo));
+    }
+
+    private void ShowTurnPopup()
+    {
+        if (turnPopupObj == null) return;
+
+        // Bật/tắt text theo đúng người chơi hiện tại
+        if (player1TextObj != null) player1TextObj.SetActive(currentTurn == 1);
+        if (player2TextObj != null) player2TextObj.SetActive(currentTurn == 2);
+
+        // Reset trạng thái và ngắt các animation cũ (nếu có)
+        turnPopupObj.transform.DOKill();
+        turnPopupObj.SetActive(true);
+        turnPopupObj.transform.localScale = Vector3.zero;
+
+        // Chạy hiệu ứng Pop-up: Phóng to -> Đứng im -> Thu nhỏ -> Tắt
+        Sequence seq = DOTween.Sequence();
+        seq.Append(turnPopupObj.transform.DOScale(Vector3.one, 0.3f).SetEase(Ease.OutBack));
+        seq.AppendInterval(1.0f); // Thời gian popup hiện trên màn hình (1 giây)
+        seq.Append(turnPopupObj.transform.DOScale(Vector3.zero, 0.3f).SetEase(Ease.InBack));
+        seq.OnComplete(() => turnPopupObj.SetActive(false));
     }
 }
