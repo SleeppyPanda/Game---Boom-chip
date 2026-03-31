@@ -1,22 +1,22 @@
 {
   "project_info": {
-    "project_number": "706527066384",
-    "firebase_url": "https://boom-chip-2-player-default-rtdb.firebaseio.com",
-    "project_id": "boom-chip-2-player",
-    "storage_bucket": "boom-chip-2-player.firebasestorage.app"
+    "project_number": "715193413016",
+    "firebase_url": "https://boom-chip-default-rtdb.firebaseio.com",
+    "project_id": "boom-chip",
+    "storage_bucket": "boom-chip.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:706527066384:android:d9c535c0d8e1a3bc528d95",
+        "mobilesdk_app_id": "1:715193413016:android:a2a2b9e5a566766e300fed",
         "android_client_info": {
-          "package_name": "com.codegym.Boomchip2player"
+          "package_name": "com.DefaultCompany.GameBoomchip"
         }
       },
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyBA6Jl1JVx0U4hnxvgoOHDwdK0a1gWPNW0"
+          "current_key": "AIzaSyCWeKk3KTseErfe324z-_kKAiT6a97A8_8"
         }
       ],
       "services": {
