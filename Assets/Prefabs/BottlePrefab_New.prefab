@@ -26,7 +26,7 @@ RectTransform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 3313088715281669222}
-  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
@@ -148,8 +148,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 46b8cfaa9ea496043b7fdc1881f93b93, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  bottomSmoke: {fileID: 0}
-  topSmoke: {fileID: 0}
+  bottomSmoke: {fileID: 8510909675543374818}
+  topSmoke: {fileID: 3313088715281669222}
   bottleImage: {fileID: 1038111173771132431}
 --- !u!1 &8510909675543374818
 GameObject:
@@ -340,8 +340,7 @@ PrefabInstance:
       propertyPath: m_Name
       value: Bottle
       objectReference: {fileID: 0}
-    m_RemovedComponents:
-    - {fileID: 7850491916748148290, guid: 1ff0a9375f2dd9247a0e6932b3ee79c0, type: 3}
+    m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
     m_AddedComponents: []
