@@ -5,17 +5,13 @@ using System.Collections.Generic;
 using TMPro;
 using DG.Tweening;
 using UnityEngine.SceneManagement;
+using System.Linq;
 
 [System.Serializable]
 public class BottleData
 {
     public int bottleID;
     public Sprite bottleSprite;
-}
-
-public class BottleItem : MonoBehaviour
-{
-    public int ID;
 }
 
 public class Mode2Manager : MonoBehaviour
@@ -43,13 +39,15 @@ public class Mode2Manager : MonoBehaviour
     [Header("Containers")]
     public Transform topShelf;
     public Transform bottomShelf;
-    public GameObject bottlePrefab;
 
-    [Header("Shuffle & Curtain Settings")]
+    [Header("Prefabs")]
+    public GameObject bottleTopPrefab;
+    public GameObject bottleBottomPrefab;
+
+    [Header("Shuffle Settings")]
     public RectTransform curtainRect;
     public float widthPerBottle = 160f;
     public float paddingWidth = 100f;
-    public float shuffleDuration = 1.2f;
     public float curtainMoveDuration = 0.6f;
 
     [Header("Visual Shelves (Decor)")]
@@ -59,8 +57,8 @@ public class Mode2Manager : MonoBehaviour
     private int currentTotalScore = 0;
     private int currentTurn = 1;
     private int currentLevelCount = 3;
-    private List<int> targetIndexes = new List<int>();
-    private List<Image> bottomImages = new List<Image>();
+
+    private List<GameObject> bottomBottles = new List<GameObject>();
     private List<GameObject> topBottles = new List<GameObject>();
     private List<bool> isPosCorrect = new List<bool>();
     private GameObject firstSelected;
@@ -68,23 +66,18 @@ public class Mode2Manager : MonoBehaviour
     private bool isProcessingTurn = false;
 
     private Color numberColor = Color.black;
-    private const int MODE_ID = 11;
 
-    void Awake()
-    {
-        Instance = this;
-    }
+    void Awake() => Instance = this;
 
     void Start()
     {
-        if (FirebaseManager.Instance != null) FirebaseManager.Instance.LogModeEnter(MODE_ID);
         UpdateTurnUI();
         StartNewRound();
-        if (AdsManager.Instance != null) AdsManager.Instance.HideMREC();
     }
 
     public void StartNewRound()
     {
+        StopAllCoroutines();
         DOTween.KillAll();
         isGameOver = false;
         isProcessingTurn = true;
@@ -100,148 +93,93 @@ public class Mode2Manager : MonoBehaviour
         foreach (Transform t in topShelf) Destroy(t.gameObject);
         foreach (Transform t in bottomShelf) Destroy(t.gameObject);
 
-        bottomImages.Clear();
+        bottomBottles.Clear();
         topBottles.Clear();
-        targetIndexes.Clear();
         isPosCorrect.Clear();
         firstSelected = null;
 
-        StartCoroutine(ShuffleSequence());
+        StartCoroutine(MainGameFlow());
     }
 
-    IEnumerator ShuffleSequence()
+    IEnumerator MainGameFlow()
     {
         isProcessingTurn = true;
-        float targetWidth = (currentLevelCount * widthPerBottle) + paddingWidth;
-        float slowCurtainDuration = curtainMoveDuration * 1.5f;
+        ToggleLayouts(true);
 
+        float targetWidth = (currentLevelCount * widthPerBottle) + paddingWidth;
         UpdateShelfSize(targetWidth);
+
+        yield return new WaitForEndOfFrame();
+        SyncTopShelfSize();
+
         if (curtainRect != null)
         {
             curtainRect.sizeDelta = new Vector2(targetWidth, curtainRect.sizeDelta.y);
             curtainRect.gameObject.SetActive(true);
-            float canvasWidth = curtainRect.GetComponentInParent<Canvas>().GetComponent<RectTransform>().rect.width;
-            float startX = (canvasWidth / 2) + (targetWidth / 2) + 100f;
-            curtainRect.anchoredPosition = new Vector2(startX, curtainRect.anchoredPosition.y);
-            yield return curtainRect.DOAnchorPosX(0, slowCurtainDuration).SetEase(Ease.OutQuad).WaitForCompletion();
+            curtainRect.anchoredPosition = new Vector2(0f, curtainRect.anchoredPosition.y);
         }
 
-        List<int> availableIDs = new List<int>();
-        masterBottleList.ForEach(x => availableIDs.Add(x.bottleID));
+        List<int> availableIDs = masterBottleList.Select(x => x.bottleID).ToList();
         ShuffleList(availableIDs);
+        List<int> selectedIDs = availableIDs.Take(currentLevelCount).ToList();
 
+        // Bước 1: Khởi tạo - Cả trên và dưới đều hiện ảnh có màu để người chơi ghi nhớ
         for (int i = 0; i < currentLevelCount; i++)
         {
-            int bID = availableIDs[i];
-            targetIndexes.Add(bID);
+            int bID = selectedIDs[i];
+            var bottleData = masterBottleList.Find(x => x.bottleID == bID);
+
             isPosCorrect.Add(false);
 
-            // --- TẦNG DƯỚI ---
-            GameObject bBottom = Instantiate(bottlePrefab, bottomShelf);
-            if (bBottom == null) { Debug.LogError("QUÊN KÉO PREFAB VÀO INSPECTOR!"); yield break; }
+            // Khởi tạo chai dưới (Ảnh màu)
+            GameObject bBottom = Instantiate(bottleBottomPrefab, bottomShelf);
+            bBottom.GetComponent<Image>().sprite = bottleData.bottleSprite;
+            BottleItem bottomItem = bBottom.GetComponent<BottleItem>() ?? bBottom.AddComponent<BottleItem>();
+            bottomItem.ID = bID;
+            bottomBottles.Add(bBottom);
+            SetupBottleRect(bBottom.GetComponent<RectTransform>());
 
-            BottleController ctrlBottom = bBottom.GetComponent<BottleController>();
-            Transform bottleChild = bBottom.transform.Find("Bottle");
-
-            if (bottleChild != null)
-            {
-                Image imgBottom = bottleChild.GetComponent<Image>();
-                bottomImages.Add(imgBottom); // Nạp vào list ĐỂ TRÁNH NULL DÒNG 174
-                if (ctrlBottom != null)
-                    ctrlBottom.PlayLowerSmoke(masterBottleList.Find(x => x.bottleID == bID).bottleSprite);
-            }
-            else { Debug.LogError("PREFAB THIẾU OBJECT CON TÊN 'Bottle'!"); }
-
-            // --- TẦNG TRÊN ---
-            GameObject bTop = Instantiate(bottlePrefab, topShelf);
-            Transform bottleTopChild = bTop.transform.Find("Bottle");
-            if (bottleTopChild != null)
-                bottleTopChild.GetComponent<Image>().sprite = masterBottleList.Find(x => x.bottleID == bID).bottleSprite;
-
-            bTop.AddComponent<BottleItem>().ID = bID;
-            bTop.GetComponent<Button>().interactable = false;
-            bTop.GetComponent<Button>().onClick.AddListener(() => OnBottleClick(bTop));
+            // Khởi tạo chai trên (Ảnh màu)
+            GameObject bTop = Instantiate(bottleTopPrefab, topShelf);
+            bTop.GetComponent<Image>().sprite = bottleData.bottleSprite;
+            BottleItem topItem = bTop.GetComponent<BottleItem>() ?? bTop.AddComponent<BottleItem>();
+            topItem.ID = bID;
             topBottles.Add(bTop);
+            SetupBottleRect(bTop.GetComponent<RectTransform>());
+
+            Button btnTop = bTop.GetComponent<Button>();
+            btnTop.interactable = false;
+            btnTop.onClick.AddListener(() => OnBottleClick(bTop));
         }
 
         yield return new WaitForEndOfFrame();
+        foreach (var b in topBottles) b.GetComponent<BottleController>()?.PlayUpperLand();
+        yield return new WaitForSeconds(0.5f);
+        foreach (var b in topBottles) b.GetComponent<BottleController>()?.InactiveUpperLand();
 
-        // Tắt Layout Group
-        var lgTop = topShelf.GetComponent<HorizontalOrVerticalLayoutGroup>();
-        var lgBottom = bottomShelf.GetComponent<HorizontalOrVerticalLayoutGroup>();
-        if (lgTop) lgTop.enabled = false;
-        if (lgBottom) lgBottom.enabled = false;
+        ToggleLayouts(false);
 
-        // --- FIX LỖI DÒNG 174: Đảm bảo List có đủ số lượng trước khi truy cập ---
-        Vector3[] topLocals = new Vector3[topBottles.Count];
-        Vector3[] bottomLocals = new Vector3[bottomImages.Count];
-
-        for (int i = 0; i < currentLevelCount; i++)
+        // Bước 2: Shuffle kệ dưới và CHUYỂN SANG ẢNH XÁM
+        yield return StartCoroutine(FastShuffleRoutine(bottomBottles));
+        foreach (var b in bottomBottles)
         {
-            // Kiểm tra từng phần tử trước khi lấy tọa độ
-            if (i < topBottles.Count && topBottles[i] != null)
-                topLocals[i] = topBottles[i].transform.localPosition;
-
-            if (i < bottomImages.Count && bottomImages[i] != null)
-                bottomLocals[i] = bottomImages[i].transform.parent.localPosition; // Lấy vị trí của Prefab (cha)
+            b.GetComponent<Image>().sprite = grayBottleSprite;
+            b.GetComponent<BottleController>()?.InactiveUpperLand();
         }
+        bottomBottles = bottomBottles.OrderBy(go => go.transform.localPosition.x).ToList();
 
-        // XÁO TẦNG DƯỚI (Chỉ chạy nếu đủ số lượng)
-        if (bottomImages.Count >= currentLevelCount)
-        {
-            Sequence bottomSeq = DOTween.Sequence();
-            List<int> currentPosIdx = new List<int>();
-            for (int i = 0; i < currentLevelCount; i++) currentPosIdx.Add(i);
+        // Bước 3: Shuffle kệ trên
+        yield return StartCoroutine(FastShuffleRoutine(topBottles));
+        foreach (var b in topBottles) b.GetComponent<BottleController>()?.InactiveUpperLand();
+        topBottles = topBottles.OrderBy(go => go.transform.localPosition.x).ToList();
 
-            for (int s = 0; s < 8; s++)
-            {
-                int r1 = Random.Range(0, currentLevelCount);
-                int r2 = Random.Range(0, currentLevelCount);
-                while (r1 == r2) r2 = Random.Range(0, currentLevelCount);
+        EnsureNoMatchesAtStart();
 
-                int tempIdx = currentPosIdx[r1];
-                currentPosIdx[r1] = currentPosIdx[r2];
-                currentPosIdx[r2] = tempIdx;
-
-                bottomSeq.Append(bottomImages[r1].transform.parent.DOLocalMove(bottomLocals[currentPosIdx[r1]], 0.2f).SetEase(Ease.InOutQuad));
-                bottomSeq.Join(bottomImages[r2].transform.parent.DOLocalMove(bottomLocals[currentPosIdx[r2]], 0.2f).SetEase(Ease.InOutQuad));
-            }
-
-            for (int i = 0; i < bottomImages.Count; i++)
-                bottomSeq.Join(bottomImages[i].transform.parent.DOLocalMove(bottomLocals[i], 0.3f));
-
-            bottomSeq.OnComplete(() => {
-                foreach (var img in bottomImages)
-                    img.GetComponentInParent<BottleController>()?.PlayLowerSmoke(grayBottleSprite);
-            });
-            yield return bottomSeq.WaitForCompletion();
-        }
-
-        // --- XÁO TẦNG TRÊN ---
-        List<int> newIndices = new List<int>();
-        for (int i = 0; i < currentLevelCount; i++) newIndices.Add(i);
-        EnsureDerangement(newIndices);
-
-        Sequence topSeq = DOTween.Sequence();
-        for (int i = 0; i < topBottles.Count; i++)
-        {
-            int idx = i;
-            topSeq.Join(topBottles[idx].transform.DOLocalMove(topLocals[newIndices[idx]], 0.8f).SetEase(Ease.InCubic)
-                .OnComplete(() => topBottles[idx].GetComponent<BottleController>()?.PlayUpperLand()));
-        }
-        yield return topSeq.WaitForCompletion();
-
-        // Sắp xếp lại list sau xáo trộn
-        GameObject[] reordered = new GameObject[topBottles.Count];
-        for (int i = 0; i < topBottles.Count; i++) reordered[newIndices[i]] = topBottles[i];
-        topBottles = new List<GameObject>(reordered);
-
-        // Mở rèm
         if (curtainRect != null)
         {
             float canvasWidth = curtainRect.GetComponentInParent<Canvas>().GetComponent<RectTransform>().rect.width;
-            float endX = -((canvasWidth / 2) + (curtainRect.sizeDelta.x / 2) + 100f);
-            yield return curtainRect.DOAnchorPosX(endX, slowCurtainDuration).SetEase(Ease.InQuad).WaitForCompletion();
+            float endX = -((canvasWidth / 2) + (curtainRect.sizeDelta.x / 2) + 200f);
+            yield return curtainRect.DOAnchorPosX(endX, curtainMoveDuration).SetEase(Ease.InQuad).WaitForCompletion();
             curtainRect.gameObject.SetActive(false);
         }
 
@@ -249,34 +187,97 @@ public class Mode2Manager : MonoBehaviour
         isProcessingTurn = false;
     }
 
-    void UpdateShelfSize(float targetWidth)
+    IEnumerator FastShuffleRoutine(List<GameObject> list)
     {
-        if (topShelfVisual != null) topShelfVisual.sizeDelta = new Vector2(targetWidth, topShelfVisual.sizeDelta.y);
-        if (bottomShelfVisual != null) bottomShelfVisual.sizeDelta = new Vector2(targetWidth, bottomShelfVisual.sizeDelta.y);
-        RectTransform rtTop = topShelf as RectTransform;
-        RectTransform rtBottom = bottomShelf as RectTransform;
-        if (rtTop != null) rtTop.sizeDelta = new Vector2(targetWidth, rtTop.sizeDelta.y);
-        if (rtBottom != null) rtBottom.sizeDelta = new Vector2(targetWidth, rtBottom.sizeDelta.y);
-    }
+        int swapAttempts = 5;
+        float moveSpeed = 0.12f;
+        float pauseSpeed = 0.15f;
 
-    void EnsureDerangement(List<int> indices)
-    {
-        if (indices.Count <= 1) return;
-        int safety = 0;
-        while (safety < 100)
+        for (int s = 0; s < swapAttempts; s++)
         {
-            ShuffleList(indices);
-            bool hasMatch = false;
-            for (int j = 0; j < indices.Count; j++) if (indices[j] == j) { hasMatch = true; break; }
-            if (!hasMatch) break;
-            safety++;
+            int r1 = Random.Range(0, list.Count);
+            int r2 = Random.Range(0, list.Count);
+            while (r1 == r2 && list.Count > 1) r2 = Random.Range(0, list.Count);
+
+            Transform t1 = list[r1].transform;
+            Transform t2 = list[r2].transform;
+
+            Vector3 p1 = t1.localPosition;
+            Vector3 p2 = t2.localPosition;
+
+            t1.DOLocalMove(p2, moveSpeed).SetEase(Ease.Linear);
+            t2.DOLocalMove(p1, moveSpeed).SetEase(Ease.Linear);
+
+            yield return new WaitForSeconds(moveSpeed + pauseSpeed);
         }
     }
 
-    void UpdateScoreText()
+    void CheckAllPositionsAfterSwap()
     {
-        string hexColor = ColorUtility.ToHtmlStringRGB(numberColor);
-        totalScoreText.text = $"Bottle Collected: <color=#{hexColor}>{currentTotalScore}</color>";
+        bool hasCorrected = false;
+        for (int i = 0; i < topBottles.Count; i++)
+        {
+            int topID = topBottles[i].GetComponent<BottleItem>().ID;
+            int bottomID = bottomBottles[i].GetComponent<BottleItem>().ID;
+
+            bool currentlyCorrect = (topID == bottomID);
+
+            // Logic thay đổi ảnh: Đúng hiện màu, sai hiện xám
+            if (isPosCorrect[i] != currentlyCorrect)
+            {
+                isPosCorrect[i] = currentlyCorrect;
+                Sprite targetSprite;
+
+                if (currentlyCorrect)
+                {
+                    // Lấy lại ảnh màu từ master data dựa trên ID
+                    var data = masterBottleList.Find(x => x.bottleID == topID);
+                    targetSprite = data != null ? data.bottleSprite : grayBottleSprite;
+                    hasCorrected = true;
+                }
+                else
+                {
+                    targetSprite = grayBottleSprite;
+                }
+
+                // Cập nhật hiệu ứng và sprite
+                bottomBottles[i].GetComponent<BottleController>()?.PlayLowerSmoke(targetSprite);
+                bottomBottles[i].GetComponent<Image>().sprite = targetSprite;
+            }
+        }
+
+        UpdateScoreLogic();
+
+        if (!isPosCorrect.Contains(false))
+            StartCoroutine(WinSequence());
+        else
+            StartCoroutine(WaitAndHandleTurn(hasCorrected));
+    }
+
+    void EnsureNoMatchesAtStart()
+    {
+        int n = topBottles.Count;
+        if (n < 2) return;
+        int safety = 0;
+        bool hasMatch = true;
+        while (hasMatch && safety < 100)
+        {
+            hasMatch = false; safety++;
+            for (int i = 0; i < n; i++)
+            {
+                if (topBottles[i].GetComponent<BottleItem>().ID == bottomBottles[i].GetComponent<BottleItem>().ID)
+                {
+                    hasMatch = true;
+                    int next = (i + 1) % n;
+                    GameObject temp = topBottles[i];
+                    topBottles[i] = topBottles[next];
+                    topBottles[next] = temp;
+                    Vector3 p = topBottles[i].transform.localPosition;
+                    topBottles[i].transform.localPosition = topBottles[next].transform.localPosition;
+                    topBottles[next].transform.localPosition = p;
+                }
+            }
+        }
     }
 
     void OnBottleClick(GameObject clickedBottle)
@@ -285,124 +286,85 @@ public class Mode2Manager : MonoBehaviour
         if (firstSelected == null)
         {
             firstSelected = clickedBottle;
-            firstSelected.transform.DOLocalMoveY(30f, 0.2f).SetRelative(true);
+            firstSelected.transform.DOLocalMoveY(35f, 0.2f).SetRelative(true);
         }
         else if (firstSelected == clickedBottle)
         {
-            firstSelected.transform.DOLocalMoveY(-30f, 0.2f).SetRelative(true);
+            firstSelected.transform.DOLocalMoveY(-35f, 0.2f).SetRelative(true);
             firstSelected = null;
         }
-        else { SwapBottles(firstSelected, clickedBottle); }
+        else
+        {
+            isProcessingTurn = true;
+            GameObject secondSelected = clickedBottle;
+            secondSelected.transform.DOLocalMoveY(35f, 0.2f).SetRelative(true).OnComplete(() => {
+                SwapBottles(firstSelected, secondSelected);
+                firstSelected = null;
+            });
+        }
     }
 
     void SwapBottles(GameObject a, GameObject b)
     {
-        isProcessingTurn = true;
         int indexA = topBottles.IndexOf(a);
         int indexB = topBottles.IndexOf(b);
-        a.GetComponent<Button>().interactable = false;
-        b.GetComponent<Button>().interactable = false;
+        float groundY = a.transform.localPosition.y - 35f;
+        Vector3 posA = new Vector3(a.transform.localPosition.x, groundY, 0);
+        Vector3 posB = new Vector3(b.transform.localPosition.x, groundY, 0);
 
-        Sequence swapSeq = DOTween.Sequence();
-        swapSeq.Join(a.transform.DOMove(b.transform.position, 0.4f).SetEase(Ease.InOutQuad));
-        swapSeq.Join(b.transform.DOMove(a.transform.position, 0.4f).SetEase(Ease.InOutQuad));
-
-        swapSeq.OnComplete(() => {
-            a.transform.SetSiblingIndex(indexB);
-            b.transform.SetSiblingIndex(indexA);
-            topBottles[indexA] = b;
-            topBottles[indexB] = a;
-            CheckAllPositionsAfterSwap();
-            firstSelected = null;
+        Sequence s = DOTween.Sequence();
+        s.Append(a.transform.DOLocalMoveX(posB.x, 0.4f).SetEase(Ease.InOutQuad));
+        s.Join(b.transform.DOLocalMoveX(posA.x, 0.4f).SetEase(Ease.InOutQuad));
+        s.Append(a.transform.DOLocalMoveY(groundY, 0.15f));
+        s.Join(b.transform.DOLocalMoveY(groundY, 0.15f));
+        s.OnComplete(() => {
+            topBottles[indexA] = b; topBottles[indexB] = a;
+            StartCoroutine(FinishSwapAnimation(a, b));
         });
     }
 
-    void CheckAllPositionsAfterSwap()
+    IEnumerator FinishSwapAnimation(GameObject a, GameObject b)
     {
-        int scoreChange = 0;
-        bool hasNewlyCorrectBottle = false;
-
-        for (int i = 0; i < topBottles.Count; i++)
-        {
-            int currentTopID = topBottles[i].GetComponent<BottleItem>().ID;
-            int correctID = targetIndexes[i];
-
-            if (isPosCorrect[i] && currentTopID != correctID)
-            {
-                isPosCorrect[i] = false;
-                bottomImages[i].GetComponentInParent<BottleController>()?.PlayLowerSmoke(grayBottleSprite);
-                currentTotalScore--;
-                scoreChange--;
-            }
-            else if (!isPosCorrect[i] && currentTopID == correctID)
-            {
-                isPosCorrect[i] = true;
-                Sprite correctSprite = masterBottleList.Find(x => x.bottleID == correctID).bottleSprite;
-                bottomImages[i].GetComponentInParent<BottleController>()?.PlayLowerSmoke(correctSprite);
-                currentTotalScore++;
-                scoreChange++;
-                hasNewlyCorrectBottle = true;
-            }
-        }
-
-        if (scoreChange > 0)
-        {
-            DOTween.To(() => numberColor, x => numberColor = x, Color.green, 0.2f).OnUpdate(UpdateScoreText);
-            if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX("SFX_Correct");
-        }
-        else if (scoreChange < 0)
-        {
-            DOTween.To(() => numberColor, x => numberColor = x, Color.red, 0.2f).OnUpdate(UpdateScoreText)
-                .OnComplete(() => DOTween.To(() => numberColor, x => numberColor = x, Color.black, 0.8f).OnUpdate(UpdateScoreText));
-            if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX("SFX_Wrong");
-        }
-
-        if (!isPosCorrect.Contains(false)) StartCoroutine(WinSequence());
-        else StartCoroutine(WaitAndHandleTurn(hasNewlyCorrectBottle));
+        a.GetComponent<BottleController>()?.PlayUpperLand();
+        b.GetComponent<BottleController>()?.PlayUpperLand();
+        yield return new WaitForSeconds(0.5f);
+        a.GetComponent<BottleController>()?.InactiveUpperLand();
+        b.GetComponent<BottleController>()?.InactiveUpperLand();
+        CheckAllPositionsAfterSwap();
     }
+
+    void UpdateScoreLogic()
+    {
+        int score = isPosCorrect.Count(c => c);
+        if (score > currentTotalScore) UpdateScoreVisuals(1);
+        else if (score < currentTotalScore) UpdateScoreVisuals(-1);
+        currentTotalScore = score;
+        UpdateScoreText();
+    }
+
+    void UpdateScoreVisuals(int dir)
+    {
+        Color c = dir > 0 ? Color.green : Color.red;
+        DOTween.To(() => numberColor, x => numberColor = x, c, 0.2f).OnUpdate(UpdateScoreText)
+            .OnComplete(() => DOTween.To(() => numberColor, x => numberColor = x, Color.black, 0.8f).OnUpdate(UpdateScoreText));
+    }
+
+    void UpdateScoreText() => totalScoreText.text = $"Bottle Collected: <color=#{ColorUtility.ToHtmlStringRGB(numberColor)}>{currentTotalScore}</color>";
 
     IEnumerator WinSequence()
     {
         isGameOver = true;
-        isProcessingTurn = true;
         if (fireworkEffect != null) fireworkEffect.Play();
-        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX("SFX_Win");
         yield return new WaitForSeconds(delayBeforeWinPanel);
         winPanel.SetActive(true);
         player1Crown.SetActive(currentTurn == 1);
         player2Crown.SetActive(currentTurn == 2);
     }
 
-    public void OnNextLevelClick()
-    {
-        currentLevelCount = Mathf.Min(currentLevelCount + 1, 7);
-        StartNewRound();
-    }
-
-    public void OnBackToMode1Click()
-    {
-        SceneManager.LoadScene("SelectScene");
-    }
-
-    void ShuffleList(List<int> list)
-    {
-        for (int i = 0; i < list.Count; i++)
-        {
-            int rnd = Random.Range(i, list.Count);
-            int temp = list[i];
-            list[i] = list[rnd];
-            list[rnd] = temp;
-        }
-    }
-
-    IEnumerator WaitAndHandleTurn(bool keepTurn)
+    IEnumerator WaitAndHandleTurn(bool keep)
     {
         yield return new WaitForSeconds(0.5f);
-        if (!keepTurn)
-        {
-            currentTurn = (currentTurn == 1) ? 2 : 1;
-            UpdateTurnUI();
-        }
+        if (!keep) { currentTurn = currentTurn == 1 ? 2 : 1; UpdateTurnUI(); }
         isProcessingTurn = false;
     }
 
@@ -410,13 +372,31 @@ public class Mode2Manager : MonoBehaviour
     {
         player1Cover.SetActive(currentTurn != 1);
         player2Cover.SetActive(currentTurn != 2);
-        if (turnNotificationText != null)
-        {
-            string pName = PlayerPrefs.GetString(currentTurn == 1 ? "PlayerName_P1" : "PlayerName_P2", currentTurn == 1 ? "P1" : "P2");
-            turnNotificationText.text = pName.ToUpper() + "'S TURN";
-        }
+        if (turnNotificationText) turnNotificationText.text = PlayerPrefs.GetString(currentTurn == 1 ? "PlayerName_P1" : "PlayerName_P2", currentTurn == 1 ? "P1" : "P2").ToUpper() + "'S TURN";
     }
 
-    public void OnSettingClick() { settingPanel.SetActive(true); }
-    public void OnCloseSettingClick() { settingPanel.SetActive(false); }
+    void ToggleLayouts(bool e)
+    {
+        if (topShelf.GetComponent<HorizontalLayoutGroup>()) topShelf.GetComponent<HorizontalLayoutGroup>().enabled = e;
+        if (bottomShelf.GetComponent<HorizontalLayoutGroup>()) bottomShelf.GetComponent<HorizontalLayoutGroup>().enabled = e;
+    }
+
+    void SyncTopShelfSize() { if (bottomShelf is RectTransform rb && topShelf is RectTransform rt) rt.sizeDelta = rb.sizeDelta; }
+
+    void SetupBottleRect(RectTransform rt) { rt.localScale = Vector3.one; rt.anchorMin = rt.anchorMax = rt.pivot = new Vector2(0.5f, 0.5f); rt.anchoredPosition3D = Vector3.zero; }
+
+    void ShuffleList<T>(List<T> list) { for (int i = 0; i < list.Count; i++) { int r = Random.Range(i, list.Count); T t = list[i]; list[i] = list[r]; list[r] = t; } }
+
+    void UpdateShelfSize(float w)
+    {
+        if (topShelfVisual) topShelfVisual.sizeDelta = new Vector2(w, topShelfVisual.sizeDelta.y);
+        if (bottomShelfVisual) bottomShelfVisual.sizeDelta = new Vector2(w, bottomShelfVisual.sizeDelta.y);
+        if (topShelf is RectTransform rt) rt.sizeDelta = new Vector2(w, rt.sizeDelta.y);
+        if (bottomShelf is RectTransform rb) rb.sizeDelta = new Vector2(w, rb.sizeDelta.y);
+    }
+
+    public void OnNextLevelClick() { currentLevelCount = Mathf.Min(currentLevelCount + 1, 7); StartNewRound(); }
+    public void OnBackToMode1Click() => SceneManager.LoadScene("SelectScene");
+    public void OnSettingClick() => settingPanel.SetActive(true);
+    public void OnCloseSettingClick() => settingPanel.SetActive(false);
 }
