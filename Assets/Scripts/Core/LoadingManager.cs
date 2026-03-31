@@ -26,7 +26,7 @@ public class LoadingManager : MonoBehaviour
     private const string FIRST_TIME_KEY = "FirstTimeLoadingComplete";
     private bool _isFirebaseReady = false;
     private bool _isRemoteConfigReady = false;
-    private bool _hasShownMREC = false;
+
 
     void Start()
     {
@@ -151,20 +151,7 @@ public class LoadingManager : MonoBehaviour
 
             if (operation.progress >= 0.9f && _isFirebaseReady && _isRemoteConfigReady && fakeProgress >= 0.95f)
             {
-                if (!_hasShownMREC)
-                {
-                    _hasShownMREC = true;
-
-                    HandleFirstLoadingEvent();
-
-                    if (AdsManager.Instance != null)
-                    {
-                        AdsManager.Instance.ShowMREC(AdEventTracker.KEY_MREC_LOADING);
-                    }
-
-                    yield return new WaitForSeconds(0.8f);
-                }
-
+                HandleFirstLoadingEvent();
                 operation.allowSceneActivation = true;
             }
 
