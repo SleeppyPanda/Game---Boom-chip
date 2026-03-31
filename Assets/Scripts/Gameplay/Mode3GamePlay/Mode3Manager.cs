@@ -315,6 +315,10 @@ public class Mode3Manager : MonoBehaviour
         if (txtFinalScore != null) txtFinalScore.text = (bounceCount * 1).ToString() + " " + currentData.unit;
         if (currentData.comments.Count > 0) txtComment.text = currentData.comments[UnityEngine.Random.Range(0, currentData.comments.Count)];
 
+        // --- CHỈ THÊM DÒNG NÀY ---
+        if (UGS_GameHandler.Instance != null) UGS_GameHandler.Instance.SubmitScore(bounceCount);
+        // -------------------------
+
         if (AdsManager.Instance != null) AdsManager.Instance.ShowMREC("is_show_mrec_complete_game");
     }
 
