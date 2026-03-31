@@ -405,7 +405,7 @@ public class BoomChipManager : MonoBehaviour
             p2BoardArea.blocksRaycasts = false;
 
             // Dùng DOTween để gọi hàm sau 0.5s
-            DOVirtual.DelayedCall(0.5f, () => {
+            DOVirtual.DelayedCall(0.8f, () => {
                 isP1Turn = !isP1Turn;
                 UpdateBoardVisuals();
             });
@@ -530,7 +530,22 @@ public class BoomChipManager : MonoBehaviour
                 bool isSelected = selectionLogic.IsTileSelected(currentPhase == GamePhase.Phase1 ? 1 : 2, tileIndex);
                 Sprite mySkin = (currentPhase == GamePhase.Phase1) ? p1SkinSprite : p2SkinSprite;
                 tile.SetVisual(isSelected ? mySkin : null);
-                if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX("SFX_Click");
+
+                // --- PHẦN THÊM VÀO: Gọi âm thanh dựa theo Phase ---
+                if (AudioManager.Instance != null)
+                {
+                    if (isSelected)
+                    {
+                        // Nếu là Phase 1 thì dùng p1HitSFX, Phase 2 dùng p2HitSFX
+                        string soundToPlay = (currentPhase == GamePhase.Phase1) ? p1HitSFX : p2HitSFX;
+                        AudioManager.Instance.PlaySFX(soundToPlay);
+                    }
+                    else
+                    {
+                        // Nếu bỏ chọn ô thì phát tiếng Click nhẹ (hoặc tùy bạn chọn)
+                        AudioManager.Instance.PlaySFX("SFX_Click");
+                    }
+                }
             }
         }
         else if (currentPhase == GamePhase.Phase3)
