@@ -58,6 +58,7 @@ public class Mode3Manager : MonoBehaviour
     private bool canPlay = true;
     private bool isGameOver = false;
     private bool isShowingTutorial = false;
+    private bool isFirstStart = true; // Thêm biến này
 
     private const int MODE_ID = 12;
 
@@ -91,23 +92,30 @@ public class Mode3Manager : MonoBehaviour
 
     private IEnumerator StartGameFlow()
     {
-        isTransitioning = true; // Khóa game lại
-
         // 1. Setup bàn chơi ngầm phía dưới
         SetupNewTurn();
 
-        // 2. Sinh ra Prefab Transition
-        if (transitionPrefab != null && mainCanvas != null)
+        // 2. Kiểm tra nếu là lần đầu mới chạy Transition
+        if (isFirstStart && transitionPrefab != null && mainCanvas != null)
         {
-            currentTransitionObj = Instantiate(transitionPrefab, mainCanvas);
-            currentTransitionObj.transform.SetAsLastSibling(); // Ép lên trên cùng layer
+            isTransitioning = true; // Khóa game lại
 
-            // 3. Đợi Transition chạy xong y hệt Mode 2
+            currentTransitionObj = Instantiate(transitionPrefab, mainCanvas);
+            currentTransitionObj.transform.SetAsLastSibling();
+
+            // Đợi Transition chạy xong
             yield return StartCoroutine(RunStartTransition());
+
+            isFirstStart = false; // Sau khi chạy xong lần đầu, đánh dấu là false
+            isTransitioning = false; // Mở khóa game
+        }
+        else
+        {
+            // Nếu không phải lần đầu, đảm bảo biến chặn được reset
+            isTransitioning = false;
         }
 
-        // 4. Mở khóa game và bắt đầu check Tutorial
-        isTransitioning = false;
+        // 3. Check Tutorial (Chỉ hiện nếu chưa từng xem)
         CheckTutorial();
     }
 
@@ -185,12 +193,14 @@ public class Mode3Manager : MonoBehaviour
         bounceCount = 0;
         canPlay = true;
 
+        // Reset UI điểm số
         if (txtScore != null)
         {
             txtScore.text = "Score: 0";
             txtScore.color = Color.yellow;
         }
 
+        // Chọn dữ liệu mới ngẫu nhiên
         if (database == null || database.Count == 0) return;
         currentData = database[UnityEngine.Random.Range(0, database.Count)];
 
@@ -198,9 +208,11 @@ public class Mode3Manager : MonoBehaviour
         leftCircleRenderer.sprite = currentData.circleSprite;
         rightCircleRenderer.sprite = currentData.circleSprite;
 
+        // Cập nhật khoảng cách 2 nửa vòng tròn
         leftHalf.localPosition = new Vector3(-currentData.gapSize, leftHalf.localPosition.y, 0);
         rightHalf.localPosition = new Vector3(currentData.gapSize, rightHalf.localPosition.y, 0);
 
+        // Xóa vật thể cũ nếu còn sót lại và sinh vật thể mới
         if (currentItem != null) Destroy(currentItem);
         SpawnPreviewItem();
     }

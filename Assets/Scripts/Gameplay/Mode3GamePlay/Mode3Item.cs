@@ -136,24 +136,35 @@ public class Mode3Item : MonoBehaviour
     private void HandleDeadSequence()
     {
         isDead = true;
-        rb.simulated = false; // Đứng yên tại chỗ chạm để diễn animation
+        rb.simulated = false; // Dừng vật lý để vật thể đứng yên
 
-        if (Mode3Manager.Instance != null) Mode3Manager.Instance.FinishGame();
+        if (Mode3Manager.Instance != null)
+            Mode3Manager.Instance.FinishGame();
 
-        // BẬT ANIMATION KHÓI
-        if (anim != null)
+        // 1. ẨN ITEM NGAY LẬP TỨC
+        if (sr != null)
         {
-            anim.enabled = true; // Kích hoạt Animator
-            anim.Play(deadAnimName, 0, 0f); // Chạy clip khói từ đầu
+            // Cách 1: Chỉnh Alpha về 0 (Trong suốt hoàn toàn)
+            Color c = sr.color;
+            c.a = 0f;
+            sr.color = c;
+
+            // Cách 2 (Triệt để hơn): Tắt luôn hiển thị của Sprite
+            // sr.enabled = false; 
         }
 
-        // Hiệu ứng Item biến mất (Scale nhỏ lại và mờ dần)
-        transform.DOScale(Vector3.one * 1.1f, 0.1f).OnComplete(() => {
-            transform.DOScale(Vector3.zero, 0.4f).SetEase(Ease.InQuad);
-        });
+        // 2. CHẠY ANIMATION KHÓI THẲNG ĐỨNG
+        if (anim != null)
+        {
+            anim.enabled = true;
 
-        if (sr != null) sr.DOFade(0, 0.4f);
+            // Ép xoay về 0 để khói luôn bay lên trên, bất kể Item cha đang xoay thế nào
+            anim.transform.rotation = Quaternion.identity;
 
+            anim.Play(deadAnimName, 0, 0f);
+        }
+
+        // 3. XÓA OBJECT SAU KHI KHÓI CHẠY XONG (Ví dụ 0.6 giây)
         Destroy(gameObject, 0.6f);
     }
 

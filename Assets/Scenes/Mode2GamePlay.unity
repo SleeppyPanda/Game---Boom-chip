@@ -683,7 +683,7 @@ MonoBehaviour:
   turnNotificationText: {fileID: 0}
   winPanel: {fileID: 1701871755}
   settingPanel: {fileID: 774665642}
-  sfxBottleSelect: pop SFX_5
+  sfxBottleSelect: whoosh wind sfx
   sfxBottleLand: DapBan
   sfxCorrectMatch: correct SFX 1
   sfxPopupShow: PopupShow

@@ -890,6 +890,8 @@ MonoBehaviour:
   panelMode3: {fileID: 0}
   panelAccount: {fileID: 0}
   panelSetting: {fileID: 1830620851}
+  bgmMusic: background_02
+  sfxClick: ButtonClick
   menuButtons: []
   btnAccount: {fileID: 0}
   btnSetting: {fileID: 0}

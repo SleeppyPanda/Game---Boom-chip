@@ -89,6 +89,7 @@ public class Mode2Manager : MonoBehaviour
     private bool isGameOver = false;
     private bool isProcessingTurn = false;
     private Color numberColor = Color.black;
+    private bool isFirstStart = true;
 
     void Awake()
     {
@@ -111,18 +112,22 @@ public class Mode2Manager : MonoBehaviour
 
     public void StartNewRound()
     {
+        // 1. Dọn dẹp các Coroutine và trạng thái cũ
         StopAllCoroutines();
         isGameOver = false;
         isProcessingTurn = true;
         winPanel.SetActive(false);
         player1Crown.SetActive(false);
         player2Crown.SetActive(false);
+
         if (fireworkEffect != null) fireworkEffect.Stop();
 
+        // 2. Reset điểm số và hình ảnh
         currentTotalScore = 0;
         numberColor = Color.black;
         UpdateScoreText();
 
+        // 3. Xóa các chai cũ trên kệ
         foreach (Transform t in topShelf) Destroy(t.gameObject);
         foreach (Transform t in bottomShelf) Destroy(t.gameObject);
 
@@ -131,13 +136,18 @@ public class Mode2Manager : MonoBehaviour
         isPosCorrect.Clear();
         firstSelected = null;
 
-        if (transitionPrefab != null)
+        // 4. Logic Transition (Chỉ chạy lần đầu tiên vào Scene)
+        if (isFirstStart && transitionPrefab != null)
         {
-            // SỬA LẠI DÒNG DƯỚI ĐÂY: Thay transform.parent thành mainCanvas
             currentTransitionObj = Instantiate(transitionPrefab, mainCanvas);
-            currentTransitionObj.transform.SetAsLastSibling(); // Ép lên trên cùng layer
+            currentTransitionObj.transform.SetAsLastSibling(); // Đảm bảo đè lên trên UI khác
+        }
+        else
+        {
+            currentTransitionObj = null; // Đảm bảo không có rác dữ liệu từ màn trước
         }
 
+        // 5. Bắt đầu luồng game chính
         StartCoroutine(MainGameFlow());
     }
 
@@ -185,12 +195,12 @@ public class Mode2Manager : MonoBehaviour
         yield return new WaitForEndOfFrame();
         SyncTopShelfSize();
 
-        if (currentTransitionObj != null)
+        if (isFirstStart && currentTransitionObj != null)
         {
-            // Phải dùng yield return để TOÀN BỘ luồng game phía sau dừng lại
             yield return StartCoroutine(RunStartTransition());
+            isFirstStart = false; // Đánh dấu đã qua lần đầu, các lần Next Level sau sẽ bỏ qua
         }
-        
+
         if (curtainRect != null)
         {
             curtainRect.gameObject.SetActive(true);
